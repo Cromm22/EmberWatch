@@ -22,17 +22,12 @@ class CalorieGoalManager: ObservableObject {
     }
     
     init() {
-        self.dailyCalorieGoal = UserDefaults.standard.double(forKey: "dailyCalorieGoal")
-        if self.dailyCalorieGoal == 0 {
-            self.dailyCalorieGoal = 2000
-        }
-        
-        self.currentLevel = UserDefaults.standard.integer(forKey: "currentLevel")
-        if self.currentLevel == 0 {
-            self.currentLevel = 1
-        }
-        
-        self.currentXP = UserDefaults.standard.integer(forKey: "currentXP")
+        let goal = UserDefaults.standard.double(forKey: "dailyCalorieGoal")
+        let level = UserDefaults.standard.integer(forKey: "currentLevel")
+        let xp = UserDefaults.standard.integer(forKey: "currentXP")
+        self.dailyCalorieGoal = goal == 0 ? 2000 : goal
+        self.currentLevel = level == 0 ? 1 : level
+        self.currentXP = xp
     }
     
     func calculateRemainingCalories(burned: Double, consumed: Double) -> Double {
