@@ -28,10 +28,10 @@ struct HomeView: View {
             .toolbarBackground(EmberColors.darkPlum, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
-                healthKitManager.fetchTodayWorkouts()
+                healthKitManager.fetchTodayWorkouts(markAccessFromResult: true)
             }
             .refreshable {
-                healthKitManager.fetchTodayWorkouts()
+                healthKitManager.fetchTodayWorkouts(markAccessFromResult: true)
             }
         }
     }

@@ -33,11 +33,41 @@ struct HealthConnectView: View {
                     
                     if healthKitManager.authorizationStatus != .authorized {
                         Button(action: {
-                            healthKitManager.requestAuthorization()
+                            if healthKitManager.authorizationStatus == .denied {
+                                healthKitManager.openHealthSettings()
+                            } else {
+                                healthKitManager.requestAuthorization()
+                            }
                         }) {
                             HStack {
-                                Image(systemName: "lock.shield")
-                                Text("Request Health Access")
+                                Image(systemName: healthKitManager.authorizationStatus == .denied ? "gear" : "lock.shield")
+                                Text(healthKitManager.authorizationStatus == .denied ? "Open Health Settings" : "Request Health Access")
+                            }
+                            .font(.headline)
+                            .foregroundColor(EmberColors.darkPlum)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(EmberColors.flame)
+                            )
+                        }
+                        .padding(.horizontal, 32)
+
+                        if healthKitManager.authorizationStatus == .denied {
+                            Text("Settings → Health → Data Access & Devices → EmberWatch → enable Workouts and Active Energy")
+                                .font(.caption)
+                                .foregroundColor(EmberColors.cream.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                    } else {
+                        Button(action: {
+                            healthKitManager.fetchTodayWorkouts(markAccessFromResult: true)
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.clockwise")
+                                Text("Refresh Workouts")
                             }
                             .font(.headline)
                             .foregroundColor(EmberColors.darkPlum)
