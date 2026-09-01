@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var foodDataManager: FoodDataManager
+    @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @State private var selectedTab = 0
     
     var body: some View {
@@ -10,12 +13,30 @@ struct ContentView: View {
                     Label("Home", systemImage: "flame.fill")
                 }
                 .tag(0)
+                .environmentObject(healthKitManager)
+                .environmentObject(foodDataManager)
+                .environmentObject(calorieGoalManager)
+            
+            FoodDiaryView()
+                .tabItem {
+                    Label("Food", systemImage: "fork.knife")
+                }
+                .tag(1)
+                .environmentObject(foodDataManager)
+            
+            WorkoutsView()
+                .tabItem {
+                    Label("Workouts", systemImage: "figure.run")
+                }
+                .tag(2)
+                .environmentObject(healthKitManager)
             
             HealthConnectView()
                 .tabItem {
                     Label("Health", systemImage: "heart.fill")
                 }
-                .tag(1)
+                .tag(3)
+                .environmentObject(healthKitManager)
         }
         .accentColor(EmberColors.flame)
     }
