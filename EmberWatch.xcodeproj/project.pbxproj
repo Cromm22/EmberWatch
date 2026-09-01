@@ -15,6 +15,11 @@
 		3A00000B0000000000000001 /* WorkoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A00000C0000000000000001 /* WorkoutModel.swift */; };
 		3A00000D0000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3A00000E0000000000000001 /* Assets.xcassets */; };
 		3A0000220000000000000001 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3A0000230000000000000001 /* HealthKit.framework */; };
+		3A0000250000000000000001 /* FoodEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000260000000000000001 /* FoodEntry.swift */; };
+		3A0000270000000000000001 /* FoodDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000280000000000000001 /* FoodDataManager.swift */; };
+		3A0000290000000000000001 /* CalorieGoalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A00002A0000000000000001 /* CalorieGoalManager.swift */; };
+		3A00002B0000000000000001 /* FoodDiaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A00002C0000000000000001 /* FoodDiaryView.swift */; };
+		3A00002D0000000000000001 /* WorkoutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A00002E0000000000000001 /* WorkoutsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +34,11 @@
 		3A00000F0000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3A0000100000000000000001 /* EmberWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EmberWatch.entitlements; sourceTree = "<group>"; };
 		3A0000230000000000000001 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		3A0000260000000000000001 /* FoodEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodEntry.swift; sourceTree = "<group>"; };
+		3A0000280000000000000001 /* FoodDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDataManager.swift; sourceTree = "<group>"; };
+		3A00002A0000000000000001 /* CalorieGoalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalorieGoalManager.swift; sourceTree = "<group>"; };
+		3A00002C0000000000000001 /* FoodDiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodDiaryView.swift; sourceTree = "<group>"; };
+		3A00002E0000000000000001 /* WorkoutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +90,8 @@
 			children = (
 				3A0000060000000000000001 /* HomeView.swift */,
 				3A0000080000000000000001 /* HealthConnectView.swift */,
+				3A00002C0000000000000001 /* FoodDiaryView.swift */,
+				3A00002E0000000000000001 /* WorkoutsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -88,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				3A00000C0000000000000001 /* WorkoutModel.swift */,
+				3A0000260000000000000001 /* FoodEntry.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -96,6 +109,8 @@
 			isa = PBXGroup;
 			children = (
 				3A00000A0000000000000001 /* HealthKitManager.swift */,
+				3A0000280000000000000001 /* FoodDataManager.swift */,
+				3A00002A0000000000000001 /* CalorieGoalManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -183,6 +198,11 @@
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,
 				3A0000090000000000000001 /* HealthKitManager.swift in Sources */,
 				3A00000B0000000000000001 /* WorkoutModel.swift in Sources */,
+				3A0000250000000000000001 /* FoodEntry.swift in Sources */,
+				3A0000270000000000000001 /* FoodDataManager.swift in Sources */,
+				3A0000290000000000000001 /* CalorieGoalManager.swift in Sources */,
+				3A00002B0000000000000001 /* FoodDiaryView.swift in Sources */,
+				3A00002D0000000000000001 /* WorkoutsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -3,6 +3,16 @@ import UIKit
 
 struct HomeView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var foodDataManager: FoodDataManager
+    @EnvironmentObject var calorieGoalManager: CalorieGoalManager
+    @State private var showingGoalSettings = false
+    
+    var remainingCalories: Double {
+        calorieGoalManager.calculateRemainingCalories(
+            burned: healthKitManager.totalCaloriesBurned,
+            consumed: foodDataManager.totalCaloriesConsumed
+        )
+    }
     
     var body: some View {
         NavigationView {
@@ -12,67 +22,105 @@ struct HomeView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        caloriesSummaryCard
-
-                        if healthKitManager.authorizationStatus == .authorized {
-                            Button(action: sendToEmber) {
-                                HStack {
-                                    Image(systemName: "square.and.arrow.up")
-                                    Text("Send calories to Ember")
-                                        .fontWeight(.semibold)
-                                }
-                                .font(.headline)
-                                .foregroundColor(EmberColors.darkPlum)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(EmberColors.flame)
-                                )
-                            }
-                        }
+                        emberAvatarCard
                         
-                        if healthKitManager.workouts.isEmpty && !healthKitManager.isLoading {
-                            emptyStateView
-                        } else {
-                            workoutsList
-                        }
+                        remainingCaloriesCard
+                        
+                        dailySummaryCard
+                        
+                        quickStatsCard
                     }
                     .padding()
                 }
             }
-            .navigationTitle("Today")
+            .navigationTitle("Ember")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.darkPlum, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingGoalSettings = true }) {
+                        Image(systemName: "gearshape.fill")
+                            .foregroundColor(EmberColors.cream)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingGoalSettings) {
+                GoalSettingsView(isPresented: $showingGoalSettings)
+                    .environmentObject(calorieGoalManager)
+            }
             .onAppear {
-                healthKitManager.fetchTodayWorkouts(markAccessFromResult: true)
+                healthKitManager.fetchTodayWorkouts()
+                foodDataManager.fetchTodayEntries()
             }
             .refreshable {
-                healthKitManager.fetchTodayWorkouts(markAccessFromResult: true)
+                healthKitManager.fetchTodayWorkouts()
+                foodDataManager.fetchTodayEntries()
             }
         }
     }
     
-    private var caloriesSummaryCard: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "flame.fill")
-                .font(.system(size: 40))
-                .foregroundColor(EmberColors.flame)
-            
-            if healthKitManager.isLoading {
-                ProgressView()
-                    .tint(EmberColors.cream)
-            } else {
-                Text("\(Int(healthKitManager.totalCaloriesBurned))")
-                    .font(.system(size: 56, weight: .bold, design: .rounded))
-                    .foregroundColor(EmberColors.cream)
+    private var emberAvatarCard: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [EmberColors.flame.opacity(0.3), EmberColors.flame.opacity(0.1)],
+                            center: .center,
+                            startRadius: 20,
+                            endRadius: 80
+                        )
+                    )
+                    .frame(width: 120, height: 120)
                 
-                Text("calories burned today")
-                    .font(.subheadline)
-                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [EmberColors.flame, Color.orange, Color.yellow],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                    .shadow(color: EmberColors.flame.opacity(0.5), radius: 10)
             }
+            
+            Text("Level \(calorieGoalManager.currentLevel)")
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundColor(EmberColors.cream)
+            
+            VStack(spacing: 8) {
+                HStack {
+                    Text("XP: \(calorieGoalManager.currentXP) / \(calorieGoalManager.xpForNextLevel())")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    
+                    Spacer()
+                }
+                
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(EmberColors.darkPlum)
+                            .frame(height: 8)
+                        
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(
+                                LinearGradient(
+                                    colors: [EmberColors.flame, Color.orange],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: geometry.size.width * calorieGoalManager.xpProgress(), height: 8)
+                    }
+                }
+                .frame(height: 8)
+            }
+            .padding(.horizontal, 32)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
@@ -82,116 +130,239 @@ struct HomeView: View {
         )
     }
     
-    private var workoutsList: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Workouts")
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundColor(EmberColors.cream)
-                .padding(.horizontal, 4)
-            
-            ForEach(healthKitManager.workouts) { workout in
-                WorkoutRow(workout: workout)
-            }
-        }
-    }
-    
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "figure.walk")
-                .font(.system(size: 60))
-                .foregroundColor(EmberColors.cream.opacity(0.5))
-            
-            Text("No workouts today")
-                .font(.title3)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-            
-            Text("Your workouts will appear here")
-                .font(.subheadline)
-                .foregroundColor(EmberColors.cream.opacity(0.5))
-        }
-        .padding(.top, 40)
-    }
-
-    private func sendToEmber() {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar.current
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone.current
-        formatter.dateFormat = "yyyy-MM-dd"
-        let day = formatter.string(from: Date())
-
-        let list = healthKitManager.workouts
-        var workouts: [[String: Any]] = []
-        for w in list {
-            workouts.append([
-                "id": w.id.uuidString,
-                "name": w.displayName,
-                "minutes": max(1, Int((w.duration / 60.0).rounded())),
-                "kcal": Int(w.caloriesBurned.rounded()),
-                "at": Int(w.startDate.timeIntervalSince1970 * 1000),
-            ])
-        }
-
-        let payload: [String: Any] = [
-            "day": day,
-            "workouts": workouts,
-        ]
-
-        guard JSONSerialization.isValidJSONObject(payload),
-              let data = try? JSONSerialization.data(withJSONObject: payload),
-              let json = String(data: data, encoding: .utf8) else { return }
-
-        let encoded = Data(json.utf8).base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
-
-        var comps = URLComponents(string: "https://ember-teal-six.vercel.app/health")!
-        comps.queryItems = [URLQueryItem(name: "watch", value: encoded)]
-        guard let url = comps.url else { return }
-        UIApplication.shared.open(url)
-    }
-}
-
-
-struct WorkoutRow: View {
-    let workout: WorkoutData
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: workout.iconName)
-                .font(.title2)
-                .foregroundColor(EmberColors.flame)
-                .frame(width: 44, height: 44)
-                .background(
-                    Circle()
-                        .fill(EmberColors.lightPlum)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(workout.displayName)
+    private var remainingCaloriesCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: remainingCalories >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundColor(remainingCalories >= 0 ? Color.green : Color.orange)
+                
+                Text("Remaining Calories")
                     .font(.headline)
                     .foregroundColor(EmberColors.cream)
                 
-                HStack(spacing: 16) {
-                    Label(workout.formattedDuration, systemImage: "clock")
-                    Label("\(Int(workout.caloriesBurned)) cal", systemImage: "flame.fill")
-                }
-                .font(.subheadline)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
+                Spacer()
             }
             
-            Spacer()
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(Int(remainingCalories))")
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(remainingCalories >= 0 ? EmberColors.flame : Color.orange)
+                
+                Text("cal")
+                    .font(.title3)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                
+                Spacer()
+            }
             
-            Text(workout.formattedStartTime)
-                .font(.caption)
-                .foregroundColor(EmberColors.cream.opacity(0.6))
+            Text(remainingCalories >= 0 ? "You're on track!" : "You're over your goal")
+                .font(.subheadline)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(EmberColors.lightPlum)
         )
+    }
+    
+    private var dailySummaryCard: some View {
+        VStack(spacing: 12) {
+            Text("Today's Summary")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            HStack(spacing: 12) {
+                SummaryItem(
+                    icon: "target",
+                    label: "Goal",
+                    value: "\(Int(calorieGoalManager.dailyCalorieGoal))",
+                    color: EmberColors.cream
+                )
+                
+                SummaryItem(
+                    icon: "flame.fill",
+                    label: "Burned",
+                    value: "+\(Int(healthKitManager.totalCaloriesBurned))",
+                    color: Color.orange
+                )
+                
+                SummaryItem(
+                    icon: "fork.knife",
+                    label: "Eaten",
+                    value: "-\(Int(foodDataManager.totalCaloriesConsumed))",
+                    color: Color.blue
+                )
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+    
+    private var quickStatsCard: some View {
+        VStack(spacing: 16) {
+            Text("Quick Stats")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            HStack(spacing: 12) {
+                QuickStatItem(
+                    icon: "figure.run",
+                    value: "\(healthKitManager.workouts.count)",
+                    label: "Workouts"
+                )
+                
+                QuickStatItem(
+                    icon: "fork.knife",
+                    value: "\(foodDataManager.todayFoodEntries.count)",
+                    label: "Meals"
+                )
+                
+                QuickStatItem(
+                    icon: "bolt.fill",
+                    value: "\(Int(foodDataManager.totalProtein))g",
+                    label: "Protein"
+                )
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+}
+
+struct SummaryItem: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(EmberColors.cream)
+            
+            Text(label)
+                .font(.caption)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(EmberColors.darkPlum)
+        )
+    }
+}
+
+struct QuickStatItem: View {
+    let icon: String
+    let value: String
+    let label: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(EmberColors.flame)
+            
+            Text(value)
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+            
+            Text(label)
+                .font(.caption)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(EmberColors.darkPlum)
+        )
+    }
+}
+
+struct GoalSettingsView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var calorieGoalManager: CalorieGoalManager
+    @State private var goalInput: String = ""
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.darkPlum
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    VStack(spacing: 8) {
+                        Text("Daily Calorie Goal")
+                            .font(.headline)
+                            .foregroundColor(EmberColors.cream)
+                        
+                        TextField("Enter goal", text: $goalInput)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .foregroundColor(EmberColors.flame)
+                            .multilineTextAlignment(.center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(EmberColors.lightPlum)
+                            )
+                    }
+                    .padding()
+                    
+                    Text("This is your base calorie budget. Exercise adds to this amount, and food subtracts from it.")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(EmberColors.darkPlum, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .foregroundColor(EmberColors.cream)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if let goal = Double(goalInput) {
+                            calorieGoalManager.dailyCalorieGoal = goal
+                        }
+                        isPresented = false
+                    }
+                    .foregroundColor(EmberColors.flame)
+                }
+            }
+            .onAppear {
+                goalInput = String(Int(calorieGoalManager.dailyCalorieGoal))
+            }
+        }
     }
 }

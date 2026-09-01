@@ -19,10 +19,17 @@ class HealthKitManager: ObservableObject {
 
     private let workoutType = HKObjectType.workoutType()
     private let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+    
+    private var workoutObserverQuery: HKObserverQuery?
+    private var activeEnergyObserverQuery: HKObserverQuery?
 
     init() {
         // Read authorization is intentionally opaque on iOS — probe by querying.
         refreshAccessByQuerying()
+    }
+    
+    deinit {
+        stopObserving()
     }
 
     /// Prefer this over authorizationStatus(for:) for *read* types.
@@ -119,6 +126,8 @@ class HealthKitManager: ObservableObject {
 
                 if markAccessFromResult {
                     self.authorizationStatus = .authorized
+                    // Start observing once we confirm authorization
+                    self.startObserving()
                 }
 
                 let workoutSamples = (samples as? [HKWorkout]) ?? []
@@ -139,5 +148,79 @@ class HealthKitManager: ObservableObject {
         }
 
         healthStore.execute(query)
+    }
+    
+    func startObserving() {
+        guard authorizationStatus == .authorized else { return }
+        
+        // Stop any existing observers first
+        stopObserving()
+        
+        // Observe workout changes
+        workoutObserverQuery = HKObserverQuery(sampleType: workoutType, predicate: nil) { [weak self] query, completionHandler, error in
+            guard let self else {
+                completionHandler()
+                return
+            }
+            
+            if let error {
+                print("Workout observer error: \(error.localizedDescription)")
+            }
+            
+            // Fetch updated workouts on main thread
+            DispatchQueue.main.async {
+                self.fetchTodayWorkouts()
+            }
+            
+            completionHandler()
+        }
+        
+        // Observe active energy changes
+        activeEnergyObserverQuery = HKObserverQuery(sampleType: activeEnergyType, predicate: nil) { [weak self] query, completionHandler, error in
+            guard let self else {
+                completionHandler()
+                return
+            }
+            
+            if let error {
+                print("Active energy observer error: \(error.localizedDescription)")
+            }
+            
+            // Fetch updated workouts on main thread
+            DispatchQueue.main.async {
+                self.fetchTodayWorkouts()
+            }
+            
+            completionHandler()
+        }
+        
+        if let workoutObserverQuery {
+            healthStore.execute(workoutObserverQuery)
+        }
+        if let activeEnergyObserverQuery {
+            healthStore.execute(activeEnergyObserverQuery)
+        }
+        
+        // Enable background delivery for immediate updates
+        healthStore.enableBackgroundDelivery(for: workoutType, frequency: .immediate) { success, error in
+            if let error {
+                print("Background delivery error for workouts: \(error.localizedDescription)")
+            }
+        }
+        
+        healthStore.enableBackgroundDelivery(for: activeEnergyType, frequency: .immediate) { success, error in
+            if let error {
+                print("Background delivery error for active energy: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    func stopObserving() {
+        if let workoutObserverQuery {
+            healthStore.stop(workoutObserverQuery)
+        }
+        if let activeEnergyObserverQuery {
+            healthStore.stop(activeEnergyObserverQuery)
+        }
     }
 }
