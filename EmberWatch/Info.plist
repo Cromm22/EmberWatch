@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Ember needs access to your workout data and active energy burned to display your daily activity.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Ember needs permission to update your health data.</string>
+</dict>
+</plist>
