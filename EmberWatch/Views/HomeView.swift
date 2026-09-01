@@ -67,25 +67,33 @@ struct HomeView: View {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [EmberColors.flame.opacity(0.3), EmberColors.flame.opacity(0.1)],
+                            colors: [
+                                EmberColors.ember.opacity(0.55),
+                                EmberColors.ember.opacity(0.18),
+                                Color.clear
+                            ],
                             center: .center,
-                            startRadius: 20,
-                            endRadius: 80
+                            startRadius: 10,
+                            endRadius: 110
                         )
                     )
-                    .frame(width: 120, height: 120)
+                    .frame(width: 200, height: 200)
                 
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [EmberColors.flame, Color.orange, Color.yellow],
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
-                    )
-                    .shadow(color: EmberColors.flame.opacity(0.5), radius: 10)
+                Circle()
+                    .stroke(EmberColors.ember.opacity(0.35), lineWidth: 2)
+                    .frame(width: 148, height: 148)
+                
+                // Match live web Ember: big flame avatar (not a tiny tab icon)
+                Text("🔥")
+                    .font(.system(size: 96))
+                    .shadow(color: EmberColors.ember.opacity(0.85), radius: 18, y: 4)
+                    .accessibilityLabel("Ember avatar")
             }
+            .padding(.top, 8)
+            
+            Text("Your Ember")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream.opacity(0.85))
             
             Text("Level \(calorieGoalManager.currentLevel)")
                 .font(.title)
