@@ -6,7 +6,7 @@ struct HealthConnectView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                EmberColors.darkPlum
+                EmberColors.dusk
                     .ignoresSafeArea()
                 
                 VStack(spacing: 32) {
@@ -15,7 +15,8 @@ struct HealthConnectView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "heart.circle.fill")
                             .font(.system(size: 80))
-                            .foregroundColor(EmberColors.flame)
+                            .foregroundColor(EmberColors.ember)
+                            .shadow(color: EmberColors.ember.opacity(0.5), radius: 15)
                         
                         Text("Apple Health")
                             .font(.title)
@@ -24,7 +25,7 @@ struct HealthConnectView: View {
                         
                         Text("Connect to sync your workouts and active energy")
                             .font(.body)
-                            .foregroundColor(EmberColors.cream.opacity(0.7))
+                            .foregroundColor(EmberColors.muted)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }
@@ -44,12 +45,16 @@ struct HealthConnectView: View {
                                 Text(healthKitManager.authorizationStatus == .denied ? "Open Health Settings" : "Request Health Access")
                             }
                             .font(.headline)
-                            .foregroundColor(EmberColors.darkPlum)
+                            .foregroundColor(EmberColors.ink)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(EmberColors.flame)
+                                LinearGradient(
+                                    colors: [EmberColors.ember, EmberColors.gold],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
                             )
                         }
                         .padding(.horizontal, 32)
@@ -57,7 +62,7 @@ struct HealthConnectView: View {
                         if healthKitManager.authorizationStatus == .denied {
                             Text("Settings → Health → Data Access & Devices → EmberWatch → enable Workouts and Active Energy")
                                 .font(.caption)
-                                .foregroundColor(EmberColors.cream.opacity(0.7))
+                                .foregroundColor(EmberColors.muted)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 32)
                         }
@@ -90,7 +95,7 @@ struct HealthConnectView: View {
             .navigationTitle("Health Connect")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(EmberColors.darkPlum, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
         }
     }
@@ -100,7 +105,7 @@ struct HealthConnectView: View {
             HStack {
                 Text("Authorization Status")
                     .font(.subheadline)
-                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                    .foregroundColor(EmberColors.muted)
                 
                 Spacer()
                 
@@ -108,13 +113,13 @@ struct HealthConnectView: View {
             }
             
             Divider()
-                .background(EmberColors.cream.opacity(0.3))
+                .background(EmberColors.plum)
             
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Workouts")
                         .font(.caption)
-                        .foregroundColor(EmberColors.cream.opacity(0.6))
+                        .foregroundColor(EmberColors.muted)
                     Text(healthKitManager.authorizationStatus == .authorized ? "Connected" : "Not Connected")
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream)
@@ -125,7 +130,7 @@ struct HealthConnectView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Active Energy")
                         .font(.caption)
-                        .foregroundColor(EmberColors.cream.opacity(0.6))
+                        .foregroundColor(EmberColors.muted)
                     Text(healthKitManager.authorizationStatus == .authorized ? "Connected" : "Not Connected")
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream)
@@ -135,7 +140,7 @@ struct HealthConnectView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(EmberColors.lightPlum)
+                .fill(EmberColors.dusk)
         )
         .padding(.horizontal, 32)
     }
@@ -185,13 +190,13 @@ struct HealthConnectView: View {
         VStack(spacing: 8) {
             Text("Your health data stays on your device")
                 .font(.caption)
-                .foregroundColor(EmberColors.cream.opacity(0.6))
+                .foregroundColor(EmberColors.muted)
                 .multilineTextAlignment(.center)
             
             if healthKitManager.authorizationStatus == .denied {
                 Text("To enable access, go to Settings > Health > Data Access & Devices")
                     .font(.caption)
-                    .foregroundColor(EmberColors.flame.opacity(0.8))
+                    .foregroundColor(EmberColors.ember.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
             }
