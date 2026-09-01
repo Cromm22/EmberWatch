@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 class FoodDataManager: ObservableObject {
     @Published var todayFoodEntries: [FoodEntry] = []
+    @Published var recentFoodEntries: [FoodEntry] = []
     @Published var totalCaloriesConsumed: Double = 0
     @Published var totalProtein: Double = 0
     @Published var totalCarbs: Double = 0
@@ -15,6 +16,7 @@ class FoodDataManager: ObservableObject {
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context
         fetchTodayEntries()
+        fetchRecentEntries()
     }
     
     func fetchTodayEntries() {
@@ -47,6 +49,7 @@ class FoodDataManager: ObservableObject {
         modelContext.insert(entry)
         try? modelContext.save()
         fetchTodayEntries()
+        fetchRecentEntries()
     }
     
     func deleteFoodEntry(_ entry: FoodEntry) {
@@ -69,5 +72,42 @@ class FoodDataManager: ObservableObject {
         totalProtein = todayFoodEntries.reduce(0) { $0 + $1.protein }
         totalCarbs = todayFoodEntries.reduce(0) { $0 + $1.carbs }
         totalFat = todayFoodEntries.reduce(0) { $0 + $1.fat }
+    }
+    
+    func fetchRecentEntries() {
+        guard let modelContext else { return }
+        
+        let calendar = Calendar.current
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: Date())!
+        
+        let predicate = #Predicate<FoodEntry> { entry in
+            entry.timestamp >= sevenDaysAgo
+        }
+        
+        let descriptor = FetchDescriptor<FoodEntry>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        
+        do {
+            let allRecent = try modelContext.fetch(descriptor)
+            var seen = Set<String>()
+            var unique: [FoodEntry] = []
+            
+            for entry in allRecent {
+                let key = "\(entry.name)_\(Int(entry.calories))"
+                if !seen.contains(key) {
+                    seen.insert(key)
+                    unique.append(entry)
+                    if unique.count >= 5 {
+                        break
+                    }
+                }
+            }
+            
+            recentFoodEntries = unique
+        } catch {
+            print("Failed to fetch recent entries: \(error)")
+        }
     }
 }

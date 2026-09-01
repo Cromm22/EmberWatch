@@ -3,17 +3,35 @@ import SwiftData
 
 struct FoodDiaryView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @State private var showingAddFood = false
+    @State private var showingBarcodeScanner = false
+    @State private var scannedProduct: FoodProduct?
+    @State private var showingServingPicker = false
+    
+    var remainingCalories: Double {
+        calorieGoalManager.calculateRemainingCalories(
+            burned: healthKitManager.totalCaloriesBurned,
+            consumed: foodDataManager.totalCaloriesConsumed
+        )
+    }
     
     var body: some View {
         NavigationView {
             ZStack {
-                EmberColors.darkPlum
+                EmberColors.dusk
                     .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        caloriesSummaryCard
+                        remainingCaloriesCard
+                        
+                        scanBarcodeButton
+                        
+                        if !foodDataManager.recentFoodEntries.isEmpty {
+                            recentsSection
+                        }
                         
                         macrosSummaryCard
                         
@@ -22,21 +40,114 @@ struct FoodDiaryView: View {
                     .padding()
                 }
             }
-            .navigationTitle("Food Diary")
+            .navigationTitle("Food")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(EmberColors.darkPlum, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddFood = true }) {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(EmberColors.flame)
+                            .foregroundColor(EmberColors.ember)
                     }
                 }
             }
             .sheet(isPresented: $showingAddFood) {
                 AddFoodView(isPresented: $showingAddFood)
+                    .environmentObject(foodDataManager)
+            }
+            .sheet(isPresented: $showingBarcodeScanner) {
+                BarcodeScannerView(
+                    isPresented: $showingBarcodeScanner,
+                    scannedProduct: $scannedProduct
+                )
+            }
+            .sheet(isPresented: $showingServingPicker) {
+                if let product = scannedProduct {
+                    ServingSizePickerView(
+                        isPresented: $showingServingPicker,
+                        product: product,
+                        onConfirm: { entry in
+                            foodDataManager.addFoodEntry(entry)
+                        }
+                    )
+                }
+            }
+            .onChange(of: scannedProduct) { newValue in
+                if newValue != nil {
+                    showingServingPicker = true
+                }
+            }
+        }
+    }
+    
+    private var remainingCaloriesCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: remainingCalories >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundColor(remainingCalories >= 0 ? Color.green : Color.orange)
+                
+                Text("Calories")
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream)
+                
+                Spacer()
+            }
+            
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(Int(remainingCalories))")
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(remainingCalories >= 0 ? EmberColors.ember : Color.orange)
+                
+                Text("cal")
+                    .font(.title3)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                
+                Spacer()
+            }
+            
+            Text(remainingCalories >= 0 ? "remaining" : "over")
+                .font(.subheadline)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+    
+    private var scanBarcodeButton: some View {
+        Button(action: { showingBarcodeScanner = true }) {
+            HStack {
+                Image(systemName: "barcode.viewfinder")
+                    .font(.title2)
+                
+                Text("Scan barcode")
+                    .font(.headline)
+            }
+            .foregroundColor(EmberColors.cream)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(EmberColors.ember)
+            )
+        }
+    }
+    
+    private var recentsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Recents")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundColor(EmberColors.cream)
+                .padding(.horizontal, 4)
+            
+            ForEach(foodDataManager.recentFoodEntries, id: \.id) { entry in
+                RecentFoodRow(entry: entry)
                     .environmentObject(foodDataManager)
             }
         }
@@ -46,13 +157,13 @@ struct FoodDiaryView: View {
         VStack(spacing: 8) {
             Image(systemName: "fork.knife")
                 .font(.system(size: 40))
-                .foregroundColor(EmberColors.flame)
+                .foregroundColor(EmberColors.ember)
             
             Text("\(Int(foodDataManager.totalCaloriesConsumed))")
                 .font(.system(size: 56, weight: .bold, design: .rounded))
                 .foregroundColor(EmberColors.cream)
             
-            Text("calories consumed today")
+            Text("cal consumed today")
                 .font(.subheadline)
                 .foregroundColor(EmberColors.cream.opacity(0.7))
         }
@@ -160,7 +271,7 @@ struct FoodEntryRow: View {
         HStack(spacing: 16) {
             Image(systemName: mealTypeIcon)
                 .font(.title2)
-                .foregroundColor(EmberColors.flame)
+                .foregroundColor(EmberColors.ember)
                 .frame(width: 44, height: 44)
                 .background(
                     Circle()
@@ -187,12 +298,12 @@ struct FoodEntryRow: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text(entry.mealType)
                     .font(.caption)
-                    .foregroundColor(EmberColors.flame)
+                    .foregroundColor(EmberColors.ember)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
                         Capsule()
-                            .fill(EmberColors.flame.opacity(0.2))
+                            .fill(EmberColors.ember.opacity(0.2))
                     )
                 
                 Text(entry.timestamp, style: .time)
@@ -238,6 +349,62 @@ struct FoodEntryRow: View {
     }
 }
 
+struct RecentFoodRow: View {
+    let entry: FoodEntry
+    @EnvironmentObject var foodDataManager: FoodDataManager
+    
+    var body: some View {
+        Button(action: {
+            let newEntry = FoodEntry(
+                name: entry.name,
+                calories: entry.calories,
+                protein: entry.protein,
+                carbs: entry.carbs,
+                fat: entry.fat,
+                mealType: entry.mealType
+            )
+            foodDataManager.addFoodEntry(newEntry)
+        }) {
+            HStack(spacing: 16) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.title3)
+                    .foregroundColor(EmberColors.ember)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        Circle()
+                            .fill(EmberColors.dusk)
+                    )
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.name)
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                    
+                    HStack(spacing: 16) {
+                        Label("\(Int(entry.calories)) cal", systemImage: "flame.fill")
+                        if entry.protein > 0 || entry.carbs > 0 || entry.fat > 0 {
+                            Label("P:\(Int(entry.protein)) C:\(Int(entry.carbs)) F:\(Int(entry.fat))", systemImage: "chart.bar.fill")
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                }
+                
+                Spacer()
+                
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(EmberColors.ember)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(EmberColors.lightPlum)
+            )
+        }
+    }
+}
+
 struct AddFoodView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var foodDataManager: FoodDataManager
@@ -252,7 +419,7 @@ struct AddFoodView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                EmberColors.darkPlum
+                EmberColors.dusk
                     .ignoresSafeArea()
                 
                 Form {
@@ -302,7 +469,7 @@ struct AddFoodView: View {
             .navigationTitle("Add Food")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(EmberColors.darkPlum, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -316,7 +483,7 @@ struct AddFoodView: View {
                     Button("Add") {
                         addFood()
                     }
-                    .foregroundColor(EmberColors.flame)
+                    .foregroundColor(EmberColors.ember)
                     .disabled(!isValid)
                 }
             }

@@ -6,6 +6,7 @@ struct EmberWatchApp: App {
     @StateObject private var healthKitManager = HealthKitManager()
     @StateObject private var foodDataManager = FoodDataManager()
     @StateObject private var calorieGoalManager = CalorieGoalManager()
+    @StateObject private var waterManager = WaterManager()
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -26,6 +27,7 @@ struct EmberWatchApp: App {
                 .environmentObject(healthKitManager)
                 .environmentObject(foodDataManager)
                 .environmentObject(calorieGoalManager)
+                .environmentObject(waterManager)
                 .modelContainer(sharedModelContainer)
                 .onAppear {
                     foodDataManager.setModelContext(sharedModelContainer.mainContext)
