@@ -83,17 +83,23 @@ struct HomeView: View {
                     .stroke(EmberColors.ember.opacity(0.35), lineWidth: 2)
                     .frame(width: 148, height: 148)
                 
-                // Match live web Ember: big flame avatar (not a tiny tab icon)
-                Text("🔥")
-                    .font(.system(size: 96))
-                    .shadow(color: EmberColors.ember.opacity(0.85), radius: 18, y: 4)
-                    .accessibilityLabel("Ember avatar")
+                Image("AvatarSprout")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 168, height: 168)
+                    .shadow(color: EmberColors.ember.opacity(0.45), radius: 16, y: 6)
+                    .accessibilityLabel("Sprout avatar")
             }
             .padding(.top, 8)
             
+            Text("Sprout")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(EmberColors.cream)
+            
             Text("Your Ember")
-                .font(.headline)
-                .foregroundColor(EmberColors.cream.opacity(0.85))
+                .font(.subheadline)
+                .foregroundColor(EmberColors.cream.opacity(0.75))
             
             Text("Level \(calorieGoalManager.currentLevel)")
                 .font(.title)
