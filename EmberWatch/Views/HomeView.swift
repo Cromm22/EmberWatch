@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct HomeView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
@@ -12,6 +13,24 @@ struct HomeView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         caloriesSummaryCard
+
+                        if healthKitManager.authorizationStatus == .authorized {
+                            Button(action: sendToEmber) {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.up")
+                                    Text("Send calories to Ember")
+                                        .fontWeight(.semibold)
+                                }
+                                .font(.headline)
+                                .foregroundColor(EmberColors.darkPlum)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(EmberColors.flame)
+                                )
+                            }
+                        }
                         
                         if healthKitManager.workouts.isEmpty && !healthKitManager.isLoading {
                             emptyStateView
@@ -93,7 +112,48 @@ struct HomeView: View {
         }
         .padding(.top, 40)
     }
+
+    private func sendToEmber() {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        let day = formatter.string(from: Date())
+
+        let list = healthKitManager.workouts
+        var workouts: [[String: Any]] = []
+        for w in list {
+            workouts.append([
+                "id": w.id.uuidString,
+                "name": w.displayName,
+                "minutes": max(1, Int((w.duration / 60.0).rounded())),
+                "kcal": Int(w.caloriesBurned.rounded()),
+                "at": Int(w.startDate.timeIntervalSince1970 * 1000),
+            ])
+        }
+
+        let payload: [String: Any] = [
+            "day": day,
+            "workouts": workouts,
+        ]
+
+        guard JSONSerialization.isValidJSONObject(payload),
+              let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else { return }
+
+        let encoded = Data(json.utf8).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+
+        var comps = URLComponents(string: "https://ember-teal-six.vercel.app/health")!
+        comps.queryItems = [URLQueryItem(name: "watch", value: encoded)]
+        guard let url = comps.url else { return }
+        UIApplication.shared.open(url)
+    }
 }
+
 
 struct WorkoutRow: View {
     let workout: WorkoutData
