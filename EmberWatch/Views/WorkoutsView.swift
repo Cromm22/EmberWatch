@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthKit
 
 struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager

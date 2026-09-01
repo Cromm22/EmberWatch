@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		162E05446EEB40B484657D3E /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 241794DFC4C04FC2B1D379C7 /* ShareView.swift */; };
+		84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */; };
+		8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9F37E2885F4A5DA562B21E /* BoardView.swift */; };
+		764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */; };
+		8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */; };
+		17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D178C9F2CD744DFAA82F292E /* WaterManager.swift */; };
 		7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */; };
 		3A0000010000000000000001 /* EmberWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000020000000000000001 /* EmberWatchApp.swift */; };
 		3A0000030000000000000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000040000000000000001 /* ContentView.swift */; };
@@ -24,6 +30,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		241794DFC4C04FC2B1D379C7 /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
+		8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServingSizePickerView.swift; sourceTree = "<group>"; };
+		BD9F37E2885F4A5DA562B21E /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
+		E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodLookupService.swift; sourceTree = "<group>"; };
+		D178C9F2CD744DFAA82F292E /* WaterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterManager.swift; sourceTree = "<group>"; };
 		1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberFlameAvatar.swift; sourceTree = "<group>"; };
 		3A0000000000000000000001 /* EmberWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmberWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A0000020000000000000001 /* EmberWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberWatchApp.swift; sourceTree = "<group>"; };
@@ -74,6 +86,7 @@
 				3A0000150000000000000001 /* Views */,
 				3A0000160000000000000001 /* Models */,
 				3A0000170000000000000001 /* Managers */,
+				39F89D34EA4C4730ADA30CBC /* Services */,
 				3A00000E0000000000000001 /* Assets.xcassets */,
 			);
 			path = EmberWatch;
@@ -90,6 +103,10 @@
 		3A0000150000000000000001 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				241794DFC4C04FC2B1D379C7 /* ShareView.swift */,
+				8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */,
+				BD9F37E2885F4A5DA562B21E /* BoardView.swift */,
+				B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */,
 				3A0000060000000000000001 /* HomeView.swift */,
 				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
 				3A0000080000000000000001 /* HealthConnectView.swift */,
@@ -108,9 +125,18 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		39F89D34EA4C4730ADA30CBC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		3A0000170000000000000001 /* Managers */ = {
 			isa = PBXGroup;
 			children = (
+				D178C9F2CD744DFAA82F292E /* WaterManager.swift */,
 				3A00000A0000000000000001 /* HealthKitManager.swift */,
 				3A0000280000000000000001 /* FoodDataManager.swift */,
 				3A00002A0000000000000001 /* CalorieGoalManager.swift */,
@@ -198,6 +224,12 @@
 				3A0000030000000000000001 /* ContentView.swift in Sources */,
 				3A0000010000000000000001 /* EmberWatchApp.swift in Sources */,
 				3A0000050000000000000001 /* HomeView.swift in Sources */,
+				162E05446EEB40B484657D3E /* ShareView.swift in Sources */,
+				84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */,
+				8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */,
+				764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */,
+				8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */,
+				17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */,
 				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,
 				3A0000090000000000000001 /* HealthKitManager.swift in Sources */,

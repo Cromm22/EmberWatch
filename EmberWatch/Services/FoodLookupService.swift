@@ -1,6 +1,6 @@
 import Foundation
 
-struct FoodProduct: Identifiable {
+struct FoodProduct: Identifiable, Equatable {
     let id = UUID()
     let barcode: String
     let name: String

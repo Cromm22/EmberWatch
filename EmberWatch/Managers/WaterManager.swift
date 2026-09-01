@@ -5,7 +5,7 @@ import SwiftUI
 class WaterManager: ObservableObject {
     @Published var glassesLogged: Int {
         didSet {
-            UserDefaults.standard.set(glassesLogged, forKey: "waterGlassesToday_\(todayKey)")
+            UserDefaults.standard.set(glassesLogged, forKey: "waterGlassesToday_\(Self.makeTodayKey())")
         }
     }
     
@@ -13,14 +13,17 @@ class WaterManager: ObservableObject {
     private let ozPerGlass = 8.0
     private let mlPerOz = 29.5735
     
-    private var todayKey: String {
+    private static func makeTodayKey() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: Date())
     }
     
+    private var todayKey: String { Self.makeTodayKey() }
+    
     init() {
-        self.glassesLogged = UserDefaults.standard.integer(forKey: "waterGlassesToday_\(todayKey)")
+        let key = Self.makeTodayKey()
+        self.glassesLogged = UserDefaults.standard.integer(forKey: "waterGlassesToday_\(key)")
     }
     
     func logGlass() {

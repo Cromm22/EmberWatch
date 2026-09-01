@@ -57,10 +57,10 @@ struct BoardView: View {
     private var mockLeaderboard: [(name: String, level: Int, xp: Int, isCurrentUser: Bool)] {
         [
             ("Jules Park", calorieGoalManager.currentLevel, calorieGoalManager.currentXP, true),
-            ("Alex Chen", 8, 450),
-            ("Sam Rivera", 7, 320),
-            ("Taylor Kim", 6, 580),
-            ("Jordan Lee", 5, 290)
+            ("Alex Chen", 8, 450, false),
+            ("Sam Rivera", 7, 320, false),
+            ("Taylor Kim", 6, 580, false),
+            ("Jordan Lee", 5, 290, false)
         ]
     }
 }
