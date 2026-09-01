@@ -2,16 +2,20 @@ import SwiftUI
 
 struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @State private var showingQuickAdd = false
+    @State private var showingManualAdd = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                EmberColors.darkPlum
+                EmberColors.dusk
                     .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 24) {
                         caloriesSummaryCard
+                        
+                        quickAddButtons
                         
                         if healthKitManager.workouts.isEmpty && !healthKitManager.isLoading {
                             emptyStateView
@@ -25,8 +29,24 @@ struct WorkoutsView: View {
             .navigationTitle("Workouts")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(EmberColors.darkPlum, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingManualAdd = true }) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(EmberColors.ember)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingQuickAdd) {
+                QuickAddWorkoutView(isPresented: $showingQuickAdd)
+                    .environmentObject(healthKitManager)
+            }
+            .sheet(isPresented: $showingManualAdd) {
+                ManualWorkoutView(isPresented: $showingManualAdd)
+                    .environmentObject(healthKitManager)
+            }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
             }
@@ -36,11 +56,38 @@ struct WorkoutsView: View {
         }
     }
     
+    private var quickAddButtons: some View {
+        VStack(spacing: 12) {
+            Text("Quick Add")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
+            
+            Button(action: { showingQuickAdd = true }) {
+                HStack {
+                    Image(systemName: "bolt.circle.fill")
+                        .font(.title2)
+                    
+                    Text("Log Workout")
+                        .font(.headline)
+                }
+                .foregroundColor(EmberColors.cream)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(EmberColors.ember)
+                )
+            }
+        }
+    }
+    
     private var caloriesSummaryCard: some View {
         VStack(spacing: 8) {
             Image(systemName: "flame.fill")
                 .font(.system(size: 40))
-                .foregroundColor(EmberColors.flame)
+                .foregroundColor(EmberColors.ember)
             
             if healthKitManager.isLoading {
                 ProgressView()
@@ -50,7 +97,7 @@ struct WorkoutsView: View {
                     .font(.system(size: 56, weight: .bold, design: .rounded))
                     .foregroundColor(EmberColors.cream)
                 
-                Text("calories burned today")
+                Text("calories burned")
                     .font(.subheadline)
                     .foregroundColor(EmberColors.cream.opacity(0.7))
                 
@@ -109,11 +156,11 @@ struct WorkoutDetailRow: View {
             HStack(spacing: 16) {
                 Image(systemName: workout.iconName)
                     .font(.title2)
-                    .foregroundColor(EmberColors.flame)
+                    .foregroundColor(EmberColors.ember)
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
-                            .fill(EmberColors.darkPlum)
+                            .fill(EmberColors.dusk)
                     )
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -163,7 +210,7 @@ struct WorkoutStatItem: View {
             VStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundColor(EmberColors.flame)
+                    .foregroundColor(EmberColors.ember)
                 
                 Text(value)
                     .font(.title3)
@@ -177,5 +224,153 @@ struct WorkoutStatItem: View {
             
             Spacer()
         }
+    }
+}
+
+struct QuickAddWorkoutView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    
+    private let workoutTypes: [(name: String, type: HKWorkoutActivityType, icon: String)] = [
+        ("Outdoor walk", .walking, "figure.walk"),
+        ("Indoor walk", .walking, "figure.walk"),
+        ("Functional strength training", .functionalStrengthTraining, "dumbbell.fill"),
+        ("Pool swim", .swimming, "figure.pool.swim"),
+        ("High Intensity Interval training", .highIntensityIntervalTraining, "bolt.fill"),
+        ("Outdoor cycle", .cycling, "bicycle")
+    ]
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(workoutTypes, id: \.name) { workout in
+                            Button(action: {
+                                selectWorkout(workout.type)
+                            }) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: workout.icon)
+                                        .font(.title2)
+                                        .foregroundColor(EmberColors.ember)
+                                        .frame(width: 44, height: 44)
+                                        .background(
+                                            Circle()
+                                                .fill(EmberColors.dusk)
+                                        )
+                                    
+                                    Text(workout.name)
+                                        .font(.headline)
+                                        .foregroundColor(EmberColors.cream)
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.subheadline)
+                                        .foregroundColor(EmberColors.cream.opacity(0.5))
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(EmberColors.lightPlum)
+                                )
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Quick Add")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .foregroundColor(EmberColors.cream)
+                }
+            }
+        }
+    }
+    
+    private func selectWorkout(_ type: HKWorkoutActivityType) {
+        isPresented = false
+    }
+}
+
+struct ManualWorkoutView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    
+    @State private var workoutName = ""
+    @State private var duration = ""
+    @State private var calories = ""
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk
+                    .ignoresSafeArea()
+                
+                Form {
+                    Section {
+                        TextField("Workout Name", text: $workoutName)
+                            .foregroundColor(EmberColors.cream)
+                    } header: {
+                        Text("Details")
+                    }
+                    .listRowBackground(EmberColors.lightPlum)
+                    
+                    Section {
+                        TextField("Duration (minutes)", text: $duration)
+                            .keyboardType(.numberPad)
+                            .foregroundColor(EmberColors.cream)
+                        
+                        TextField("Calories Burned", text: $calories)
+                            .keyboardType(.numberPad)
+                            .foregroundColor(EmberColors.cream)
+                    } header: {
+                        Text("Metrics")
+                    }
+                    .listRowBackground(EmberColors.lightPlum)
+                }
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle("Log Workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .foregroundColor(EmberColors.cream)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        addWorkout()
+                    }
+                    .foregroundColor(EmberColors.ember)
+                    .disabled(!isValid)
+                }
+            }
+        }
+    }
+    
+    private var isValid: Bool {
+        !workoutName.isEmpty && Double(calories) != nil
+    }
+    
+    private func addWorkout() {
+        isPresented = false
     }
 }

@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
+    @EnvironmentObject var waterManager: WaterManager
     @State private var selectedTab = 0
     
     var body: some View {
@@ -20,6 +21,7 @@ struct ContentView: View {
                     .environmentObject(healthKitManager)
                     .environmentObject(foodDataManager)
                     .environmentObject(calorieGoalManager)
+                    .environmentObject(waterManager)
                 
                 FoodDiaryView()
                     .tabItem {
@@ -27,20 +29,31 @@ struct ContentView: View {
                     }
                     .tag(1)
                     .environmentObject(foodDataManager)
+                    .environmentObject(healthKitManager)
+                    .environmentObject(calorieGoalManager)
                 
                 WorkoutsView()
                     .tabItem {
-                        Label("Workouts", systemImage: "figure.run")
+                        Label("Workout", systemImage: "figure.run")
                     }
                     .tag(2)
                     .environmentObject(healthKitManager)
                 
-                HealthConnectView()
+                BoardView()
                     .tabItem {
-                        Label("Health", systemImage: "heart.fill")
+                        Label("Board", systemImage: "list.number")
                     }
                     .tag(3)
+                    .environmentObject(calorieGoalManager)
+                
+                ShareView()
+                    .tabItem {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .tag(4)
                     .environmentObject(healthKitManager)
+                    .environmentObject(foodDataManager)
+                    .environmentObject(calorieGoalManager)
             }
             .tint(EmberColors.ember)
         }
