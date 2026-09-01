@@ -63,43 +63,11 @@ struct HomeView: View {
     
     private var emberAvatarCard: some View {
         VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                EmberColors.ember.opacity(0.55),
-                                EmberColors.ember.opacity(0.18),
-                                Color.clear
-                            ],
-                            center: .center,
-                            startRadius: 10,
-                            endRadius: 110
-                        )
-                    )
-                    .frame(width: 200, height: 200)
-                
-                Circle()
-                    .stroke(EmberColors.ember.opacity(0.35), lineWidth: 2)
-                    .frame(width: 148, height: 148)
-                
-                Image("AvatarSprout")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 168, height: 168)
-                    .shadow(color: EmberColors.ember.opacity(0.45), radius: 16, y: 6)
-                    .accessibilityLabel("Sprout avatar")
-            }
-            .padding(.top, 8)
-            
-            Text("Sprout")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(EmberColors.cream)
+            EmberFlameAvatar(level: calorieGoalManager.currentLevel, size: 220)
             
             Text("Your Ember")
-                .font(.subheadline)
-                .foregroundColor(EmberColors.cream.opacity(0.75))
+                .font(.headline)
+                .foregroundColor(EmberColors.cream.opacity(0.9))
             
             Text("Level \(calorieGoalManager.currentLevel)")
                 .font(.title)

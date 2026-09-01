@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */; };
 		3A0000010000000000000001 /* EmberWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000020000000000000001 /* EmberWatchApp.swift */; };
 		3A0000030000000000000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000040000000000000001 /* ContentView.swift */; };
 		3A0000050000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000060000000000000001 /* HomeView.swift */; };
@@ -23,6 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberFlameAvatar.swift; sourceTree = "<group>"; };
 		3A0000000000000000000001 /* EmberWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmberWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A0000020000000000000001 /* EmberWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberWatchApp.swift; sourceTree = "<group>"; };
 		3A0000040000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -89,6 +91,7 @@
 			isa = PBXGroup;
 			children = (
 				3A0000060000000000000001 /* HomeView.swift */,
+				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
 				3A0000080000000000000001 /* HealthConnectView.swift */,
 				3A00002C0000000000000001 /* FoodDiaryView.swift */,
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
@@ -195,6 +198,7 @@
 				3A0000030000000000000001 /* ContentView.swift in Sources */,
 				3A0000010000000000000001 /* EmberWatchApp.swift in Sources */,
 				3A0000050000000000000001 /* HomeView.swift in Sources */,
+				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,
 				3A0000090000000000000001 /* HealthKitManager.swift in Sources */,
 				3A00000B0000000000000001 /* WorkoutModel.swift in Sources */,
