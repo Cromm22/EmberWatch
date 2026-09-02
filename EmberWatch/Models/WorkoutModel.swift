@@ -50,7 +50,7 @@ struct WorkoutData: Identifiable {
         case .functionalStrengthTraining:
             return "Functional Strength Training"
         case .highIntensityIntervalTraining:
-            return "High Intensity Interval Training"
+            return "High intensity hit interval training"
         case .traditionalStrengthTraining:
             return "Strength Training"
         case .yoga:
@@ -61,8 +61,14 @@ struct WorkoutData: Identifiable {
             return "Elliptical"
         case .rowing:
             return "Rowing"
-        case .stairs:
+        case .stairs, .stairClimbing:
             return "Stair Stepper"
+        case .hiking:
+            return "Hiking"
+        case .swimBikeRun:
+            return "Triathlon"
+        case .other:
+            return "Other"
         default:
             return workoutType.name
         }
@@ -83,15 +89,21 @@ struct WorkoutData: Identifiable {
         case .highIntensityIntervalTraining:
             return "bolt.fill"
         case .yoga:
-            return "figure.mind.and.body"
+            return "figure.yoga"
         case .dance:
             return "figure.dance"
         case .elliptical:
             return "figure.elliptical"
         case .rowing:
             return "figure.rower"
-        case .stairs:
+        case .stairs, .stairClimbing:
             return "figure.stairs"
+        case .hiking:
+            return "figure.hiking"
+        case .swimBikeRun:
+            return "figure.mixed.cardio"
+        case .other:
+            return "ellipsis.circle"
         default:
             return "figure.mixed.cardio"
         }

@@ -69,8 +69,20 @@ struct WorkoutsView: View {
         QuickAddExercise(id: "indoor-walk", name: "Indoor walk", type: .walking, icon: "figure.walk"),
         QuickAddExercise(id: "strength", name: "Functional strength training", type: .functionalStrengthTraining, icon: "dumbbell.fill"),
         QuickAddExercise(id: "pool-swim", name: "Pool swim", type: .swimming, icon: "figure.pool.swim"),
-        QuickAddExercise(id: "hiit", name: "High Intensity Interval training", type: .highIntensityIntervalTraining, icon: "bolt.fill"),
-        QuickAddExercise(id: "outdoor-cycle", name: "Outdoor cycle", type: .cycling, icon: "bicycle")
+        QuickAddExercise(id: "hiit", name: "High intensity hit interval training", type: .highIntensityIntervalTraining, icon: "bolt.fill"),
+        QuickAddExercise(id: "outdoor-cycle", name: "Outdoor cycle", type: .cycling, icon: "bicycle"),
+        QuickAddExercise(id: "other", name: "Other", type: .other, icon: "ellipsis.circle"),
+        QuickAddExercise(id: "elliptical", name: "Elliptical", type: .elliptical, icon: "figure.elliptical"),
+        QuickAddExercise(id: "indoor-run", name: "Indoor run", type: .running, icon: "figure.run"),
+        QuickAddExercise(id: "outdoor-run", name: "Outdoor run", type: .running, icon: "figure.run"),
+        QuickAddExercise(id: "outdoor-rowing", name: "Outdoor rowing", type: .rowing, icon: "figure.rower"),
+        QuickAddExercise(id: "open-water-swim", name: "Open water swim", type: .swimming, icon: "figure.open.water.swim"),
+        QuickAddExercise(id: "indoor-cycle", name: "Indoor cycle", type: .cycling, icon: "figure.indoor.cycle"),
+        QuickAddExercise(id: "triathlon", name: "Triathlon", type: .swimBikeRun, icon: "figure.mixed.cardio"),
+        QuickAddExercise(id: "hiking", name: "Hiking", type: .hiking, icon: "figure.hiking"),
+        QuickAddExercise(id: "stair-stepper", name: "Stair stepper", type: .stairClimbing, icon: "figure.stairs"),
+        QuickAddExercise(id: "indoor-rowing", name: "Indoor rowing", type: .rowing, icon: "figure.rower"),
+        QuickAddExercise(id: "yoga", name: "Yoga", type: .yoga, icon: "figure.yoga")
     ]
     
     private var flamePhase: WorkoutFlamePhase {
@@ -87,13 +99,13 @@ struct WorkoutsView: View {
                     VStack(spacing: 20) {
                         caloriesSummaryCard
                         
-                        quickAddSection
-                        
                         if healthKitManager.workouts.isEmpty && !healthKitManager.isLoading {
                             emptyStateView
                         } else {
                             workoutsList
                         }
+                        
+                        quickAddSection
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -452,7 +464,7 @@ struct WorkoutsView: View {
     
     private var workoutsList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Today's Activity")
+            Text("Today's activity")
                 .font(.title3)
                 .fontWeight(.semibold)
                 .foregroundColor(EmberColors.cream)
@@ -483,14 +495,20 @@ struct WorkoutsView: View {
 }
 
 private extension String {
-    /// Title-style capitalize while keeping HIIT / common acronyms readable.
+    /// Title-style capitalize while keeping Chris’s Quick Add labels / acronyms readable.
     var capitalizedWordsPreservingAcronyms: String {
         let lower = self
+        if lower.localizedCaseInsensitiveContains("High intensity hit interval") {
+            return "High intensity hit interval training"
+        }
         if lower.localizedCaseInsensitiveContains("High Intensity Interval") {
             return "High Intensity Interval Training"
         }
         if lower.localizedCaseInsensitiveContains("Functional strength") {
             return "Functional Strength Training"
+        }
+        if lower.localizedCaseInsensitiveContains("Open water swim") {
+            return "Open Water Swim"
         }
         return lower.split(separator: " ").map { part -> String in
             let s = String(part)
