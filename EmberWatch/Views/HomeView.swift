@@ -250,7 +250,7 @@ struct HomeView: View {
     
     private var waterCard: some View {
         VStack(spacing: 16) {
-            HStack {
+            HStack(alignment: .center, spacing: 8) {
                 Image(systemName: "drop.fill")
                     .foregroundColor(EmberColors.ember)
                 
@@ -258,18 +258,13 @@ struct HomeView: View {
                     .font(.headline)
                     .foregroundColor(EmberColors.cream)
                 
-                Spacer()
+                Spacer(minLength: 8)
                 
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(Int(waterManager.totalOz)) / \(Int(waterManager.goalOz)) fl oz")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(EmberColors.cream)
-                    
-                    Text("\(waterManager.totalMl) mL")
-                        .font(.caption)
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                }
+                Text("\(Int(waterManager.totalOz)) / \(Int(waterManager.goalOz)) fl oz")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(EmberColors.cream)
+                    .lineLimit(1)
                 
                 Button(action: { showingWaterGoal = true }) {
                     Image(systemName: "pencil.circle.fill")
@@ -277,8 +272,12 @@ struct HomeView: View {
                         .foregroundColor(EmberColors.ember)
                 }
                 .accessibilityLabel("Edit water goal")
-                .padding(.leading, 4)
             }
+            
+            Text("\(waterManager.totalMl) mL")
+                .font(.caption)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .trailing)
             
             let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: min(8, waterManager.glassesGoal))
             LazyVGrid(columns: columns, spacing: 8) {
@@ -297,6 +296,7 @@ struct HomeView: View {
                     )
                 }
             }
+            .padding(.top, 8)
         }
         .padding()
         .background(

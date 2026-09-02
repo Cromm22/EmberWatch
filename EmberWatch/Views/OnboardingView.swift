@@ -169,11 +169,6 @@ struct OnboardingView: View {
                 .font(.title.bold())
                 .foregroundColor(EmberColors.cream)
             
-            Text("This name shows on Home next to your flame.")
-                .font(.subheadline)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-                .multilineTextAlignment(.center)
-            
             TextField("e.g. Blaze", text: $nameDraft)
                 .font(.title2.weight(.semibold))
                 .foregroundColor(EmberColors.cream)
