@@ -6,7 +6,7 @@ struct ServingSizePickerView: View {
     let onConfirm: (FoodEntry) -> Void
     
     @State private var selectedMultiplier: Double = 1.0
-    @State private var selectedMealType: MealType = .snack
+    @State private var selectedMealType: MealType = MealType.suggested()
     
     private let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
     

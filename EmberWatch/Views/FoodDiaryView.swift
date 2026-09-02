@@ -56,58 +56,18 @@ struct FoodDiaryView: View {
                             }
                         } header: {
                             Text("Recents")
-                                .font(.title3)
+                                .font(.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(EmberColors.cream)
+                                .foregroundColor(EmberColors.cream.opacity(0.85))
                                 .textCase(nil)
                         }
-                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                     }
                     
-                    Section {
-                        if foodDataManager.todayFoodEntries.isEmpty {
-                            emptyStateView
-                                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                        } else {
-                            ForEach(foodDataManager.todayFoodEntries, id: \.id) { entry in
-                                FoodEntryRow(entry: entry) {
-                                    entryToEdit = entry
-                                }
-                                .environmentObject(foodDataManager)
-                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        foodDataManager.deleteFoodEntry(entry)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                    .tint(Color(red: 0.86, green: 0.22, blue: 0.27))
-                                }
-                            }
-                        }
-                    } header: {
-                        HStack {
-                            Text("Today's Meals")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                                .foregroundColor(EmberColors.cream)
-                                .textCase(nil)
-                            
-                            Spacer()
-                            
-                            Button(action: { showingAddFood = true }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(EmberColors.ember)
-                            }
-                            .accessibilityLabel("Add food")
-                        }
+                    ForEach(MealType.allCases) { meal in
+                        mealTypeSection(for: meal)
                     }
                 }
                 .listStyle(.plain)
@@ -118,6 +78,16 @@ struct FoodDiaryView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingAddFood = true }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(EmberColors.ember)
+                    }
+                    .accessibilityLabel("Add food")
+                }
+            }
             .sheet(isPresented: $showingAddFood) {
                 AddFoodView(isPresented: $showingAddFood)
                     .environmentObject(foodDataManager)
@@ -259,23 +229,54 @@ struct FoodDiaryView: View {
         )
     }
     
-    private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "fork.knife.circle")
-                .font(.system(size: 60))
-                .foregroundColor(EmberColors.cream.opacity(0.5))
-            
-            Text("No meals logged today")
-                .font(.title3)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-            
-            Text("Tap + above to add your first meal")
-                .font(.subheadline)
-                .foregroundColor(EmberColors.cream.opacity(0.5))
+    private func mealTypeSection(for meal: MealType) -> some View {
+        let items = foodDataManager.entries(forMealType: meal)
+        return Section {
+            if items.isEmpty {
+                Text("Nothing logged")
+                    .font(.caption)
+                    .foregroundColor(EmberColors.cream.opacity(0.4))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            } else {
+                ForEach(items, id: \.id) { entry in
+                    FoodEntryRow(entry: entry) {
+                        entryToEdit = entry
+                    }
+                    .environmentObject(foodDataManager)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            foodDataManager.deleteFoodEntry(entry)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .tint(Color(red: 0.86, green: 0.22, blue: 0.27))
+                    }
+                }
+            }
+        } header: {
+            HStack(spacing: 8) {
+                Image(systemName: meal.icon)
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.ember)
+                Text(meal.sectionTitle)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(EmberColors.cream)
+                    .textCase(nil)
+                Spacer()
+                if !items.isEmpty {
+                    Text("\(Int(items.reduce(0) { $0 + $1.calories })) cal")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.cream.opacity(0.55))
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 40)
-        .padding(.bottom, 20)
     }
 }
 
@@ -352,16 +353,6 @@ struct FoodEntryRow: View {
                 Spacer(minLength: 8)
                 
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(entry.mealType)
-                        .font(.caption)
-                        .foregroundColor(EmberColors.ember)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(EmberColors.ember.opacity(0.2))
-                        )
-                    
                     Text(entry.timestamp, style: .time)
                         .font(.caption)
                         .foregroundColor(EmberColors.cream.opacity(0.6))
@@ -389,18 +380,7 @@ struct FoodEntryRow: View {
     }
     
     private var mealTypeIcon: String {
-        switch entry.mealType {
-        case "Breakfast":
-            return "sunrise.fill"
-        case "Lunch":
-            return "sun.max.fill"
-        case "Dinner":
-            return "moon.stars.fill"
-        case "Snack":
-            return "cup.and.saucer.fill"
-        default:
-            return "fork.knife"
-        }
+        MealType(rawValue: entry.resolvedMealType)?.icon ?? "fork.knife"
     }
 }
 
@@ -416,7 +396,7 @@ struct RecentFoodRow: View {
                 protein: entry.protein,
                 carbs: entry.carbs,
                 fat: entry.fat,
-                mealType: entry.mealType,
+                mealType: MealType.suggested().rawValue,
                 servings: entry.servings,
                 caloriesPerServing: entry.effectiveCaloriesPerServing,
                 proteinPerServing: entry.effectiveProteinPerServing,
@@ -425,44 +405,54 @@ struct RecentFoodRow: View {
             )
             foodDataManager.addFoodEntry(newEntry)
         }) {
-            HStack(spacing: 16) {
+            HStack(spacing: 10) {
                 Image(systemName: "clock.arrow.circlepath")
-                    .font(.title3)
+                    .font(.caption)
                     .foregroundColor(EmberColors.ember)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 24, height: 24)
                     .background(
                         Circle()
                             .fill(EmberColors.dusk)
                     )
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.name)
-                        .font(.headline)
-                        .foregroundColor(EmberColors.cream)
-                    
-                    HStack(spacing: 16) {
-                        Label("\(Int(entry.calories)) cal", systemImage: "flame.fill")
-                        if entry.protein > 0 || entry.carbs > 0 || entry.fat > 0 {
-                            Label("P:\(Int(entry.protein)) C:\(Int(entry.carbs)) F:\(Int(entry.fat))", systemImage: "chart.bar.fill")
-                        }
-                    }
+                Text(entry.name)
                     .font(.subheadline)
-                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                    .fontWeight(.medium)
+                    .foregroundColor(EmberColors.cream)
+                    .lineLimit(1)
+                
+                Spacer(minLength: 4)
+                
+                HStack(spacing: 6) {
+                    Text("\(Int(entry.calories)) cal")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    if entry.servings != 1.0 {
+                        Text(formatRecentServings(entry.servings))
+                            .font(.caption2)
+                            .foregroundColor(EmberColors.ember.opacity(0.85))
+                    }
+                    Image(systemName: "plus.circle.fill")
+                        .font(.body)
+                        .foregroundColor(EmberColors.ember)
                 }
-                
-                Spacer()
-                
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3)
-                    .foregroundColor(EmberColors.ember)
             }
-            .padding()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(EmberColors.lightPlum)
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Add \(entry.name), \(Int(entry.calories)) calories")
+    }
+    
+    private func formatRecentServings(_ value: Double) -> String {
+        if value.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(Int(value))×"
+        }
+        return String(format: "%.1f×", value)
     }
 }
 
@@ -499,7 +489,7 @@ struct EditServingsView: View {
                                 .foregroundColor(EmberColors.cream)
                                 .multilineTextAlignment(.center)
                             
-                            Text(entry.mealType)
+                            Text(entry.resolvedMealType)
                                 .font(.subheadline)
                                 .foregroundColor(EmberColors.cream.opacity(0.7))
                         }
@@ -670,7 +660,7 @@ struct AddFoodView: View {
     @State private var protein = ""
     @State private var carbs = ""
     @State private var fat = ""
-    @State private var selectedMealType: MealType = .snack
+    @State private var selectedMealType: MealType = MealType.suggested()
     
     var body: some View {
         NavigationView {

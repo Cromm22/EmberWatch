@@ -36,7 +36,17 @@ class FoodDataManager: ObservableObject {
         )
         
         do {
-            todayFoodEntries = try modelContext.fetch(descriptor)
+            let fetched = try modelContext.fetch(descriptor)
+            var didMigrate = false
+            for entry in fetched {
+                if entry.ensureMealTypeResolved() {
+                    didMigrate = true
+                }
+            }
+            if didMigrate {
+                try? modelContext.save()
+            }
+            todayFoodEntries = fetched
             calculateTotals()
         } catch {
             print("Failed to fetch food entries: \(error)")
@@ -110,4 +120,9 @@ class FoodDataManager: ObservableObject {
             print("Failed to fetch recent entries: \(error)")
         }
     }
+    
+    func entries(forMealType meal: MealType) -> [FoodEntry] {
+        todayFoodEntries.filter { $0.resolvedMealType == meal.rawValue }
+    }
 }
+
