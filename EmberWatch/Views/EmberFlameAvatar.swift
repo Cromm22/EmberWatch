@@ -9,7 +9,7 @@ struct EmberFlameAvatar: View {
     @State private var pulse = false
     @State private var sparkle = false
     
-    private var blaze: Bool { level >= 5 }
+    private var blaze: Bool { style.forceBlaze || level >= 5 }
     
     var body: some View {
         ZStack {
@@ -85,6 +85,25 @@ struct EmberFlameAvatar: View {
                     .frame(width: size * 0.28, height: size * 0.28)
                     .offset(y: -size * 0.38)
                     .rotationEffect(.degrees(sparkle ? 5 : -5))
+            }
+
+            if style.hasHorns {
+                Path { path in
+                    path.move(to: CGPoint(x: size * 0.32, y: size * 0.18))
+                    path.addLine(to: CGPoint(x: size * 0.22, y: -size * 0.02))
+                    path.addLine(to: CGPoint(x: size * 0.38, y: size * 0.12))
+                    path.closeSubpath()
+                }
+                .fill(Color(hex: style.outerColors[2]))
+                .opacity(0.95)
+                Path { path in
+                    path.move(to: CGPoint(x: size * 0.68, y: size * 0.18))
+                    path.addLine(to: CGPoint(x: size * 0.78, y: -size * 0.02))
+                    path.addLine(to: CGPoint(x: size * 0.62, y: size * 0.12))
+                    path.closeSubpath()
+                }
+                .fill(Color(hex: style.outerColors[2]))
+                .opacity(0.95)
             }
         }
         .frame(width: size, height: size * 1.2)
