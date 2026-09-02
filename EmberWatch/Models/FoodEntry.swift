@@ -12,11 +12,12 @@ class FoodEntry {
     var timestamp: Date
     var mealType: String
     /// Number of servings logged (multiplier applied to per-serving nutrition).
-    var servings: Double
-    var caloriesPerServing: Double
-    var proteinPerServing: Double
-    var carbsPerServing: Double
-    var fatPerServing: Double
+    /// Defaults enable SwiftData lightweight migration from pre-servings stores.
+    var servings: Double = 1.0
+    var caloriesPerServing: Double = 0
+    var proteinPerServing: Double = 0
+    var carbsPerServing: Double = 0
+    var fatPerServing: Double = 0
     
     init(
         id: UUID = UUID(),

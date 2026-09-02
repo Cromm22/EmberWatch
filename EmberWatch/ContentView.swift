@@ -11,6 +11,7 @@ struct ContentView: View {
     @EnvironmentObject var feedbackManager: FeedbackManager
     @State private var selectedTab = 0
     @State private var showingFeedback = false
+    @State private var showFeedbackFAB = false
     
     var body: some View {
         Group {
@@ -78,12 +79,20 @@ struct ContentView: View {
             }
             .tint(EmberColors.ember)
             
-            FeedbackFAB(isPresented: $showingFeedback)
-                .padding(.bottom, 56) // sit above tab bar without eating tab hits
+            if showFeedbackFAB {
+                FeedbackFAB(isPresented: $showingFeedback)
+                    .padding(.bottom, 56) // sit above tab bar without eating tab hits
+                    .transition(.opacity)
+            }
         }
         .sheet(isPresented: $showingFeedback) {
             FeedbackSheetView(isPresented: $showingFeedback)
                 .environmentObject(feedbackManager)
+        }
+        .task {
+            // Defer FAB until after tab content has a chance to mount.
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            showFeedbackFAB = true
         }
         .onAppear {
             let appearance = UITabBarAppearance()
