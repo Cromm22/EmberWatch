@@ -48,6 +48,14 @@ private struct QuickAddExercise: Identifiable, Hashable {
     let icon: String
 }
 
+/// Which primary metric field (besides time + calories) a Quick Add drawer shows.
+private enum QuickAddMetricField {
+    case none
+    case distanceMiles
+    case laps
+    case distanceMiKm
+}
+
 struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var levelManager: LevelManager
@@ -58,10 +66,17 @@ struct WorkoutsView: View {
     @State private var distanceText = ""
     @State private var timeText = "30"
     @State private var caloriesText = ""
+    /// Persisted mi/km preference for rowing Quick Add drawers.
+    @AppStorage("emberwatch.rowingDistanceUnit") private var rowingUnitRaw: String = WorkoutDistanceUnit.miles.rawValue
     @FocusState private var focusedQuickField: QuickAddField?
     
     private enum QuickAddField: Hashable {
         case distance, time, calories
+    }
+    
+    private var rowingUnit: WorkoutDistanceUnit {
+        get { WorkoutDistanceUnit(rawValue: rowingUnitRaw) ?? .miles }
+        nonmutating set { rowingUnitRaw = newValue.rawValue }
     }
     
     private let quickAddExercises: [QuickAddExercise] = [
@@ -69,7 +84,7 @@ struct WorkoutsView: View {
         QuickAddExercise(id: "indoor-walk", name: "Indoor walk", type: .walking, icon: "figure.walk"),
         QuickAddExercise(id: "strength", name: "Functional strength training", type: .functionalStrengthTraining, icon: "dumbbell.fill"),
         QuickAddExercise(id: "pool-swim", name: "Pool swim", type: .swimming, icon: "figure.pool.swim"),
-        QuickAddExercise(id: "hiit", name: "High intensity hit interval training", type: .highIntensityIntervalTraining, icon: "bolt.fill"),
+        QuickAddExercise(id: "hiit", name: "High intensity interval training", type: .highIntensityIntervalTraining, icon: "bolt.fill"),
         QuickAddExercise(id: "outdoor-cycle", name: "Outdoor cycle", type: .cycling, icon: "bicycle"),
         QuickAddExercise(id: "other", name: "Other", type: .other, icon: "ellipsis.circle"),
         QuickAddExercise(id: "elliptical", name: "Elliptical", type: .elliptical, icon: "figure.elliptical"),
@@ -185,6 +200,21 @@ struct WorkoutsView: View {
         }
     }
     
+    // MARK: - Quick Add field matrix
+    
+    private func metricField(for exercise: QuickAddExercise) -> QuickAddMetricField {
+        switch exercise.id {
+        case "strength", "hiit", "elliptical", "stair-stepper", "yoga":
+            return .none
+        case "pool-swim", "open-water-swim":
+            return .laps
+        case "outdoor-rowing", "indoor-rowing":
+            return .distanceMiKm
+        default:
+            return .distanceMiles
+        }
+    }
+    
     // MARK: - Quick Add (accordion drawers)
     
     private var quickAddSection: some View {
@@ -263,18 +293,41 @@ struct WorkoutsView: View {
     }
     
     private func quickAddDrawer(for exercise: QuickAddExercise) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let metric = metricField(for: exercise)
+        
+        return VStack(alignment: .leading, spacing: 12) {
             Divider()
                 .background(EmberColors.cream.opacity(0.2))
             
-            drawerField(
-                title: "Distance",
-                unit: "mi",
-                placeholder: "0",
-                text: $distanceText,
-                keyboard: .decimalPad,
-                field: .distance
-            )
+            switch metric {
+            case .none:
+                EmptyView()
+            case .distanceMiles:
+                drawerField(
+                    title: "Distance",
+                    unit: "mi",
+                    placeholder: "0",
+                    text: $distanceText,
+                    keyboard: .decimalPad,
+                    field: .distance
+                )
+            case .laps:
+                drawerField(
+                    title: "Laps",
+                    unit: "laps",
+                    placeholder: "0",
+                    text: $distanceText,
+                    keyboard: .numberPad,
+                    field: .distance
+                )
+            case .distanceMiKm:
+                drawerFieldWithUnitToggle(
+                    title: "Distance",
+                    placeholder: "0",
+                    text: $distanceText,
+                    field: .distance
+                )
+            }
             
             drawerField(
                 title: "Time",
@@ -287,7 +340,7 @@ struct WorkoutsView: View {
             
             drawerField(
                 title: "Calories burned",
-                unit: "kcal",
+                unit: "cal",
                 placeholder: "0",
                 text: $caloriesText,
                 keyboard: .numberPad,
@@ -304,11 +357,11 @@ struct WorkoutsView: View {
                     .padding(.vertical, 14)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(canLogQuickAdd ? EmberColors.ember : EmberColors.ember.opacity(0.35))
+                            .fill(canLogQuickAdd(for: exercise) ? EmberColors.ember : EmberColors.ember.opacity(0.35))
                     )
             }
             .buttonStyle(.plain)
-            .disabled(!canLogQuickAdd)
+            .disabled(!canLogQuickAdd(for: exercise))
             .padding(.top, 4)
         }
     }
@@ -342,19 +395,59 @@ struct WorkoutsView: View {
                 Text(unit)
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(EmberColors.cream.opacity(0.55))
-                    .frame(width: 40, alignment: .leading)
+                    .frame(minWidth: 40, alignment: .leading)
             }
         }
     }
     
-    private var canLogQuickAdd: Bool {
+    /// Distance field with mi / km segmented toggle (rowing). Preference persists via AppStorage.
+    private func drawerFieldWithUnitToggle(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        field: QuickAddField
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+            
+            HStack(spacing: 8) {
+                TextField(placeholder, text: text)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedQuickField, equals: field)
+                    .foregroundColor(EmberColors.cream)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(EmberColors.dusk)
+                    )
+                
+                Picker("Unit", selection: Binding(
+                    get: { rowingUnit },
+                    set: { rowingUnit = $0 }
+                )) {
+                    Text("mi").tag(WorkoutDistanceUnit.miles)
+                    Text("km").tag(WorkoutDistanceUnit.kilometers)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 100)
+            }
+        }
+    }
+    
+    private func canLogQuickAdd(for exercise: QuickAddExercise) -> Bool {
         let minutes = Int(timeText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
         let caloriesOK: Bool = {
             let trimmed = caloriesText.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty { return true } // blank → 0
             return Double(trimmed) != nil
         }()
+        let metric = metricField(for: exercise)
         let distanceOK: Bool = {
+            if metric == .none { return true }
             let trimmed = distanceText.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty { return true }
             return Double(trimmed) != nil
@@ -386,8 +479,27 @@ struct WorkoutsView: View {
         let minutes = max(1, Int(timeText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 30)
         let caloriesTrimmed = caloriesText.trimmingCharacters(in: .whitespacesAndNewlines)
         let calories = Double(caloriesTrimmed) ?? 0
+        
+        let metric = metricField(for: exercise)
         let distanceTrimmed = distanceText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let distance = Double(distanceTrimmed).flatMap { $0 > 0 ? $0 : nil }
+        let rawDistance = Double(distanceTrimmed).flatMap { $0 > 0 ? $0 : nil }
+        
+        let distanceValue: Double?
+        let unit: WorkoutDistanceUnit
+        switch metric {
+        case .none:
+            distanceValue = nil
+            unit = .miles
+        case .distanceMiles:
+            distanceValue = rawDistance
+            unit = .miles
+        case .laps:
+            distanceValue = rawDistance
+            unit = .laps
+        case .distanceMiKm:
+            distanceValue = rawDistance
+            unit = rowingUnit
+        }
         
         let workout = WorkoutData(
             workoutType: exercise.type,
@@ -395,7 +507,8 @@ struct WorkoutsView: View {
             caloriesBurned: max(0, calories),
             startDate: Date(),
             customName: exercise.name.capitalizedWordsPreservingAcronyms,
-            distanceMiles: distance,
+            distanceMiles: distanceValue,
+            distanceUnit: unit,
             isLocal: true
         )
         
@@ -498,10 +611,8 @@ private extension String {
     /// Title-style capitalize while keeping Chris’s Quick Add labels / acronyms readable.
     var capitalizedWordsPreservingAcronyms: String {
         let lower = self
-        if lower.localizedCaseInsensitiveContains("High intensity hit interval") {
-            return "High intensity hit interval training"
-        }
-        if lower.localizedCaseInsensitiveContains("High Intensity Interval") {
+        if lower.localizedCaseInsensitiveContains("High intensity interval")
+            || lower.localizedCaseInsensitiveContains("High intensity hit interval") {
             return "High Intensity Interval Training"
         }
         if lower.localizedCaseInsensitiveContains("Functional strength") {
@@ -564,14 +675,18 @@ struct WorkoutDetailRow: View {
                     .background(EmberColors.cream.opacity(0.2))
                     .frame(height: 40)
                 
-                WorkoutStatItem(icon: "flame.fill", label: "Calories", value: "\(Int(workout.caloriesBurned))")
+                WorkoutStatItem(icon: "flame.fill", label: "Calories", value: "\(Int(workout.caloriesBurned)) cal")
                 
                 if let distance = workout.formattedDistance {
                     Divider()
                         .background(EmberColors.cream.opacity(0.2))
                         .frame(height: 40)
                     
-                    WorkoutStatItem(icon: "figure.walk", label: "Distance", value: distance)
+                    WorkoutStatItem(
+                        icon: workout.distanceUnit == .laps ? "water.waves" : "figure.walk",
+                        label: workout.distanceUnit.statLabel,
+                        value: distance
+                    )
                 }
             }
             .padding()

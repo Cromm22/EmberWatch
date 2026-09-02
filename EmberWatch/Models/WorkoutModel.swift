@@ -1,6 +1,28 @@
 import Foundation
 import HealthKit
 
+enum WorkoutDistanceUnit: String {
+    case miles
+    case kilometers
+    case laps
+    
+    var shortLabel: String {
+        switch self {
+        case .miles: return "mi"
+        case .kilometers: return "km"
+        case .laps: return "laps"
+        }
+    }
+    
+    /// Badge / stat column title on the workout card.
+    var statLabel: String {
+        switch self {
+        case .laps: return "Laps"
+        case .miles, .kilometers: return "Distance"
+        }
+    }
+}
+
 struct WorkoutData: Identifiable {
     let id: UUID
     let workoutType: HKWorkoutActivityType
@@ -9,8 +31,10 @@ struct WorkoutData: Identifiable {
     let startDate: Date
     /// Optional override when HK type alone is ambiguous (e.g. Indoor vs Outdoor walk).
     let customName: String?
-    /// Miles walked / traveled when logged via Quick Add (optional).
+    /// Numeric distance / laps when logged via Quick Add (optional).
+    /// Interpreted with `distanceUnit` (miles, km, or lap count).
     let distanceMiles: Double?
+    let distanceUnit: WorkoutDistanceUnit
     /// True for EmberWatch Quick Add / manual entries (not from HealthKit).
     let isLocal: Bool
     
@@ -22,6 +46,7 @@ struct WorkoutData: Identifiable {
         startDate: Date,
         customName: String? = nil,
         distanceMiles: Double? = nil,
+        distanceUnit: WorkoutDistanceUnit = .miles,
         isLocal: Bool = false
     ) {
         self.id = id
@@ -31,6 +56,7 @@ struct WorkoutData: Identifiable {
         self.startDate = startDate
         self.customName = customName
         self.distanceMiles = distanceMiles
+        self.distanceUnit = distanceUnit
         self.isLocal = isLocal
     }
     
@@ -50,7 +76,7 @@ struct WorkoutData: Identifiable {
         case .functionalStrengthTraining:
             return "Functional Strength Training"
         case .highIntensityIntervalTraining:
-            return "High intensity hit interval training"
+            return "High Intensity Interval Training"
         case .traditionalStrengthTraining:
             return "Strength Training"
         case .yoga:
@@ -131,10 +157,21 @@ struct WorkoutData: Identifiable {
     
     var formattedDistance: String? {
         guard let distanceMiles, distanceMiles > 0 else { return nil }
-        if distanceMiles < 10 {
-            return String(format: "%.2f mi", distanceMiles)
+        switch distanceUnit {
+        case .laps:
+            let laps = Int(distanceMiles.rounded())
+            return "\(laps) \(laps == 1 ? "lap" : "laps")"
+        case .kilometers:
+            if distanceMiles < 10 {
+                return String(format: "%.2f km", distanceMiles)
+            }
+            return String(format: "%.1f km", distanceMiles)
+        case .miles:
+            if distanceMiles < 10 {
+                return String(format: "%.2f mi", distanceMiles)
+            }
+            return String(format: "%.1f mi", distanceMiles)
         }
-        return String(format: "%.1f mi", distanceMiles)
     }
 }
 
