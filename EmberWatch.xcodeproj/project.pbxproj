@@ -10,6 +10,7 @@
 		S1P2A3R4K5S6M7A8N9A0B1 /* SparksManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */; };
 		F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */; };
 		D4E5F60718293A4B5C6D7E8F /* FoodSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */; };
+		F00D5E4V1NG5H33T00000002 /* FoodServingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00D5E4V1NG5H33T00000001 /* FoodServingSheet.swift */; };
 		B2C3D4E5F60718293A4B5C6D /* LevelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */; };
 		162E05446EEB40B484657D3E /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 241794DFC4C04FC2B1D379C7 /* ShareView.swift */; };
 		84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */; };
@@ -42,6 +43,7 @@
 		S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksManager.swift; sourceTree = "<group>"; };
 		E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
+		F00D5E4V1NG5H33T00000001 /* FoodServingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodServingSheet.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackManager.swift; sourceTree = "<group>"; };
 		D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackSheetView.swift; sourceTree = "<group>"; };
@@ -123,6 +125,7 @@
 			children = (
 				241794DFC4C04FC2B1D379C7 /* ShareView.swift */,
 				8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */,
+				F00D5E4V1NG5H33T00000001 /* FoodServingSheet.swift */,
 				BD9F37E2885F4A5DA562B21E /* BoardView.swift */,
 				B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */,
 				3A0000060000000000000001 /* HomeView.swift */,
@@ -254,6 +257,7 @@
 				F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */,
 				162E05446EEB40B484657D3E /* ShareView.swift in Sources */,
 				84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */,
+				F00D5E4V1NG5H33T00000002 /* FoodServingSheet.swift in Sources */,
 				8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */,
 				764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */,
 				8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */,

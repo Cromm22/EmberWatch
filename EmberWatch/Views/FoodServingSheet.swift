@@ -1,14 +1,25 @@
 import SwiftUI
 
-struct ServingSizePickerView: View {
+struct FoodServingSheet: View {
     @Binding var isPresented: Bool
     let product: FoodProduct
     let onConfirm: (FoodEntry) -> Void
     
+    @StateObject private var lookupService = FoodLookupService()
+    @State private var enrichedProduct: FoodProduct?
+    @State private var loadingState: LoadingState = .loading
     @State private var selectedMultiplier: Double = 1.0
     @State private var selectedMealType: MealType = MealType.suggested()
     
-    private let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
+    private enum LoadingState {
+        case loading
+        case ready
+        case error(String)
+    }
+    
+    private var currentProduct: FoodProduct {
+        enrichedProduct ?? product
+    }
     
     var body: some View {
         NavigationView {
@@ -16,18 +27,7 @@ struct ServingSizePickerView: View {
                 EmberColors.dusk
                     .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        productInfoCard
-                        
-                        nutritionCard
-                        
-                        servingSizeCard
-                        
-                        mealTypeCard
-                    }
-                    .padding()
-                }
+                contentView
             }
             .navigationTitle("Confirm Serving")
             .navigationBarTitleDisplayMode(.inline)
@@ -42,15 +42,106 @@ struct ServingSizePickerView: View {
                     .foregroundColor(EmberColors.cream)
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Confirm") {
-                        confirmServing()
+                if case .ready = loadingState {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Confirm") {
+                            confirmServing()
+                        }
+                        .foregroundColor(EmberColors.ember)
                     }
-                    .foregroundColor(EmberColors.ember)
                 }
             }
         }
         .presentationBackground(EmberColors.dusk)
+        .onAppear {
+            if product.hasValidMacros {
+                loadingState = .ready
+                Task.detached(priority: .background) {
+                    await enrichInBackground()
+                }
+            } else {
+                Task {
+                    await enrichFoodDetail()
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var contentView: some View {
+        switch loadingState {
+        case .loading:
+            loadingView
+        case .ready:
+            readyView
+        case .error(let message):
+            errorView(message: message)
+        }
+    }
+    
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .tint(EmberColors.ember)
+                .scaleEffect(1.2)
+            Text("Loading food…")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+            Text(product.name)
+                .font(.subheadline)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private func errorView(message: String) -> some View {
+        VStack(spacing: 20) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundColor(EmberColors.ember.opacity(0.7))
+            
+            Text(message)
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            
+            HStack(spacing: 12) {
+                Button("Retry") {
+                    Task {
+                        await enrichFoodDetail()
+                    }
+                }
+                .fontWeight(.semibold)
+                .foregroundColor(EmberColors.cream)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Capsule().fill(EmberColors.ember))
+                
+                Button("Dismiss") {
+                    isPresented = false
+                }
+                .foregroundColor(EmberColors.cream.opacity(0.8))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Capsule().strokeBorder(EmberColors.cream.opacity(0.35)))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var readyView: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                productInfoCard
+                nutritionCard
+                servingSizeCard
+                mealTypeCard
+            }
+            .padding()
+        }
     }
     
     private var productInfoCard: some View {
@@ -59,13 +150,13 @@ struct ServingSizePickerView: View {
                 .font(.system(size: 40))
                 .foregroundColor(EmberColors.ember)
             
-            Text(product.name)
+            Text(currentProduct.name)
                 .font(.title2)
                 .fontWeight(.semibold)
                 .foregroundColor(EmberColors.cream)
                 .multilineTextAlignment(.center)
             
-            Text(product.servingSize)
+            Text(currentProduct.servingSize)
                 .font(.subheadline)
                 .foregroundColor(EmberColors.cream.opacity(0.7))
         }
@@ -94,14 +185,14 @@ struct ServingSizePickerView: View {
             HStack(spacing: 12) {
                 NutritionValueCard(
                     label: "Calories",
-                    value: Int(product.caloriesPerServing * selectedMultiplier),
+                    value: Int(currentProduct.caloriesPerServing * selectedMultiplier),
                     unit: "cal",
                     color: EmberColors.ember
                 )
                 
                 NutritionValueCard(
                     label: "Protein",
-                    value: Int(product.proteinPerServing * selectedMultiplier),
+                    value: Int(currentProduct.proteinPerServing * selectedMultiplier),
                     unit: "g",
                     color: .orange
                 )
@@ -110,14 +201,14 @@ struct ServingSizePickerView: View {
             HStack(spacing: 12) {
                 NutritionValueCard(
                     label: "Carbs",
-                    value: Int(product.carbsPerServing * selectedMultiplier),
+                    value: Int(currentProduct.carbsPerServing * selectedMultiplier),
                     unit: "g",
                     color: .blue
                 )
                 
                 NutritionValueCard(
                     label: "Fat",
-                    value: Int(product.fatPerServing * selectedMultiplier),
+                    value: Int(currentProduct.fatPerServing * selectedMultiplier),
                     unit: "g",
                     color: .yellow
                 )
@@ -137,6 +228,7 @@ struct ServingSizePickerView: View {
                 .foregroundColor(EmberColors.cream)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
+            let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
             HStack(spacing: 12) {
                 ForEach(multipliers, id: \.self) { multiplier in
                     Button(action: {
@@ -198,51 +290,41 @@ struct ServingSizePickerView: View {
     
     private func confirmServing() {
         let entry = FoodEntry(
-            name: product.name,
-            calories: product.caloriesPerServing * selectedMultiplier,
-            protein: product.proteinPerServing * selectedMultiplier,
-            carbs: product.carbsPerServing * selectedMultiplier,
-            fat: product.fatPerServing * selectedMultiplier,
+            name: currentProduct.name,
+            calories: currentProduct.caloriesPerServing * selectedMultiplier,
+            protein: currentProduct.proteinPerServing * selectedMultiplier,
+            carbs: currentProduct.carbsPerServing * selectedMultiplier,
+            fat: currentProduct.fatPerServing * selectedMultiplier,
             mealType: selectedMealType.rawValue,
             servings: selectedMultiplier,
-            caloriesPerServing: product.caloriesPerServing,
-            proteinPerServing: product.proteinPerServing,
-            carbsPerServing: product.carbsPerServing,
-            fatPerServing: product.fatPerServing
+            caloriesPerServing: currentProduct.caloriesPerServing,
+            proteinPerServing: currentProduct.proteinPerServing,
+            carbsPerServing: currentProduct.carbsPerServing,
+            fatPerServing: currentProduct.fatPerServing
         )
         
         onConfirm(entry)
         isPresented = false
     }
-}
-
-struct NutritionValueCard: View {
-    let label: String
-    let value: Int
-    let unit: String
-    let color: Color
     
-    var body: some View {
-        VStack(spacing: 8) {
-            Text(label)
-                .font(.caption)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-            
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text("\(value)")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(color)
-                
-                Text(unit)
-                    .font(.caption)
-                    .foregroundColor(EmberColors.cream.opacity(0.7))
+    @MainActor
+    private func enrichFoodDetail() async {
+        loadingState = .loading
+        
+        if let enriched = await lookupService.enrichFoodDetail(product) {
+            enrichedProduct = enriched
+            loadingState = .ready
+        } else {
+            let errorMsg = lookupService.errorMessage ?? "Could not load food details"
+            loadingState = .error(errorMsg)
+        }
+    }
+    
+    private func enrichInBackground() async {
+        if let enriched = await lookupService.enrichFoodDetail(product) {
+            await MainActor.run {
+                enrichedProduct = enriched
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(EmberColors.dusk)
-        )
     }
 }

@@ -8,7 +8,6 @@ struct FoodSearchView: View {
     @State private var query = ""
     @State private var results: [FoodProduct] = []
     @State private var selectedProduct: FoodProduct?
-    @State private var showingServingPicker = false
     @State private var debounceTask: Task<Void, Never>?
     @State private var hasSearched = false
     @State private var lastSearchedQuery = ""
@@ -42,18 +41,19 @@ struct FoodSearchView: View {
                     .foregroundColor(EmberColors.cream)
                 }
             }
-            .sheet(isPresented: $showingServingPicker) {
-                if let product = selectedProduct {
-                    ServingSizePickerView(
-                        isPresented: $showingServingPicker,
-                        product: product,
-                        onConfirm: { entry in
-                            foodDataManager.addFoodEntry(entry)
-                            showingServingPicker = false
-                            isPresented = false
-                        }
-                    )
-                }
+            .sheet(item: $selectedProduct) { product in
+                FoodServingSheet(
+                    isPresented: Binding(
+                        get: { selectedProduct != nil },
+                        set: { if !$0 { selectedProduct = nil } }
+                    ),
+                    product: product,
+                    onConfirm: { entry in
+                        foodDataManager.addFoodEntry(entry)
+                        selectedProduct = nil
+                        isPresented = false
+                    }
+                )
             }
             .onDisappear {
                 debounceTask?.cancel()
@@ -161,7 +161,6 @@ struct FoodSearchView: View {
                     ForEach(results) { product in
                         Button {
                             selectedProduct = product
-                            showingServingPicker = true
                         } label: {
                             FoodSearchResultRow(product: product)
                         }

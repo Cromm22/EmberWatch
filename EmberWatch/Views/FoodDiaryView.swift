@@ -8,7 +8,6 @@ struct FoodDiaryView: View {
     @State private var showingAddFood = false
     @State private var showingBarcodeScanner = false
     @State private var scannedProduct: FoodProduct?
-    @State private var showingServingPicker = false
     @State private var showingFoodSearch = false
     @State private var entryToEdit: FoodEntry?
     @State private var copyToastMessage: String?
@@ -103,16 +102,18 @@ struct FoodDiaryView: View {
                 FoodSearchView(isPresented: $showingFoodSearch)
                     .environmentObject(foodDataManager)
             }
-            .sheet(isPresented: $showingServingPicker) {
-                if let product = scannedProduct {
-                    ServingSizePickerView(
-                        isPresented: $showingServingPicker,
-                        product: product,
-                        onConfirm: { entry in
-                            foodDataManager.addFoodEntry(entry)
-                        }
-                    )
-                }
+            .sheet(item: $scannedProduct) { product in
+                FoodServingSheet(
+                    isPresented: Binding(
+                        get: { scannedProduct != nil },
+                        set: { if !$0 { scannedProduct = nil } }
+                    ),
+                    product: product,
+                    onConfirm: { entry in
+                        foodDataManager.addFoodEntry(entry)
+                        scannedProduct = nil
+                    }
+                )
             }
             .sheet(isPresented: Binding(
                 get: { entryToEdit != nil },
@@ -121,11 +122,6 @@ struct FoodDiaryView: View {
                 if let entry = entryToEdit {
                     EditServingsView(entry: entry, isPresentedEntry: $entryToEdit)
                         .environmentObject(foodDataManager)
-                }
-            }
-            .onChange(of: scannedProduct) { newValue in
-                if newValue != nil {
-                    showingServingPicker = true
                 }
             }
             .overlay(alignment: .bottom) {
