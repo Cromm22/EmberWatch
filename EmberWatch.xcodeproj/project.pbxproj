@@ -172,8 +172,8 @@
 				S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */,
 				F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */,
 				B1C2D3E4F5061728394A5B6C /* WeightManager.swift */,
-			);
 				8FFD5926647D460D8448F0BD /* FriendsManager.swift */,
+			);
 			path = Managers;
 			sourceTree = "<group>";
 		};
