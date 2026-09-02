@@ -10,7 +10,21 @@ final class LevelManager: ObservableObject {
     static let caloriesPerXP = 1          // 1 XP per new calorie burned
     static let exerciseXP = 50
     static let challengeXP = 25
+    /// Daily consecutive-open streak: base + bonus × min(streak, cap).
+    static let dailyStreakBaseXP = 20
+    static let dailyStreakBonusPerDayXP = 5
+    static let dailyStreakBonusCapDays = 30
+    /// Weight-loss weigh-in: base + per 0.1 lb lost (bonus tenths capped).
+    static let weightLossBaseXP = 30
+    static let weightLossXPPerTenthPound = 5
+    static let weightLossMaxBonusTenths = 20  // 2.0 lb → +100 bonus max
     static let maxLevel = 100
+    
+    /// Base XP (pre board-multiplier) for a given streak day count.
+    static func dailyStreakXP(forStreak streak: Int) -> Int {
+        let days = max(1, min(streak, dailyStreakBonusCapDays))
+        return dailyStreakBaseXP + dailyStreakBonusPerDayXP * days
+    }
     
     /// XP required to advance from level L → L+1.
     static func xpToAdvance(from level: Int) -> Int {
@@ -47,6 +61,28 @@ final class LevelManager: ObservableObject {
     
     @Published var levelUpBanner: String? = nil
     
+    /// Consecutive local-calendar-day opens that earned a reward.
+    @Published private(set) var streakCount: Int {
+        didSet { UserDefaults.standard.set(streakCount, forKey: Keys.streakCount) }
+    }
+    
+    /// Start-of-day (device calendar) of the last daily-open reward.
+    @Published private(set) var lastRewardDate: Date? {
+        didSet {
+            if let date = lastRewardDate {
+                UserDefaults.standard.set(date.timeIntervalSince1970, forKey: Keys.lastRewardDate)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.lastRewardDate)
+            }
+        }
+    }
+    
+    /// Brief Home toast e.g. "Day 3 streak — +35 XP".
+    @Published var streakBanner: String? = nil
+    
+    /// Brief toast e.g. "Down 1.2 lb — +90 XP".
+    @Published var weightLossBanner: String? = nil
+    
     private var awardedWorkoutIDs: Set<String> {
         didSet {
             UserDefaults.standard.set(Array(awardedWorkoutIDs), forKey: Keys.awardedWorkouts)
@@ -79,6 +115,8 @@ final class LevelManager: ObservableObject {
         static let lastAwardedBurnedDay = "levelManager.lastAwardedBurnedDay"
         static let challengeAwards = "levelManager.challengeAwards"
         static let migrated = "levelManager.migratedFromCalorieGoal"
+        static let streakCount = "levelManager.streakCount"
+        static let lastRewardDate = "levelManager.lastRewardDate"
     }
     
     init() {
@@ -122,6 +160,14 @@ final class LevelManager: ObservableObject {
             self.challengeAwards = map
         } else {
             self.challengeAwards = [:]
+        }
+        
+        self.streakCount = max(0, defaults.integer(forKey: Keys.streakCount))
+        if defaults.object(forKey: Keys.lastRewardDate) != nil {
+            let interval = defaults.double(forKey: Keys.lastRewardDate)
+            self.lastRewardDate = Date(timeIntervalSince1970: interval)
+        } else {
+            self.lastRewardDate = nil
         }
         
         recomputeLevel(from: totalXP, announce: false)
@@ -211,6 +257,67 @@ final class LevelManager: ObservableObject {
     
     func canChallenge(friendId: String) -> Bool {
         challengeAwards[friendId] != Self.todayKey()
+    }
+    
+    /// First open of a new local calendar day awards streak XP (board multiplier applied).
+    /// Already rewarded today → no-op. Yesterday → streak += 1; else streak = 1.
+    @discardableResult
+    func checkDailyOpenReward() -> Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        if let last = lastRewardDate.map({ calendar.startOfDay(for: $0) }), last == today {
+            return 0
+        }
+        
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        if let last = lastRewardDate.map({ calendar.startOfDay(for: $0) }), last == yesterday {
+            streakCount = max(1, streakCount + 1)
+        } else {
+            streakCount = 1
+        }
+        
+        lastRewardDate = today
+        
+        let base = Self.dailyStreakXP(forStreak: streakCount)
+        let gained = award(base: base, reason: "dailyStreak")
+        
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let dayLabel = streakCount == 1 ? "Day 1" : "Day \(streakCount)"
+        streakBanner = "\(dayLabel) streak — +\(gained) XP"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) { [weak self] in
+            if self?.streakBanner?.contains("+\(gained) XP") == true {
+                self?.streakBanner = nil
+            }
+        }
+        return gained
+    }
+    
+    /// Award XP when a weigh-in is lower than the previous recorded weight.
+    /// `poundsLost` must be positive (previous − new). Same/up → no-op.
+    @discardableResult
+    func awardWeightLoss(poundsLost: Double) -> Int {
+        guard poundsLost > 0.05 else { return 0 }
+        let tenths = Int((poundsLost / 0.1).rounded(.down))
+        let cappedTenths = max(0, min(tenths, Self.weightLossMaxBonusTenths))
+        let base = Self.weightLossBaseXP + cappedTenths * Self.weightLossXPPerTenthPound
+        let gained = award(base: base, reason: "weightLoss")
+        guard gained > 0 else { return 0 }
+        
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let lostLabel: String = {
+            if abs(poundsLost - poundsLost.rounded()) < 0.05 {
+                return String(Int(poundsLost.rounded()))
+            }
+            return String(format: "%.1f", poundsLost)
+        }()
+        weightLossBanner = "Down \(lostLabel) lb — +\(gained) XP"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) { [weak self] in
+            if self?.weightLossBanner?.contains("+\(gained) XP") == true {
+                self?.weightLossBanner = nil
+            }
+        }
+        return gained
     }
     
     func updateBoardRank(_ rank: Int) {

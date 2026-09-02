@@ -45,7 +45,9 @@ struct HomeView: View {
                     .padding(.bottom, 16)
                 }
                 
-                if let banner = levelManager.levelUpBanner {
+                if let banner = levelManager.streakBanner
+                    ?? levelManager.weightLossBanner
+                    ?? levelManager.levelUpBanner {
                     VStack {
                         Text(banner)
                             .font(.headline)
@@ -70,6 +72,8 @@ struct HomeView: View {
                     .zIndex(20)
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.streakBanner)
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.weightLossBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.levelUpBanner)
             .navigationTitle("Ember")
             .navigationBarTitleDisplayMode(.inline)
@@ -88,11 +92,13 @@ struct HomeView: View {
             .sheet(isPresented: $showingWeightSettings) {
                 WeightSettingsView(isPresented: $showingWeightSettings)
                     .environmentObject(weightManager)
+                    .environmentObject(levelManager)
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
                 syncXPFromHealth()
+                _ = levelManager.checkDailyOpenReward()
             }
             .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
                 syncXPFromHealth()
@@ -143,6 +149,16 @@ struct HomeView: View {
                 Text(avatarManager.displayName)
                     .font(.headline)
                     .foregroundColor(EmberColors.cream.opacity(0.9))
+                
+                if levelManager.streakCount > 0 {
+                    Text("🔥 \(levelManager.streakCount)d")
+                        .font(.caption2.weight(.bold))
+                        .foregroundColor(EmberColors.ink)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(EmberColors.ember))
+                        .accessibilityLabel("Day \(levelManager.streakCount) open streak")
+                }
                 
                 if let boost = levelManager.boardMultiplierLabel {
                     Text(boost)
@@ -253,67 +269,49 @@ struct HomeView: View {
     
 
     private var weightCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: "scalemass.fill")
-                    .foregroundColor(EmberColors.ember)
-                
-                Text("Weight")
-                    .font(.headline)
-                    .foregroundColor(EmberColors.cream)
-                
-                Spacer()
-                
-                Picker("Unit", selection: Binding(
-                    get: { weightManager.unit },
-                    set: { weightManager.unit = $0 }
-                )) {
-                    ForEach(WeightUnit.allCases) { u in
-                        Text(u.label.uppercased()).tag(u)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 100)
-                
-                Button(action: { showingWeightSettings = true }) {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.title2)
+        Button(action: { showingWeightSettings = true }) {
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "scalemass.fill")
                         .foregroundColor(EmberColors.ember)
-                }
-                .accessibilityLabel("Edit weight and goal")
-            }
-            
-            if let current = weightManager.displayedCurrent {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(WeightManager.format(current))
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                        .foregroundColor(EmberColors.ember)
-                    Text(weightManager.unit.label)
-                        .font(.title3)
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    
+                    Text("Weight")
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                    
                     Spacer()
                 }
                 
-                if let goal = weightManager.displayedGoal {
-                    HStack {
-                        Text("Goal \(WeightManager.format(goal)) \(weightManager.unit.label)")
-                            .font(.subheadline)
+                if let current = weightManager.displayedCurrent {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(WeightManager.format(current))
+                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .foregroundColor(EmberColors.ember)
+                        Text(weightManager.unit.label)
+                            .font(.title3)
                             .foregroundColor(EmberColors.cream.opacity(0.7))
                         Spacer()
-                        if let caption = weightManager.deltaCaption {
-                            Text(caption)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundColor(EmberColors.gold)
+                    }
+                    
+                    if let goal = weightManager.displayedGoal {
+                        HStack {
+                            Text("Goal \(WeightManager.format(goal)) \(weightManager.unit.label)")
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream.opacity(0.7))
+                            Spacer()
+                            if let caption = weightManager.deltaCaption {
+                                Text(caption)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(EmberColors.gold)
+                            }
                         }
+                    } else {
+                        Text("Set a goal to track progress")
+                            .font(.subheadline)
+                            .foregroundColor(EmberColors.cream.opacity(0.55))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
-                    Text("Set a goal to track progress")
-                        .font(.subheadline)
-                        .foregroundColor(EmberColors.cream.opacity(0.55))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            } else {
-                Button(action: { showingWeightSettings = true }) {
                     HStack {
                         Text("Log your weight")
                             .fontWeight(.semibold)
@@ -325,12 +323,17 @@ struct HomeView: View {
                     .background(RoundedRectangle(cornerRadius: 12).fill(EmberColors.ember.opacity(0.85)))
                 }
             }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(EmberColors.lightPlum)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16))
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(EmberColors.lightPlum)
-        )
+        .buttonStyle(.plain)
+        .accessibilityLabel("Edit weight and goal")
+        .accessibilityHint("Opens weight and goal settings")
     }
     
     private var waterCard: some View {
@@ -610,6 +613,7 @@ struct GoalSettingsView: View {
 struct WeightSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var weightManager: WeightManager
+    @EnvironmentObject var levelManager: LevelManager
     @State private var currentInput: String = ""
     @State private var goalInput: String = ""
     @State private var unit: WeightUnit = .lb
@@ -763,7 +767,9 @@ struct WeightSettingsView: View {
         syncDraftFromInputs(using: unit)
         weightManager.unit = unit
         if let lb = draftCurrentLb {
-            weightManager.logCurrentWeight(unit.fromPounds(lb))
+            if let poundsLost = weightManager.logCurrentWeight(unit.fromPounds(lb)) {
+                _ = levelManager.awardWeightLoss(poundsLost: poundsLost)
+            }
         }
         if let lb = draftGoalLb {
             weightManager.setGoalWeight(unit.fromPounds(lb))

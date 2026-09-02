@@ -142,8 +142,12 @@ class WeightManager: ObservableObject {
     
     // MARK: - Mutations
     
-    func logCurrentWeight(_ valueInUnit: Double) {
+    /// Logs a weigh-in. Returns pounds lost vs previous current weight when lower;
+    /// `nil` if first log, unchanged, or weight went up.
+    @discardableResult
+    func logCurrentWeight(_ valueInUnit: Double) -> Double? {
         let lb = unit.toPounds(valueInUnit)
+        let previous = currentWeightLb
         currentWeightLb = lb
         var next = history
         next.insert(WeighIn(weightLb: lb), at: 0)
@@ -151,6 +155,11 @@ class WeightManager: ObservableObject {
             next = Array(next.prefix(maxHistory))
         }
         history = next
+        
+        guard let previous else { return nil }
+        let lost = previous - lb
+        guard lost > 0.05 else { return nil }
+        return lost
     }
     
     func setGoalWeight(_ valueInUnit: Double?) {

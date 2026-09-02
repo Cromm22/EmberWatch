@@ -9,6 +9,7 @@ struct ContentView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var feedbackManager: FeedbackManager
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var showingFeedback = false
     @State private var showFeedbackFAB = false
@@ -22,6 +23,14 @@ struct ContentView: View {
             } else {
                 mainTabs
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, avatarManager.hasCompletedOnboarding else { return }
+            _ = levelManager.checkDailyOpenReward()
+        }
+        .onAppear {
+            guard avatarManager.hasCompletedOnboarding else { return }
+            _ = levelManager.checkDailyOpenReward()
         }
     }
     
