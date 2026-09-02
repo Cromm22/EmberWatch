@@ -71,6 +71,48 @@ class FoodLookupService: ObservableObject {
         return nil
     }
     
+
+    /// Text / name search across Open Food Facts then USDA. Returns up to ~25 products.
+    func searchFoods(query: String) async -> [FoodProduct] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            errorMessage = nil
+            return []
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        
+        var results: [FoodProduct] = []
+        var seenNames = Set<String>()
+        
+        let off = await searchOpenFoodFacts(query: trimmed)
+        for product in off {
+            let key = product.name.lowercased()
+            if !seenNames.contains(key), product.hasValidMacros {
+                seenNames.insert(key)
+                results.append(product)
+            }
+        }
+        
+        if results.count < 8 {
+            let usda = await searchUSDA(query: trimmed)
+            for product in usda {
+                let key = product.name.lowercased()
+                if !seenNames.contains(key), product.hasValidMacros {
+                    seenNames.insert(key)
+                    results.append(product)
+                }
+            }
+        }
+        
+        if results.isEmpty {
+            errorMessage = "No foods found for “\(trimmed)”."
+        }
+        return results
+    }
+    
     private func lookupOpenFoodFacts(barcode: String) async -> FoodProduct? {
         guard let url = URL(string: "https://world.openfoodfacts.org/api/v2/product/\(barcode).json") else {
             return nil
@@ -155,6 +197,89 @@ class FoodLookupService: ObservableObject {
             return nil
         }
     }
+
+    private func searchOpenFoodFacts(query: String) async -> [FoodProduct] {
+        var components = URLComponents(string: "https://world.openfoodfacts.org/cgi/search.pl")!
+        components.queryItems = [
+            URLQueryItem(name: "search_terms", value: query),
+            URLQueryItem(name: "search_simple", value: "1"),
+            URLQueryItem(name: "action", value: "process"),
+            URLQueryItem(name: "json", value: "1"),
+            URLQueryItem(name: "page_size", value: "20")
+        ]
+        guard let url = components.url else { return [] }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode(OFFSearchResponse.self, from: data)
+            return (response.products ?? []).compactMap { product in
+                guard let nutriments = product.nutriments else { return nil }
+                let calories = nutriments.energyKcal100g ?? 0
+                let protein = nutriments.proteins100g ?? 0
+                let carbs = nutriments.carbohydrates100g ?? 0
+                let fat = nutriments.fat100g ?? 0
+                guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
+                let name = product.productName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard !name.isEmpty else { return nil }
+                return FoodProduct(
+                    barcode: product.code ?? "off-search",
+                    name: name,
+                    servingSize: product.servingSize ?? "100g",
+                    caloriesPer100g: calories,
+                    proteinPer100g: protein,
+                    carbsPer100g: carbs,
+                    fatPer100g: fat,
+                    servingSizeGrams: product.servingQuantity
+                )
+            }
+        } catch {
+            print("Open Food Facts search failed: \(error)")
+            return []
+        }
+    }
+    
+    private func searchUSDA(query: String) async -> [FoodProduct] {
+        let apiKey = "DEMO_KEY"
+        var components = URLComponents(string: "https://api.nal.usda.gov/fdc/v1/foods/search")!
+        components.queryItems = [
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "pageSize", value: "15"),
+            URLQueryItem(name: "api_key", value: apiKey)
+        ]
+        guard let url = components.url else { return [] }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode(USDAResponse.self, from: data)
+            return response.foods.compactMap { food in
+                let nutrients = food.foodNutrients
+                let calories = nutrients.first(where: { $0.nutrientId == 1008 })?.value ?? 0
+                let protein = nutrients.first(where: { $0.nutrientId == 1003 })?.value ?? 0
+                let carbs = nutrients.first(where: { $0.nutrientId == 1005 })?.value ?? 0
+                let fat = nutrients.first(where: { $0.nutrientId == 1004 })?.value ?? 0
+                guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
+                let servingSize = food.servingSize ?? 100
+                return FoodProduct(
+                    barcode: "usda-\(food.fdcId ?? 0)",
+                    name: food.description,
+                    servingSize: "\(Int(servingSize))g",
+                    caloriesPer100g: calories,
+                    proteinPer100g: protein,
+                    carbsPer100g: carbs,
+                    fatPer100g: fat,
+                    servingSizeGrams: servingSize
+                )
+            }
+        } catch {
+            print("USDA search failed: \(error)")
+            return []
+        }
+    }
+
+}
+
+struct OFFSearchResponse: Codable {
+    let products: [OFFProduct]?
 }
 
 struct OFFResponse: Codable {
@@ -163,12 +288,14 @@ struct OFFResponse: Codable {
 }
 
 struct OFFProduct: Codable {
+    let code: String?
     let productName: String?
     let servingSize: String?
     let servingQuantity: Double?
     let nutriments: OFFNutriments?
     
     enum CodingKeys: String, CodingKey {
+        case code
         case productName = "product_name"
         case servingSize = "serving_size"
         case servingQuantity = "serving_quantity"
@@ -195,6 +322,7 @@ struct USDAResponse: Codable {
 }
 
 struct USDAFood: Codable {
+    let fdcId: Int?
     let description: String
     let servingSize: Double?
     let foodNutrients: [USDANutrient]

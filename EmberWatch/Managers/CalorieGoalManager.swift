@@ -9,46 +9,23 @@ class CalorieGoalManager: ObservableObject {
         }
     }
     
-    @Published var currentLevel: Int {
+    /// When true, remaining = goal + burned (food logged still shows in diary but is not subtracted).
+    @Published var ignoreFoodFromRemaining: Bool {
         didSet {
-            UserDefaults.standard.set(currentLevel, forKey: "currentLevel")
-        }
-    }
-    
-    @Published var currentXP: Int {
-        didSet {
-            UserDefaults.standard.set(currentXP, forKey: "currentXP")
+            UserDefaults.standard.set(ignoreFoodFromRemaining, forKey: "ignoreFoodFromRemaining")
         }
     }
     
     init() {
         let goal = UserDefaults.standard.double(forKey: "dailyCalorieGoal")
-        let level = UserDefaults.standard.integer(forKey: "currentLevel")
-        let xp = UserDefaults.standard.integer(forKey: "currentXP")
         self.dailyCalorieGoal = goal == 0 ? 2000 : goal
-        self.currentLevel = level == 0 ? 1 : level
-        self.currentXP = xp
+        self.ignoreFoodFromRemaining = UserDefaults.standard.bool(forKey: "ignoreFoodFromRemaining")
     }
     
     func calculateRemainingCalories(burned: Double, consumed: Double) -> Double {
-        return dailyCalorieGoal + burned - consumed
-    }
-    
-    func xpForNextLevel() -> Int {
-        return currentLevel * 100
-    }
-    
-    func xpProgress() -> Double {
-        let needed = xpForNextLevel()
-        return min(Double(currentXP) / Double(needed), 1.0)
-    }
-    
-    func addXP(_ amount: Int) {
-        currentXP += amount
-        
-        while currentXP >= xpForNextLevel() {
-            currentXP -= xpForNextLevel()
-            currentLevel += 1
+        if ignoreFoodFromRemaining {
+            return dailyCalorieGoal + burned
         }
+        return dailyCalorieGoal + burned - consumed
     }
 }

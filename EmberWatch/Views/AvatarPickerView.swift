@@ -3,7 +3,7 @@ import SwiftUI
 struct AvatarPickerView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var avatarManager: AvatarManager
-    @EnvironmentObject var calorieGoalManager: CalorieGoalManager
+    @EnvironmentObject var levelManager: LevelManager
     
     let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -30,7 +30,7 @@ struct AvatarPickerView: View {
                                 AvatarThumbnail(
                                     style: style,
                                     isSelected: avatarManager.selectedAvatarId == style.id,
-                                    level: calorieGoalManager.currentLevel
+                                    level: levelManager.level
                                 ) {
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                         avatarManager.selectAvatar(style.id)
@@ -150,5 +150,5 @@ struct AvatarThumbnail: View {
 #Preview {
     AvatarPickerView()
         .environmentObject(AvatarManager())
-        .environmentObject(CalorieGoalManager())
+        .environmentObject(LevelManager())
 }

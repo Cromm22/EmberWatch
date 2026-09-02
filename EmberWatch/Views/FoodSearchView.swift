@@ -1,0 +1,215 @@
+import SwiftUI
+
+struct FoodSearchView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var foodDataManager: FoodDataManager
+    
+    @StateObject private var lookupService = FoodLookupService()
+    @State private var query = ""
+    @State private var results: [FoodProduct] = []
+    @State private var selectedProduct: FoodProduct?
+    @State private var showingServingPicker = false
+    @State private var debounceTask: Task<Void, Never>?
+    @State private var hasSearched = false
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk.ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    searchField
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
+                    
+                    content
+                }
+            }
+            .navigationTitle("Search Foods")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Close") { isPresented = false }
+                        .foregroundColor(EmberColors.cream)
+                }
+            }
+            .sheet(isPresented: $showingServingPicker) {
+                if let product = selectedProduct {
+                    ServingSizePickerView(
+                        isPresented: $showingServingPicker,
+                        product: product,
+                        onConfirm: { entry in
+                            foodDataManager.addFoodEntry(entry)
+                            showingServingPicker = false
+                            isPresented = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(EmberColors.ember)
+            
+            TextField("Search foods…", text: $query)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .foregroundColor(EmberColors.cream)
+                .submitLabel(.search)
+                .onSubmit { performSearchNow() }
+                .onChange(of: query) { _, newValue in
+                    debounceSearch(newValue)
+                }
+            
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                    results = []
+                    hasSearched = false
+                    lookupService.errorMessage = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(EmberColors.cream.opacity(0.5))
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+    
+    @ViewBuilder
+    private var content: some View {
+        if lookupService.isLoading {
+            VStack(spacing: 16) {
+                ProgressView()
+                    .tint(EmberColors.ember)
+                Text("Searching…")
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = lookupService.errorMessage, results.isEmpty, hasSearched {
+            VStack(spacing: 12) {
+                Image(systemName: "exclamationmark.magnifyingglass")
+                    .font(.system(size: 40))
+                    .foregroundColor(EmberColors.cream.opacity(0.45))
+                Text(error)
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if results.isEmpty {
+            VStack(spacing: 12) {
+                Image(systemName: "fork.knife.circle")
+                    .font(.system(size: 40))
+                    .foregroundColor(EmberColors.cream.opacity(0.45))
+                Text(query.trimmingCharacters(in: .whitespaces).count < 2
+                     ? "Type at least 2 characters"
+                     : "No results yet")
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(results) { product in
+                        Button {
+                            selectedProduct = product
+                            showingServingPicker = true
+                        } label: {
+                            FoodSearchResultRow(product: product)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+            }
+        }
+    }
+    
+    private func debounceSearch(_ value: String) {
+        debounceTask?.cancel()
+        debounceTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await runSearch(value)
+        }
+    }
+    
+    private func performSearchNow() {
+        debounceTask?.cancel()
+        Task { await runSearch(query) }
+    }
+    
+    @MainActor
+    private func runSearch(_ value: String) async {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            results = []
+            hasSearched = false
+            lookupService.errorMessage = nil
+            return
+        }
+        hasSearched = true
+        results = await lookupService.searchFoods(query: trimmed)
+    }
+}
+
+struct FoodSearchResultRow: View {
+    let product: FoodProduct
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "leaf.fill")
+                .font(.title3)
+                .foregroundColor(EmberColors.ember)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(EmberColors.dusk))
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(product.name)
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                
+                Text(product.servingSize)
+                    .font(.caption)
+                    .foregroundColor(EmberColors.cream.opacity(0.55))
+            }
+            
+            Spacer(minLength: 8)
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(Int(product.caloriesPerServing))")
+                    .font(.headline)
+                    .foregroundColor(EmberColors.ember)
+                Text("cal")
+                    .font(.caption2)
+                    .foregroundColor(EmberColors.cream.opacity(0.55))
+            }
+            
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(EmberColors.cream.opacity(0.35))
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+}

@@ -9,6 +9,7 @@ struct FoodDiaryView: View {
     @State private var showingBarcodeScanner = false
     @State private var scannedProduct: FoodProduct?
     @State private var showingServingPicker = false
+    @State private var showingFoodSearch = false
     
     var remainingCalories: Double {
         calorieGoalManager.calculateRemainingCalories(
@@ -24,10 +25,12 @@ struct FoodDiaryView: View {
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 20) {
                         remainingCaloriesCard
                         
                         scanBarcodeButton
+                        
+                        searchFoodButton
                         
                         if !foodDataManager.recentFoodEntries.isEmpty {
                             recentsSection
@@ -37,11 +40,13 @@ struct FoodDiaryView: View {
                         
                         foodEntriesList
                     }
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
                 }
             }
             .navigationTitle("Food")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -54,6 +59,10 @@ struct FoodDiaryView: View {
                     isPresented: $showingBarcodeScanner,
                     scannedProduct: $scannedProduct
                 )
+            }
+            .sheet(isPresented: $showingFoodSearch) {
+                FoodSearchView(isPresented: $showingFoodSearch)
+                    .environmentObject(foodDataManager)
             }
             .sheet(isPresented: $showingServingPicker) {
                 if let product = scannedProduct {
@@ -126,6 +135,29 @@ struct FoodDiaryView: View {
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(EmberColors.ember)
+            )
+        }
+    }
+    
+    private var searchFoodButton: some View {
+        Button(action: { showingFoodSearch = true }) {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .font(.title2)
+                
+                Text("Search foods")
+                    .font(.headline)
+            }
+            .foregroundColor(EmberColors.cream)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(EmberColors.ember, lineWidth: 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(EmberColors.lightPlum)
+                    )
             )
         }
     }

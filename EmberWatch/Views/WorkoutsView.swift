@@ -43,6 +43,7 @@ enum WorkoutFlamePhase {
 
 struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var levelManager: LevelManager
     @State private var showingQuickAdd = false
     @State private var flamePulse = false
     
@@ -57,7 +58,7 @@ struct WorkoutsView: View {
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 20) {
                         caloriesSummaryCard
                         
                         quickAddButtons
@@ -68,29 +69,66 @@ struct WorkoutsView: View {
                             workoutsList
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                }
+                
+                if let banner = levelManager.levelUpBanner {
+                    VStack {
+                        Text(banner)
+                            .font(.headline)
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                Capsule().fill(
+                                    LinearGradient(
+                                        colors: [EmberColors.gold, EmberColors.ember],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                            )
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+                    .zIndex(20)
                 }
             }
             .navigationTitle("Workouts")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .sheet(isPresented: $showingQuickAdd) {
                 QuickAddWorkoutView(isPresented: $showingQuickAdd)
                     .environmentObject(healthKitManager)
+                    .environmentObject(levelManager)
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 updateFlamePulse()
+                syncXP()
             }
             .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
                 updateFlamePulse()
+                syncXP()
+            }
+            .onChange(of: healthKitManager.workouts.map(\.id)) { _, _ in
+                syncXP()
             }
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
+                syncXP()
             }
         }
+        .navigationViewStyle(.stack)
+    }
+    
+    private func syncXP() {
+        _ = levelManager.processBurnedCalories(healthKitManager.totalCaloriesBurned)
+        _ = levelManager.processWorkouts(ids: healthKitManager.workouts.map { $0.id.uuidString })
     }
     
     private func updateFlamePulse() {
@@ -294,6 +332,7 @@ struct WorkoutStatItem: View {
 struct QuickAddWorkoutView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var levelManager: LevelManager
     
     private let workoutTypes: [(name: String, type: HKWorkoutActivityType, icon: String)] = [
         ("Outdoor walk", .walking, "figure.walk"),
@@ -314,7 +353,7 @@ struct QuickAddWorkoutView: View {
                     VStack(spacing: 12) {
                         ForEach(workoutTypes, id: \.name) { workout in
                             Button(action: {
-                                selectWorkout(workout.type)
+                                selectWorkout(name: workout.name, type: workout.type)
                             }) {
                                 HStack(spacing: 16) {
                                     Image(systemName: workout.icon)
@@ -363,7 +402,13 @@ struct QuickAddWorkoutView: View {
         }
     }
     
-    private func selectWorkout(_ type: HKWorkoutActivityType) {
+    private func selectWorkout(name: String, type: HKWorkoutActivityType) {
+        // Local log id — Quick Add does not write to HealthKit (read-only). Award XP once per log.
+        let logId = "quickadd-\(UUID().uuidString)"
+        _ = levelManager.awardWorkout(id: logId)
+        // Soft bump burned for UI feedback without inventing HK samples (keeps Active Energy as source of truth).
+        _ = type
+        _ = name
         isPresented = false
     }
 }
@@ -371,6 +416,7 @@ struct QuickAddWorkoutView: View {
 struct ManualWorkoutView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var levelManager: LevelManager
     
     @State private var workoutName = ""
     @State private var duration = ""
@@ -435,6 +481,8 @@ struct ManualWorkoutView: View {
     }
     
     private func addWorkout() {
+        let logId = "manual-\(UUID().uuidString)"
+        _ = levelManager.awardWorkout(id: logId)
         isPresented = false
     }
 }

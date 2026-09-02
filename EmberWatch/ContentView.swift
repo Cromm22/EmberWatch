@@ -7,9 +7,22 @@ struct ContentView: View {
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var waterManager: WaterManager
     @EnvironmentObject var avatarManager: AvatarManager
+    @EnvironmentObject var levelManager: LevelManager
     @State private var selectedTab = 0
     
     var body: some View {
+        Group {
+            if !avatarManager.hasCompletedOnboarding {
+                OnboardingView()
+                    .environmentObject(avatarManager)
+                    .environmentObject(levelManager)
+            } else {
+                mainTabs
+            }
+        }
+    }
+    
+    private var mainTabs: some View {
         ZStack {
             EmberColors.dusk.ignoresSafeArea()
             
@@ -24,6 +37,7 @@ struct ContentView: View {
                     .environmentObject(calorieGoalManager)
                     .environmentObject(waterManager)
                     .environmentObject(avatarManager)
+                    .environmentObject(levelManager)
                 
                 FoodDiaryView()
                     .tabItem {
@@ -40,13 +54,14 @@ struct ContentView: View {
                     }
                     .tag(2)
                     .environmentObject(healthKitManager)
+                    .environmentObject(levelManager)
                 
                 BoardView()
                     .tabItem {
                         Label("Board", systemImage: "list.number")
                     }
                     .tag(3)
-                    .environmentObject(calorieGoalManager)
+                    .environmentObject(levelManager)
                 
                 ShareView()
                     .tabItem {
@@ -57,6 +72,7 @@ struct ContentView: View {
                     .environmentObject(foodDataManager)
                     .environmentObject(calorieGoalManager)
                     .environmentObject(avatarManager)
+                    .environmentObject(levelManager)
             }
             .tint(EmberColors.ember)
         }

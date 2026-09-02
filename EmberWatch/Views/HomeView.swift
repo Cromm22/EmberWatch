@@ -7,8 +7,10 @@ struct HomeView: View {
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var waterManager: WaterManager
     @EnvironmentObject var avatarManager: AvatarManager
+    @EnvironmentObject var levelManager: LevelManager
     @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
+    @State private var showingWaterGoal = false
     
     var remainingCalories: Double {
         calorieGoalManager.calculateRemainingCalories(
@@ -24,7 +26,7 @@ struct HomeView: View {
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 20) {
                         emberAvatarCard
                         
                         remainingCaloriesCard
@@ -35,11 +37,39 @@ struct HomeView: View {
                         
                         quickStatsCard
                     }
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                }
+                
+                if let banner = levelManager.levelUpBanner {
+                    VStack {
+                        Text(banner)
+                            .font(.headline)
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [EmberColors.gold, EmberColors.ember],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                            .shadow(color: EmberColors.ember.opacity(0.45), radius: 12, y: 4)
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(20)
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.levelUpBanner)
             .navigationTitle("Ember")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -50,62 +80,99 @@ struct HomeView: View {
             .sheet(isPresented: $showingAvatarPicker) {
                 AvatarPickerView()
                     .environmentObject(avatarManager)
-                    .environmentObject(calorieGoalManager)
+                    .environmentObject(levelManager)
+            }
+            .sheet(isPresented: $showingWaterGoal) {
+                WaterGoalSettingsView(isPresented: $showingWaterGoal)
+                    .environmentObject(waterManager)
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
+                syncXPFromHealth()
+            }
+            .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
+                syncXPFromHealth()
+            }
+            .onChange(of: healthKitManager.workouts.map(\.id)) { _, _ in
+                syncXPFromHealth()
             }
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
+                syncXPFromHealth()
             }
         }
+        .navigationViewStyle(.stack)
+    }
+    
+    private func syncXPFromHealth() {
+        _ = levelManager.processBurnedCalories(healthKitManager.totalCaloriesBurned)
+        _ = levelManager.processWorkouts(ids: healthKitManager.workouts.map { $0.id.uuidString })
     }
     
     private var emberAvatarCard: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
                 EmberFlameAvatar(
-                    level: calorieGoalManager.currentLevel,
+                    level: levelManager.level,
                     size: 220,
                     style: avatarManager.selectedStyle
                 )
+                .frame(width: 220, height: 250)
                 .onTapGesture {
                     showingAvatarPicker = true
                 }
                 
                 Button(action: { showingAvatarPicker = true }) {
                     Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(EmberColors.ember)
-                        .background(
-                            Circle()
-                                .fill(EmberColors.dusk)
-                                .frame(width: 34, height: 34)
-                        )
-                        .shadow(color: EmberColors.ember.opacity(0.3), radius: 8)
+                        .font(.system(size: 30))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(EmberColors.ember, EmberColors.dusk)
+                        .shadow(color: EmberColors.ember.opacity(0.35), radius: 8)
                 }
-                .padding(.top, 8)
-                .padding(.trailing, 16)
+                .accessibilityLabel("Edit avatar")
+                .offset(x: 6, y: -2)
+            }
+            .frame(maxWidth: .infinity)
+            
+            HStack(spacing: 8) {
+                Text(avatarManager.displayName)
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream.opacity(0.9))
+                
+                if let boost = levelManager.boardMultiplierLabel {
+                    Text(boost)
+                        .font(.caption2.weight(.bold))
+                        .foregroundColor(EmberColors.ink)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(EmberColors.gold))
+                }
             }
             
-            Text("Your Ember")
-                .font(.headline)
-                .foregroundColor(EmberColors.cream.opacity(0.9))
-            
-            Text("Level \(calorieGoalManager.currentLevel)")
+            Text("Level \(levelManager.level)")
                 .font(.title)
                 .fontWeight(.bold)
                 .foregroundColor(EmberColors.cream)
             
             VStack(spacing: 8) {
                 HStack {
-                    Text("XP: \(calorieGoalManager.currentXP) / \(calorieGoalManager.xpForNextLevel())")
-                        .font(.caption)
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    if levelManager.level >= LevelManager.maxLevel {
+                        Text("XP: \(levelManager.totalXP) · Max level")
+                            .font(.caption)
+                            .foregroundColor(EmberColors.cream.opacity(0.7))
+                    } else {
+                        Text("XP: \(levelManager.xpIntoLevel) / \(levelManager.xpForNextLevel)")
+                            .font(.caption)
+                            .foregroundColor(EmberColors.cream.opacity(0.7))
+                    }
                     
                     Spacer()
+                    
+                    Text("Total \(levelManager.totalXP)")
+                        .font(.caption2)
+                        .foregroundColor(EmberColors.cream.opacity(0.45))
                 }
                 
                 GeometryReader { geometry in
@@ -122,7 +189,7 @@ struct HomeView: View {
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(width: geometry.size.width * calorieGoalManager.xpProgress(), height: 8)
+                            .frame(width: geometry.size.width * levelManager.progressFraction, height: 8)
                     }
                 }
                 .frame(height: 8)
@@ -130,7 +197,7 @@ struct HomeView: View {
             .padding(.horizontal, 32)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
+        .padding(.vertical, 20)
         .background(
             RoundedRectangle(cornerRadius: 20)
                 .fill(EmberColors.lightPlum)
@@ -169,7 +236,7 @@ struct HomeView: View {
                 Spacer()
             }
             
-            Text("remaining")
+            Text(calorieGoalManager.ignoreFoodFromRemaining ? "remaining (food ignored)" : "remaining")
                 .font(.subheadline)
                 .foregroundColor(EmberColors.cream.opacity(0.7))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -194,7 +261,7 @@ struct HomeView: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(Int(waterManager.totalOz)) fl oz")
+                    Text("\(Int(waterManager.totalOz)) / \(Int(waterManager.goalOz)) fl oz")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(EmberColors.cream)
@@ -203,17 +270,28 @@ struct HomeView: View {
                         .font(.caption)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
                 }
+                
+                Button(action: { showingWaterGoal = true }) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(EmberColors.ember)
+                }
+                .accessibilityLabel("Edit water goal")
+                .padding(.leading, 4)
             }
             
-            HStack(spacing: 8) {
-                ForEach(0..<8, id: \.self) { index in
+            let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: min(8, waterManager.glassesGoal))
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(0..<waterManager.glassesGoal, id: \.self) { index in
                     WaterGlassView(
                         isFilled: index < waterManager.glassesLogged,
                         onTap: {
                             if index < waterManager.glassesLogged {
                                 waterManager.removeGlass()
                             } else if index == waterManager.glassesLogged {
-                                waterManager.logGlass()
+                                if waterManager.logGlass() {
+                                    _ = levelManager.awardWaterServing()
+                                }
                             }
                         }
                     )
@@ -251,7 +329,7 @@ struct HomeView: View {
                 
                 SummaryItem(
                     icon: "fork.knife",
-                    label: "Eaten",
+                    label: calorieGoalManager.ignoreFoodFromRemaining ? "Eaten*" : "Eaten",
                     value: "-\(Int(foodDataManager.totalCaloriesConsumed))",
                     color: Color.blue
                 )
@@ -361,6 +439,7 @@ struct GoalSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @State private var goalInput: String = ""
+    @State private var ignoreFood: Bool = false
     
     var body: some View {
         NavigationView {
@@ -385,9 +464,29 @@ struct GoalSettingsView: View {
                                     .fill(EmberColors.lightPlum)
                             )
                     }
-                    .padding()
+                    .padding(.horizontal)
                     
-                    Text("This is your base calorie budget. Exercise adds to this amount, and food subtracts from it.")
+                    Toggle(isOn: $ignoreFood) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Ignore calories eaten")
+                                .font(.headline)
+                                .foregroundColor(EmberColors.cream)
+                            Text("Don’t subtract food from remaining. Food still logs in the diary.")
+                                .font(.caption)
+                                .foregroundColor(EmberColors.cream.opacity(0.65))
+                        }
+                    }
+                    .tint(EmberColors.ember)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(EmberColors.lightPlum)
+                    )
+                    .padding(.horizontal)
+                    
+                    Text(ignoreFood
+                         ? "Remaining = goal + exercise (food ignored)."
+                         : "Remaining = goal + exercise − food.")
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -395,7 +494,7 @@ struct GoalSettingsView: View {
                     
                     Spacer()
                 }
-                .padding()
+                .padding(.top, 12)
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -415,6 +514,7 @@ struct GoalSettingsView: View {
                         if let goal = Double(goalInput) {
                             calorieGoalManager.dailyCalorieGoal = goal
                         }
+                        calorieGoalManager.ignoreFoodFromRemaining = ignoreFood
                         isPresented = false
                     }
                     .foregroundColor(EmberColors.ember)
@@ -422,6 +522,83 @@ struct GoalSettingsView: View {
             }
             .onAppear {
                 goalInput = String(Int(calorieGoalManager.dailyCalorieGoal))
+                ignoreFood = calorieGoalManager.ignoreFoodFromRemaining
+            }
+        }
+    }
+}
+
+struct WaterGoalSettingsView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var waterManager: WaterManager
+    @State private var glassesInput: String = ""
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk.ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    VStack(spacing: 8) {
+                        Text("Daily Water Goal")
+                            .font(.headline)
+                            .foregroundColor(EmberColors.cream)
+                        
+                        TextField("Glasses", text: $glassesInput)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .foregroundColor(EmberColors.ember)
+                            .multilineTextAlignment(.center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(EmberColors.lightPlum)
+                            )
+                        
+                        Text("glasses · 8 fl oz each")
+                            .font(.subheadline)
+                            .foregroundColor(EmberColors.cream.opacity(0.7))
+                        
+                        if let n = Int(glassesInput), n > 0 {
+                            Text("≈ \(n * 8) fl oz / \(Int(Double(n * 8) * 29.5735)) mL")
+                                .font(.caption)
+                                .foregroundColor(EmberColors.cream.opacity(0.55))
+                        }
+                    }
+                    .padding()
+                    
+                    Text("Logging servings is unchanged — only your daily glass goal updates here.")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    Spacer()
+                }
+                .padding(.top, 12)
+            }
+            .navigationTitle("Water Goal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { isPresented = false }
+                        .foregroundColor(EmberColors.cream)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if let n = Int(glassesInput) {
+                            waterManager.glassesGoal = max(1, min(n, 20))
+                        }
+                        isPresented = false
+                    }
+                    .foregroundColor(EmberColors.ember)
+                }
+            }
+            .onAppear {
+                glassesInput = String(waterManager.glassesGoal)
             }
         }
     }

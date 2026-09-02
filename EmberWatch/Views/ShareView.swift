@@ -6,8 +6,16 @@ struct ShareView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var avatarManager: AvatarManager
+    @EnvironmentObject var levelManager: LevelManager
     
-    @State private var shareImage: UIImage?
+    @State private var challengeToast: String?
+    
+    private let challengeTargets: [(id: String, name: String)] = [
+        ("alex", "Alex Chen"),
+        ("sam", "Sam Rivera"),
+        ("taylor", "Taylor Kim"),
+        ("jordan", "Jordan Lee")
+    ]
     
     var body: some View {
         NavigationView {
@@ -16,26 +24,45 @@ struct ShareView: View {
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 20) {
                         shareCardPreview
                         
                         shareButton
+                        
+                        challengeSection
                     }
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                }
+                
+                if let challengeToast {
+                    VStack {
+                        Spacer()
+                        Text(challengeToast)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Capsule().fill(EmberColors.gold))
+                            .padding(.bottom, 24)
+                    }
+                    .transition(.opacity)
                 }
             }
             .navigationTitle("Share")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
         }
+        .navigationViewStyle(.stack)
     }
     
     private var shareCardPreview: some View {
         ShareCard(
-            level: calorieGoalManager.currentLevel,
-            xp: calorieGoalManager.currentXP,
+            level: levelManager.level,
+            xp: levelManager.totalXP,
             goal: Int(calorieGoalManager.dailyCalorieGoal),
             burned: Int(healthKitManager.totalCaloriesBurned),
             eaten: Int(foodDataManager.totalCaloriesConsumed),
@@ -63,6 +90,50 @@ struct ShareView: View {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(EmberColors.ember)
             )
+        }
+    }
+    
+    private var challengeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Challenge a Friend")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+            
+            Text("+\(LevelManager.challengeXP) XP · once per friend / day\(levelManager.boardMultiplierLabel.map { " · \($0)" } ?? "")")
+                .font(.caption)
+                .foregroundColor(EmberColors.cream.opacity(0.6))
+            
+            ForEach(challengeTargets, id: \.id) { friend in
+                let can = levelManager.canChallenge(friendId: friend.id)
+                Button {
+                    let gained = levelManager.awardChallenge(friendId: friend.id)
+                    withAnimation {
+                        challengeToast = gained > 0
+                            ? "Challenged \(friend.name)! +\(gained) XP"
+                            : "Already challenged \(friend.name) today"
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        withAnimation { challengeToast = nil }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "flag.fill")
+                            .foregroundColor(EmberColors.ember)
+                        Text(friend.name)
+                            .foregroundColor(EmberColors.cream)
+                        Spacer()
+                        Text(can ? "Challenge" : "Sent")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(can ? EmberColors.ink : EmberColors.cream.opacity(0.5))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(can ? EmberColors.ember : EmberColors.dusk))
+                    }
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 14).fill(EmberColors.lightPlum))
+                }
+                .disabled(!can)
+            }
         }
     }
     
@@ -159,7 +230,6 @@ struct ShareCard: View {
             RoundedRectangle(cornerRadius: 24)
                 .fill(EmberColors.lightPlum)
         )
-        .padding()
     }
 }
 

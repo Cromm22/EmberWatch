@@ -255,18 +255,43 @@ class AvatarManager: ObservableObject {
         }
     }
     
+    /// Custom companion name shown on Home (replaces "Your Ember" when set).
+    @Published var emberName: String {
+        didSet {
+            UserDefaults.standard.set(emberName, forKey: "emberName")
+        }
+    }
+    
+    @Published var hasCompletedOnboarding: Bool {
+        didSet {
+            UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
+        }
+    }
+    
     init() {
         let savedId = UserDefaults.standard.string(forKey: "selectedAvatarId") ?? "classic"
         // Migrate away from removed amber-ish ids
         let valid = Set(AvatarStyle.presets.map(\.id))
         self.selectedAvatarId = valid.contains(savedId) ? savedId : "classic"
+        self.emberName = UserDefaults.standard.string(forKey: "emberName") ?? ""
+        self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
     }
     
     var selectedStyle: AvatarStyle {
         AvatarStyle.presets.first { $0.id == selectedAvatarId } ?? AvatarStyle.presets[0]
     }
     
+    /// Display title for Home avatar card.
+    var displayName: String {
+        let trimmed = emberName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Your Ember" : trimmed
+    }
+    
     func selectAvatar(_ id: String) {
         selectedAvatarId = id
+    }
+    
+    func completeOnboarding() {
+        hasCompletedOnboarding = true
     }
 }

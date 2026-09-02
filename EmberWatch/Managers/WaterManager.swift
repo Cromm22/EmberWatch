@@ -9,7 +9,13 @@ class WaterManager: ObservableObject {
         }
     }
     
-    private let glassesPerDay = 8
+    /// Daily goal in glasses (each glass = 8 fl oz).
+    @Published var glassesGoal: Int {
+        didSet {
+            UserDefaults.standard.set(glassesGoal, forKey: "waterGlassesGoal")
+        }
+    }
+    
     private let ozPerGlass = 8.0
     private let mlPerOz = 29.5735
     
@@ -19,19 +25,22 @@ class WaterManager: ObservableObject {
         return formatter.string(from: Date())
     }
     
-    private var todayKey: String { Self.makeTodayKey() }
-    
     init() {
         let key = Self.makeTodayKey()
         self.glassesLogged = UserDefaults.standard.integer(forKey: "waterGlassesToday_\(key)")
+        let goal = UserDefaults.standard.integer(forKey: "waterGlassesGoal")
+        self.glassesGoal = goal == 0 ? 8 : max(1, min(goal, 20))
     }
     
-    func logGlass() {
-        if glassesLogged < glassesPerDay {
+    @discardableResult
+    func logGlass() -> Bool {
+        if glassesLogged < glassesGoal {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 glassesLogged += 1
             }
+            return true
         }
+        return false
     }
     
     func removeGlass() {
@@ -43,14 +52,19 @@ class WaterManager: ObservableObject {
     }
     
     var totalOz: Double {
-        return Double(glassesLogged) * ozPerGlass
+        Double(glassesLogged) * ozPerGlass
+    }
+    
+    var goalOz: Double {
+        Double(glassesGoal) * ozPerGlass
     }
     
     var totalMl: Int {
-        return Int(totalOz * mlPerOz)
+        Int(totalOz * mlPerOz)
     }
     
     var progress: Double {
-        return Double(glassesLogged) / Double(glassesPerDay)
+        guard glassesGoal > 0 else { return 0 }
+        return min(1.0, Double(glassesLogged) / Double(glassesGoal))
     }
 }

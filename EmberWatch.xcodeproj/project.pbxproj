@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */; };
+		D4E5F60718293A4B5C6D7E8F /* FoodSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */; };
+		B2C3D4E5F60718293A4B5C6D /* LevelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */; };
 		162E05446EEB40B484657D3E /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 241794DFC4C04FC2B1D379C7 /* ShareView.swift */; };
 		84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */; };
 		8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9F37E2885F4A5DA562B21E /* BoardView.swift */; };
@@ -32,6 +35,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
 		241794DFC4C04FC2B1D379C7 /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
 		8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServingSizePickerView.swift; sourceTree = "<group>"; };
 		BD9F37E2885F4A5DA562B21E /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
@@ -112,10 +118,12 @@
 				BD9F37E2885F4A5DA562B21E /* BoardView.swift */,
 				B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */,
 				3A0000060000000000000001 /* HomeView.swift */,
+				E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */,
 				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
 				2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */,
 				3A0000080000000000000001 /* HealthConnectView.swift */,
 				3A00002C0000000000000001 /* FoodDiaryView.swift */,
+				C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */,
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
 			);
 			path = Views;
@@ -146,6 +154,7 @@
 				3A0000280000000000000001 /* FoodDataManager.swift */,
 				3A00002A0000000000000001 /* CalorieGoalManager.swift */,
 				4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */,
+				A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -230,6 +239,7 @@
 				3A0000030000000000000001 /* ContentView.swift in Sources */,
 				3A0000010000000000000001 /* EmberWatchApp.swift in Sources */,
 				3A0000050000000000000001 /* HomeView.swift in Sources */,
+				F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */,
 				162E05446EEB40B484657D3E /* ShareView.swift in Sources */,
 				84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */,
 				8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */,
@@ -238,6 +248,7 @@
 				17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */,
 				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
 				9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6D /* LevelManager.swift in Sources */,
 				6D4F8A2C9E1B3D5A7C0E4F91 /* AvatarPickerView.swift in Sources */,
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,
 				3A0000090000000000000001 /* HealthKitManager.swift in Sources */,
@@ -246,6 +257,7 @@
 				3A0000270000000000000001 /* FoodDataManager.swift in Sources */,
 				3A0000290000000000000001 /* CalorieGoalManager.swift in Sources */,
 				3A00002B0000000000000001 /* FoodDiaryView.swift in Sources */,
+				D4E5F60718293A4B5C6D7E8F /* FoodSearchView.swift in Sources */,
 				3A00002D0000000000000001 /* WorkoutsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
