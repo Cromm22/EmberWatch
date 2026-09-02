@@ -567,7 +567,7 @@ struct WaterGoalSettingsView: View {
                     }
                     .padding()
                     
-                    Text("Logging servings is unchanged — only your daily glass goal updates here.")
+                    Text("Logged servings are unchanged, only daily glass goal is updated.")
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
                         .multilineTextAlignment(.center)
