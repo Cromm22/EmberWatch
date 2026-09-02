@@ -39,6 +39,20 @@ final class FeedbackManager: ObservableObject {
         return true
     }
     
+
+    func delete(_ entry: FeedbackEntry) {
+        entries.removeAll { $0.id == entry.id }
+        persist()
+    }
+    
+    func delete(at offsets: IndexSet) {
+        let toRemove = offsets.map { entries[$0] }
+        for entry in toRemove {
+            entries.removeAll { $0.id == entry.id }
+        }
+        persist()
+    }
+
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else {
             entries = []

@@ -13,16 +13,69 @@ struct FeedbackSheetView: View {
             ZStack {
                 EmberColors.dusk.ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                List {
+                    Section {
                         composerCard
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        
                         if showSuccess {
                             successBanner
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
                         }
-                        historySection
                     }
-                    .padding(16)
+                    
+                    Section {
+                        if feedbackManager.entries.isEmpty {
+                            Text("No feedback yet. Your notes will show up here.")
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream.opacity(0.55))
+                                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                        } else {
+                            ForEach(feedbackManager.entries) { entry in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(entry.text)
+                                        .font(.body)
+                                        .foregroundColor(EmberColors.cream)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundColor(EmberColors.cream.opacity(0.5))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(EmberColors.lightPlum)
+                                )
+                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        feedbackManager.delete(entry)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    .tint(Color(red: 0.86, green: 0.22, blue: 0.27))
+                                }
+                                .accessibilityHint("Swipe left to delete.")
+                            }
+                        }
+                    } header: {
+                        Text("Previously sent")
+                            .font(.headline)
+                            .foregroundColor(EmberColors.cream)
+                            .textCase(nil)
+                    }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Feedback")
             .navigationBarTitleDisplayMode(.inline)
@@ -40,7 +93,7 @@ struct FeedbackSheetView: View {
     
     private var composerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Tell us what’s working—or what’s not.")
+            Text("Tell us what's working, or what's not.")
                 .font(.subheadline)
                 .foregroundColor(EmberColors.cream.opacity(0.7))
             
@@ -104,39 +157,6 @@ struct FeedbackSheetView: View {
                 .fill(EmberColors.lightPlum)
         )
         .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-    
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Previously sent")
-                .font(.headline)
-                .foregroundColor(EmberColors.cream)
-            
-            if feedbackManager.entries.isEmpty {
-                Text("No feedback yet. Your notes will show up here.")
-                    .font(.subheadline)
-                    .foregroundColor(EmberColors.cream.opacity(0.55))
-                    .padding(.vertical, 8)
-            } else {
-                ForEach(feedbackManager.entries) { entry in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(entry.text)
-                            .font(.body)
-                            .foregroundColor(EmberColors.cream)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundColor(EmberColors.cream.opacity(0.5))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(EmberColors.lightPlum)
-                    )
-                }
-            }
-        }
     }
     
     private var canSend: Bool {

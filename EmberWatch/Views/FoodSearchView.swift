@@ -11,6 +11,7 @@ struct FoodSearchView: View {
     @State private var showingServingPicker = false
     @State private var debounceTask: Task<Void, Never>?
     @State private var hasSearched = false
+    @State private var lastSearchedQuery = ""
     
     var body: some View {
         NavigationView {
@@ -33,8 +34,12 @@ struct FoodSearchView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") { isPresented = false }
-                        .foregroundColor(EmberColors.cream)
+                    Button("Close") {
+                        debounceTask?.cancel()
+                        lookupService.cancelSearch()
+                        isPresented = false
+                    }
+                    .foregroundColor(EmberColors.cream)
                 }
             }
             .sheet(isPresented: $showingServingPicker) {
@@ -49,6 +54,10 @@ struct FoodSearchView: View {
                         }
                     )
                 }
+            }
+            .onDisappear {
+                debounceTask?.cancel()
+                lookupService.cancelSearch()
             }
         }
     }
@@ -70,9 +79,12 @@ struct FoodSearchView: View {
             
             if !query.isEmpty {
                 Button {
+                    debounceTask?.cancel()
+                    lookupService.cancelSearch()
                     query = ""
                     results = []
                     hasSearched = false
+                    lastSearchedQuery = ""
                     lookupService.errorMessage = nil
                 } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -93,12 +105,13 @@ struct FoodSearchView: View {
             VStack(spacing: 16) {
                 ProgressView()
                     .tint(EmberColors.ember)
+                    .scaleEffect(1.2)
                 Text("Searching…")
                     .foregroundColor(EmberColors.cream.opacity(0.7))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = lookupService.errorMessage, results.isEmpty, hasSearched {
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 Image(systemName: "exclamationmark.magnifyingglass")
                     .font(.system(size: 40))
                     .foregroundColor(EmberColors.cream.opacity(0.45))
@@ -107,6 +120,27 @@ struct FoodSearchView: View {
                     .foregroundColor(EmberColors.cream.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
+                
+                HStack(spacing: 12) {
+                    Button("Retry") {
+                        performSearchNow()
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundColor(EmberColors.cream)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(EmberColors.ember))
+                    
+                    Button("Dismiss") {
+                        lookupService.errorMessage = nil
+                        hasSearched = false
+                        results = []
+                    }
+                    .foregroundColor(EmberColors.cream.opacity(0.8))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Capsule().strokeBorder(EmberColors.cream.opacity(0.35)))
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if results.isEmpty {
@@ -142,6 +176,7 @@ struct FoodSearchView: View {
     
     private func debounceSearch(_ value: String) {
         debounceTask?.cancel()
+        lookupService.cancelSearch()
         debounceTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
@@ -151,7 +186,9 @@ struct FoodSearchView: View {
     
     private func performSearchNow() {
         debounceTask?.cancel()
-        Task { await runSearch(query) }
+        lookupService.cancelSearch()
+        let q = query.isEmpty ? lastSearchedQuery : query
+        Task { await runSearch(q) }
     }
     
     @MainActor
@@ -160,11 +197,19 @@ struct FoodSearchView: View {
         guard trimmed.count >= 2 else {
             results = []
             hasSearched = false
+            lastSearchedQuery = ""
             lookupService.errorMessage = nil
+            lookupService.isLoading = false
             return
         }
         hasSearched = true
-        results = await lookupService.searchFoods(query: trimmed)
+        lastSearchedQuery = trimmed
+        // Keep previous results until new ones arrive so we never flash a blank white screen.
+        let found = await lookupService.searchFoods(query: trimmed)
+        // Ignore stale completions after cancel / newer keystroke.
+        guard !Task.isCancelled else { return }
+        guard lastSearchedQuery == trimmed else { return }
+        results = found
     }
 }
 

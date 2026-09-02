@@ -8,9 +8,11 @@ struct HomeView: View {
     @EnvironmentObject var waterManager: WaterManager
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var weightManager: WeightManager
     @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
     @State private var showingWaterGoal = false
+    @State private var showingWeightSettings = false
     
     var remainingCalories: Double {
         calorieGoalManager.calculateRemainingCalories(
@@ -30,6 +32,8 @@ struct HomeView: View {
                         emberAvatarCard
                         
                         remainingCaloriesCard
+                        
+                        weightCard
                         
                         waterCard
                         
@@ -85,6 +89,10 @@ struct HomeView: View {
             .sheet(isPresented: $showingWaterGoal) {
                 WaterGoalSettingsView(isPresented: $showingWaterGoal)
                     .environmentObject(waterManager)
+            }
+            .sheet(isPresented: $showingWeightSettings) {
+                WeightSettingsView(isPresented: $showingWeightSettings)
+                    .environmentObject(weightManager)
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
@@ -240,6 +248,88 @@ struct HomeView: View {
                 .font(.subheadline)
                 .foregroundColor(EmberColors.cream.opacity(0.7))
                 .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+    
+
+    private var weightCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: "scalemass.fill")
+                    .foregroundColor(EmberColors.ember)
+                
+                Text("Weight")
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream)
+                
+                Spacer()
+                
+                Picker("Unit", selection: Binding(
+                    get: { weightManager.unit },
+                    set: { weightManager.unit = $0 }
+                )) {
+                    ForEach(WeightUnit.allCases) { u in
+                        Text(u.label.uppercased()).tag(u)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 100)
+                
+                Button(action: { showingWeightSettings = true }) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(EmberColors.ember)
+                }
+                .accessibilityLabel("Edit weight and goal")
+            }
+            
+            if let current = weightManager.displayedCurrent {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(WeightManager.format(current))
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(EmberColors.ember)
+                    Text(weightManager.unit.label)
+                        .font(.title3)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    Spacer()
+                }
+                
+                if let goal = weightManager.displayedGoal {
+                    HStack {
+                        Text("Goal \(WeightManager.format(goal)) \(weightManager.unit.label)")
+                            .font(.subheadline)
+                            .foregroundColor(EmberColors.cream.opacity(0.7))
+                        Spacer()
+                        if let caption = weightManager.deltaCaption {
+                            Text(caption)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(EmberColors.gold)
+                        }
+                    }
+                } else {
+                    Text("Set a goal to track progress")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream.opacity(0.55))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                Button(action: { showingWeightSettings = true }) {
+                    HStack {
+                        Text("Log your weight")
+                            .fontWeight(.semibold)
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    .foregroundColor(EmberColors.cream)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(EmberColors.ember.opacity(0.85)))
+                }
+            }
         }
         .padding()
         .background(
@@ -525,6 +615,174 @@ struct GoalSettingsView: View {
                 ignoreFood = calorieGoalManager.ignoreFoodFromRemaining
             }
         }
+    }
+}
+
+
+struct WeightSettingsView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var weightManager: WeightManager
+    @State private var currentInput: String = ""
+    @State private var goalInput: String = ""
+    @State private var unit: WeightUnit = .lb
+    /// Tracks unsaved field values in pounds so unit toggles convert correctly.
+    @State private var draftCurrentLb: Double?
+    @State private var draftGoalLb: Double?
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk.ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Picker("Unit", selection: $unit) {
+                            ForEach(WeightUnit.allCases) { u in
+                                Text(u.label.uppercased()).tag(u)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal)
+                        .onChange(of: unit) { oldUnit, newUnit in
+                            syncDraftFromInputs(using: oldUnit)
+                            refreshInputs(from: newUnit)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            Text("Current weight")
+                                .font(.headline)
+                                .foregroundColor(EmberColors.cream)
+                            TextField("e.g. 180", text: $currentInput)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundColor(EmberColors.ember)
+                                .multilineTextAlignment(.center)
+                                .padding()
+                                .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
+                            Text(unit.label)
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream.opacity(0.7))
+                        }
+                        .padding(.horizontal)
+                        
+                        VStack(spacing: 8) {
+                            Text("Goal weight")
+                                .font(.headline)
+                                .foregroundColor(EmberColors.cream)
+                            TextField("Optional", text: $goalInput)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundColor(EmberColors.ember)
+                                .multilineTextAlignment(.center)
+                                .padding()
+                                .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
+                            Text(unit.label)
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream.opacity(0.7))
+                        }
+                        .padding(.horizontal)
+                        
+                        if !weightManager.history.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Recent weigh-ins")
+                                    .font(.headline)
+                                    .foregroundColor(EmberColors.cream)
+                                ForEach(weightManager.history.prefix(5)) { entry in
+                                    HStack {
+                                        Text(entry.date.formatted(date: .abbreviated, time: .omitted))
+                                            .foregroundColor(EmberColors.cream.opacity(0.65))
+                                        Spacer()
+                                        Text("\(WeightManager.format(unit.fromPounds(entry.weightLb))) \(unit.label)")
+                                            .foregroundColor(EmberColors.cream)
+                                            .fontWeight(.semibold)
+                                    }
+                                    .padding(.vertical, 6)
+                                }
+                            }
+                            .padding()
+                            .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
+                            .padding(.horizontal)
+                        }
+                        
+                        Text("Switching lb / kg converts displayed values. Saving current weight adds a weigh-in.")
+                            .font(.caption)
+                            .foregroundColor(EmberColors.cream.opacity(0.55))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle("Weight")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { isPresented = false }
+                        .foregroundColor(EmberColors.cream)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") { save() }
+                        .foregroundColor(EmberColors.ember)
+                }
+            }
+            .onAppear {
+                unit = weightManager.unit
+                draftCurrentLb = weightManager.currentWeightLb
+                draftGoalLb = weightManager.goalWeightLb
+                refreshInputs(from: unit)
+            }
+        }
+    }
+    
+    private func parse(_ raw: String) -> Double? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(trimmed), value > 0 else { return nil }
+        return value
+    }
+    
+    private func syncDraftFromInputs(using inputUnit: WeightUnit) {
+        if let c = parse(currentInput) {
+            draftCurrentLb = inputUnit.toPounds(c)
+        }
+        let goalTrimmed = goalInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if goalTrimmed.isEmpty {
+            draftGoalLb = nil
+        } else if let g = parse(goalTrimmed) {
+            draftGoalLb = inputUnit.toPounds(g)
+        }
+    }
+    
+    private func refreshInputs(from displayUnit: WeightUnit) {
+        if let lb = draftCurrentLb {
+            currentInput = WeightManager.format(displayUnit.fromPounds(lb))
+        }
+        if let lb = draftGoalLb {
+            goalInput = WeightManager.format(displayUnit.fromPounds(lb))
+        } else {
+            // Keep empty if cleared
+            if goalInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                goalInput = ""
+            }
+        }
+    }
+    
+    private func save() {
+        syncDraftFromInputs(using: unit)
+        weightManager.unit = unit
+        if let lb = draftCurrentLb {
+            weightManager.logCurrentWeight(unit.fromPounds(lb))
+        }
+        if let lb = draftGoalLb {
+            weightManager.setGoalWeight(unit.fromPounds(lb))
+        } else {
+            weightManager.clearGoal()
+        }
+        isPresented = false
     }
 }
 

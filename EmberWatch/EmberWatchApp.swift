@@ -10,6 +10,7 @@ struct EmberWatchApp: App {
     @StateObject private var avatarManager = AvatarManager()
     @StateObject private var levelManager = LevelManager()
     @StateObject private var feedbackManager = FeedbackManager()
+    @StateObject private var weightManager = WeightManager()
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -56,6 +57,7 @@ struct EmberWatchApp: App {
                 .environmentObject(avatarManager)
                 .environmentObject(levelManager)
                 .environmentObject(feedbackManager)
+                .environmentObject(weightManager)
                 .modelContainer(sharedModelContainer)
                 .onAppear {
                     foodDataManager.setModelContext(sharedModelContainer.mainContext)
