@@ -187,6 +187,59 @@ class FoodLookupService: ObservableObject {
         }
     }
     
+    /// Returns true if the product has incomplete nutrition data and should be enriched.
+    func needsDetailEnrichment(_ product: FoodProduct) -> Bool {
+        return !product.hasValidMacros
+    }
+    
+    /// Enriches a product by fetching detailed nutrition data from USDA or OFF.
+    /// Returns the enriched product on success, or nil on failure.
+    func enrichFoodDetail(_ product: FoodProduct) async -> FoodProduct? {
+        errorMessage = nil
+        
+        let task = Task.detached(priority: .userInitiated) { () -> Result<FoodProduct?, Error> in
+            do {
+                try Task.checkCancellation()
+                
+                if product.barcode.starts(with: "usda-"),
+                   let fdcIdStr = product.barcode.split(separator: "-").last,
+                   let fdcId = Int(fdcIdStr) {
+                    if let enriched = try await Self.fetchUSDAFood(fdcId: fdcId) {
+                        return .success(enriched)
+                    }
+                }
+                
+                if !product.barcode.starts(with: "usda-"), !product.barcode.starts(with: "off-") {
+                    if let enriched = try await Self.lookupOpenFoodFacts(barcode: product.barcode) {
+                        return .success(enriched)
+                    }
+                    if let enriched = try await Self.lookupUSDA(barcode: product.barcode) {
+                        return .success(enriched)
+                    }
+                }
+                
+                return .success(nil)
+            } catch is CancellationError {
+                return .failure(CancellationError())
+            } catch {
+                return .failure(error)
+            }
+        }
+        
+        let outcome = await task.value
+        
+        switch outcome {
+        case .success(let enriched):
+            return enriched
+        case .failure(let error):
+            if error is CancellationError {
+                return nil
+            }
+            errorMessage = "Could not load details. Check your connection."
+            return nil
+        }
+    }
+    
     // MARK: - Network (nonisolated / off main)
     
     nonisolated private static func lookupOpenFoodFacts(barcode: String) async throws -> FoodProduct? {
@@ -218,6 +271,18 @@ class FoodLookupService: ObservableObject {
         let response = try JSONDecoder().decode(USDAResponse.self, from: data)
         guard let food = response.foods.first else { return nil }
         return makeUSDAProduct(food)
+    }
+    
+    nonisolated private static func fetchUSDAFood(fdcId: Int) async throws -> FoodProduct? {
+        let apiKey = "DEMO_KEY"
+        guard let url = URL(string: "https://api.nal.usda.gov/fdc/v1/food/\(fdcId)?api_key=\(apiKey)") else {
+            return nil
+        }
+        
+        let (data, _) = try await session.data(from: url)
+        try Task.checkCancellation()
+        let detail = try JSONDecoder().decode(USDAFoodDetail.self, from: data)
+        return makeUSDADetailProduct(detail)
     }
     
     nonisolated private static func searchOpenFoodFacts(query: String) async throws -> [FoodProduct] {
@@ -297,6 +362,26 @@ class FoodLookupService: ObservableObject {
         return FoodProduct(
             barcode: "usda-\(food.fdcId ?? 0)",
             name: food.description,
+            servingSize: "\(Int(servingSize))g",
+            caloriesPer100g: calories,
+            proteinPer100g: protein,
+            carbsPer100g: carbs,
+            fatPer100g: fat,
+            servingSizeGrams: servingSize
+        )
+    }
+    
+    nonisolated private static func makeUSDADetailProduct(_ detail: USDAFoodDetail) -> FoodProduct? {
+        let nutrients = detail.foodNutrients
+        let calories = nutrients.first(where: { $0.nutrient?.id == 1008 })?.amount ?? 0
+        let protein = nutrients.first(where: { $0.nutrient?.id == 1003 })?.amount ?? 0
+        let carbs = nutrients.first(where: { $0.nutrient?.id == 1005 })?.amount ?? 0
+        let fat = nutrients.first(where: { $0.nutrient?.id == 1004 })?.amount ?? 0
+        guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
+        let servingSize = detail.servingSize ?? 100
+        return FoodProduct(
+            barcode: "usda-\(detail.fdcId)",
+            name: detail.description,
             servingSize: "\(Int(servingSize))g",
             caloriesPer100g: calories,
             proteinPer100g: protein,
@@ -390,10 +475,23 @@ struct USDANutrient: Codable, Sendable {
     let nutrientId: Int?
     let nutrientNumber: String?
     let value: Double?
+    let amount: Double?
+    let nutrient: USDANutrientInfo?
     
     var resolvedId: Int? {
         if let nutrientId { return nutrientId }
         if let nutrientNumber, let n = Int(nutrientNumber) { return n }
         return nil
     }
+}
+
+struct USDANutrientInfo: Codable, Sendable {
+    let id: Int?
+}
+
+struct USDAFoodDetail: Codable, Sendable {
+    let fdcId: Int
+    let description: String
+    let servingSize: Double?
+    let foodNutrients: [USDANutrient]
 }
