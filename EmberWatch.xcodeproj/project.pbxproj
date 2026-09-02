@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		S1P2A3R4K5S6M7A8N9A0B1 /* SparksManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */; };
 		F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */; };
 		D4E5F60718293A4B5C6D7E8F /* FoodSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */; };
 		B2C3D4E5F60718293A4B5C6D /* LevelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */; };
@@ -38,6 +39,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksManager.swift; sourceTree = "<group>"; };
 		E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				3A00002A0000000000000001 /* CalorieGoalManager.swift */,
 				4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */,
 				A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */,
+				S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */,
 				F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */,
 				B1C2D3E4F5061728394A5B6C /* WeightManager.swift */,
 			);
@@ -258,6 +261,7 @@
 				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
 				9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */,
 				B2C3D4E5F60718293A4B5C6D /* LevelManager.swift in Sources */,
+				S1P2A3R4K5S6M7A8N9A0B1 /* SparksManager.swift in Sources */,
 				E0F1A2B3C4D5E60718293A4B /* FeedbackManager.swift in Sources */,
 				A0B1C2D3E4F5061728394A5B /* WeightManager.swift in Sources */,
 				C8D9E0F1A2B3C4D5E6071829 /* FeedbackSheetView.swift in Sources */,

@@ -8,6 +8,7 @@ struct ContentView: View {
     @EnvironmentObject var waterManager: WaterManager
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var feedbackManager: FeedbackManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
@@ -27,10 +28,12 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, avatarManager.hasCompletedOnboarding else { return }
             _ = levelManager.checkDailyOpenReward()
+            _ = sparksManager.earnDailyLogin()
         }
         .onAppear {
             guard avatarManager.hasCompletedOnboarding else { return }
             _ = levelManager.checkDailyOpenReward()
+            _ = sparksManager.earnDailyLogin()
         }
     }
     
@@ -50,6 +53,7 @@ struct ContentView: View {
                     .environmentObject(waterManager)
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
+                    .environmentObject(sparksManager)
                 
                 FoodDiaryView()
                     .tabItem {
@@ -74,6 +78,7 @@ struct ContentView: View {
                     }
                     .tag(3)
                     .environmentObject(levelManager)
+                    .environmentObject(sparksManager)
                 
                 ShareView()
                     .tabItem {

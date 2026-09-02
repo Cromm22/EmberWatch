@@ -10,6 +10,7 @@ struct BoardEntry: Identifiable {
 
 struct BoardView: View {
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var sparksManager: SparksManager
     
     private var mockFriends: [BoardEntry] {
         [
@@ -69,16 +70,21 @@ struct BoardView: View {
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
-                levelManager.updateBoardRank(userRank)
+                syncBoardRankAndSparks()
             }
             .onChange(of: levelManager.level) { _, _ in
-                levelManager.updateBoardRank(userRank)
+                syncBoardRankAndSparks()
             }
             .onChange(of: levelManager.totalXP) { _, _ in
-                levelManager.updateBoardRank(userRank)
+                syncBoardRankAndSparks()
             }
         }
         .navigationViewStyle(.stack)
+    }
+    
+    private func syncBoardRankAndSparks() {
+        levelManager.updateBoardRank(userRank)
+        _ = sparksManager.earnBoardFirstIfEligible(rank: userRank)
     }
     
     private var weeklyBoardCard: some View {
@@ -98,7 +104,10 @@ struct BoardView: View {
                     isCurrentUser: entry.isCurrentUser,
                     canChallenge: !entry.isCurrentUser && levelManager.canChallenge(friendId: entry.id),
                     onChallenge: {
-                        _ = levelManager.awardChallenge(friendId: entry.id)
+                        let xp = levelManager.awardChallenge(friendId: entry.id)
+                        if xp > 0 {
+                            _ = sparksManager.earnChallenge(friendId: entry.id)
+                        }
                     }
                 )
                 

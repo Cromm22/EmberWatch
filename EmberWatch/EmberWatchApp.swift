@@ -8,9 +8,18 @@ struct EmberWatchApp: App {
     @StateObject private var calorieGoalManager = CalorieGoalManager()
     @StateObject private var waterManager = WaterManager()
     @StateObject private var avatarManager = AvatarManager()
-    @StateObject private var levelManager = LevelManager()
+    @StateObject private var levelManager: LevelManager
+    @StateObject private var sparksManager: SparksManager
     @StateObject private var feedbackManager = FeedbackManager()
     @StateObject private var weightManager = WeightManager()
+    
+    init() {
+        let sparks = SparksManager()
+        let levels = LevelManager()
+        levels.sparksManager = sparks
+        _sparksManager = StateObject(wrappedValue: sparks)
+        _levelManager = StateObject(wrappedValue: levels)
+    }
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -56,11 +65,14 @@ struct EmberWatchApp: App {
                 .environmentObject(waterManager)
                 .environmentObject(avatarManager)
                 .environmentObject(levelManager)
+                .environmentObject(sparksManager)
                 .environmentObject(feedbackManager)
                 .environmentObject(weightManager)
                 .modelContainer(sharedModelContainer)
                 .onAppear {
                     foodDataManager.setModelContext(sharedModelContainer.mainContext)
+                    // Keep Sparks ↔ Level link in case it was cleared.
+                    levelManager.sparksManager = sparksManager
                 }
         }
     }

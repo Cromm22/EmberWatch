@@ -8,6 +8,7 @@ struct HomeView: View {
     @EnvironmentObject var waterManager: WaterManager
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var weightManager: WeightManager
     @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
@@ -48,7 +49,8 @@ struct HomeView: View {
                 
                 if let banner = levelManager.streakBanner
                     ?? levelManager.weightLossBanner
-                    ?? levelManager.levelUpBanner {
+                    ?? levelManager.levelUpBanner
+                    ?? sparksManager.toast {
                     VStack {
                         Text(banner)
                             .font(.headline)
@@ -59,7 +61,9 @@ struct HomeView: View {
                                 Capsule()
                                     .fill(
                                         LinearGradient(
-                                            colors: [EmberColors.gold, EmberColors.ember],
+                                            colors: banner.contains("Sparks")
+                                                ? [EmberColors.ember, EmberColors.emberAccent]
+                                                : [EmberColors.gold, EmberColors.ember],
                                             startPoint: .leading,
                                             endPoint: .trailing
                                         )
@@ -76,6 +80,7 @@ struct HomeView: View {
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.streakBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.weightLossBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.levelUpBanner)
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sparksManager.toast)
             .navigationTitle("Ember")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -89,6 +94,7 @@ struct HomeView: View {
                 AvatarPickerView()
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
+                    .environmentObject(sparksManager)
             }
             .sheet(isPresented: $showingWaterGoal) {
                 WaterGoalSettingsView(isPresented: $showingWaterGoal)
@@ -104,6 +110,7 @@ struct HomeView: View {
                 foodDataManager.fetchTodayEntries()
                 syncXPFromHealth()
                 _ = levelManager.checkDailyOpenReward()
+                _ = sparksManager.earnDailyLogin()
             }
             .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
                 syncXPFromHealth()
@@ -131,7 +138,8 @@ struct HomeView: View {
                 EmberFlameAvatar(
                     level: levelManager.level,
                     size: 220,
-                    style: avatarManager.selectedStyle
+                    style: avatarManager.selectedStyle,
+                    extraGlow: sparksManager.hasGlow
                 )
                 .frame(width: 220, height: 250)
                 .onTapGesture {
@@ -153,7 +161,7 @@ struct HomeView: View {
             HStack(spacing: 8) {
                 Text(avatarManager.displayName)
                     .font(.headline)
-                    .foregroundColor(EmberColors.cream.opacity(0.9))
+                    .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
                 
                 if levelManager.streakCount > 0 {
                     Text("🔥 \(levelManager.streakCount)d")
@@ -164,6 +172,19 @@ struct HomeView: View {
                         .background(Capsule().fill(EmberColors.ember))
                         .accessibilityLabel("Day \(levelManager.streakCount) open streak")
                 }
+                
+                // Sparks balance chip (ember orange)
+                HStack(spacing: 3) {
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 9, weight: .bold))
+                    Text("\(sparksManager.balance)")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundColor(EmberColors.ink)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(EmberColors.ember))
+                .accessibilityLabel("\(sparksManager.balance) Sparks")
                 
                 if let boost = levelManager.boardMultiplierLabel {
                     Text(boost)

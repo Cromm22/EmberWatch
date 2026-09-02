@@ -61,6 +61,9 @@ final class LevelManager: ObservableObject {
     
     @Published var levelUpBanner: String? = nil
     
+    /// Optional Sparks hook (set from EmberWatchApp). Flat Sparks — no board XP multiplier.
+    weak var sparksManager: SparksManager?
+    
     /// Consecutive local-calendar-day opens that earned a reward.
     @Published private(set) var streakCount: Int {
         didSet { UserDefaults.standard.set(streakCount, forKey: Keys.streakCount) }
@@ -337,8 +340,14 @@ final class LevelManager: ObservableObject {
         recomputeLevel(from: totalXP, announce: true)
         
         if level > previousLevel {
+            let levelsGained = level - previousLevel
+            let sparks = sparksManager?.earnLevelUp(levelsGained: levelsGained) ?? 0
             UINotificationFeedbackGenerator().notificationOccurred(.success)
-            levelUpBanner = "Level up! → \(level)"
+            if sparks > 0 {
+                levelUpBanner = "Level up! → \(level)  ·  +\(sparks) Sparks"
+            } else {
+                levelUpBanner = "Level up! → \(level)"
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) { [weak self] in
                 if self?.levelUpBanner?.contains("\(self?.level ?? 0)") == true {
                     self?.levelUpBanner = nil

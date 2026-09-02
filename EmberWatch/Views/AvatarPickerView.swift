@@ -4,6 +4,7 @@ struct AvatarPickerView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var sparksManager: SparksManager
     
     let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -20,33 +21,91 @@ struct AvatarPickerView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
+                        // Balance chip
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkle")
+                                .foregroundColor(EmberColors.ember)
+                            Text("\(sparksManager.balance) Sparks")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(EmberColors.cream)
+                            Spacer()
+                            Text("Cosmetics only")
+                                .font(.caption2)
+                                .foregroundColor(EmberColors.cream.opacity(0.45))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(EmberColors.lightPlum)
+                        )
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                        
                         Text("Choose your Ember companion")
                             .font(.headline)
                             .foregroundColor(EmberColors.cream.opacity(0.9))
-                            .padding(.top, 8)
                         
                         LazyVGrid(columns: columns, spacing: 16) {
                             ForEach(AvatarStyle.presets) { style in
+                                let unlocked = sparksManager.isAvatarUnlocked(style.id)
                                 AvatarThumbnail(
                                     style: style,
                                     isSelected: avatarManager.selectedAvatarId == style.id,
-                                    level: levelManager.level
+                                    level: levelManager.level,
+                                    isLocked: !unlocked,
+                                    price: SparksManager.avatarUnlockPrice
                                 ) {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        avatarManager.selectAvatar(style.id)
-                                    }
-                                    
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                        dismiss()
+                                    if unlocked {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            avatarManager.selectAvatar(style.id)
+                                        }
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                            dismiss()
+                                        }
+                                    } else {
+                                        if sparksManager.unlockAvatar(style.id) {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                avatarManager.selectAvatar(style.id)
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, 24)
+                        
+                        cosmeticsSection
+                            .padding(.horizontal)
+                            .padding(.bottom, 24)
                     }
                 }
+                
+                if let toast = sparksManager.toast {
+                    VStack {
+                        Text(toast)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [EmberColors.ember, EmberColors.emberAccent],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                            .padding(.top, 12)
+                        Spacer()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(30)
+                }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sparksManager.toast)
             .navigationTitle("Avatar Gallery")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -62,12 +121,96 @@ struct AvatarPickerView: View {
             }
         }
     }
+    
+    private var cosmeticsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Cosmetic unlocks")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+            
+            Text("Status flair only — never gates tracking.")
+                .font(.caption)
+                .foregroundColor(EmberColors.cream.opacity(0.55))
+            
+            ForEach(SparksManager.cosmetics) { item in
+                let unlocked = sparksManager.isCosmeticUnlocked(item.id)
+                HStack(spacing: 12) {
+                    Image(systemName: item.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(EmberColors.ember)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(EmberColors.dusk))
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(EmberColors.cream)
+                        Text(item.detail)
+                            .font(.caption)
+                            .foregroundColor(EmberColors.cream.opacity(0.55))
+                    }
+                    
+                    Spacer()
+                    
+                    if unlocked {
+                        if item.id == "glow" {
+                            Button(sparksManager.glowEnabled ? "On" : "Off") {
+                                sparksManager.toggleGlow()
+                            }
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(sparksManager.glowEnabled ? EmberColors.ember : EmberColors.muted))
+                        } else if item.id.hasPrefix("nameplate_") {
+                            let active = sparksManager.activeNameplateId == item.id
+                            Button(active ? "Active" : "Use") {
+                                sparksManager.selectNameplate(active ? nil : item.id)
+                            }
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(active ? EmberColors.gold : EmberColors.ember))
+                        } else {
+                            Text("Owned")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(EmberColors.cream.opacity(0.55))
+                        }
+                    } else {
+                        Button {
+                            _ = sparksManager.unlockCosmetic(item.id)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "sparkle")
+                                    .font(.system(size: 9, weight: .bold))
+                                Text("\(item.price)")
+                                    .font(.caption.weight(.bold))
+                            }
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(EmberColors.ember))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(EmberColors.lightPlum)
+                )
+            }
+        }
+    }
 }
 
 struct AvatarThumbnail: View {
     let style: AvatarStyle
     let isSelected: Bool
     let level: Int
+    var isLocked: Bool = false
+    var price: Int = 100
     let onTap: () -> Void
     
     @State private var isPressed = false
@@ -81,7 +224,7 @@ struct AvatarThumbnail: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(
-                                    isSelected ? 
+                                    isSelected ?
                                         LinearGradient(
                                             colors: [
                                                 Color(hex: style.auraColor),
@@ -105,8 +248,28 @@ struct AvatarThumbnail: View {
                     
                     EmberFlameAvatar(level: level, size: 68, style: style)
                         .scaleEffect(isPressed ? 0.92 : 1.0)
+                        .opacity(isLocked ? 0.45 : 1.0)
                     
-                    if isSelected {
+                    if isLocked {
+                        VStack {
+                            Spacer()
+                            HStack(spacing: 3) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                Image(systemName: "sparkle")
+                                    .font(.system(size: 8, weight: .bold))
+                                Text("\(price)")
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(EmberColors.ember))
+                            .padding(.bottom, 6)
+                        }
+                    }
+                    
+                    if isSelected && !isLocked {
                         VStack {
                             HStack {
                                 Spacer()
@@ -151,4 +314,5 @@ struct AvatarThumbnail: View {
     AvatarPickerView()
         .environmentObject(AvatarManager())
         .environmentObject(LevelManager())
+        .environmentObject(SparksManager())
 }

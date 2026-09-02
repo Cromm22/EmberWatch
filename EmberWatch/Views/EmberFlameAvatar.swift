@@ -5,6 +5,8 @@ struct EmberFlameAvatar: View {
     var level: Int = 1
     var size: CGFloat = 220
     var style: AvatarStyle = AvatarStyle.presets[0]
+    /// Cosmetic "Ember Glow" unlock — stronger aura bloom (status only).
+    var extraGlow: Bool = false
     
     @State private var pulse = false
     @State private var sparkle = false
@@ -18,20 +20,39 @@ struct EmberFlameAvatar: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color(hex: style.auraColor).opacity(0.55),
-                            Color(hex: style.auraColor).opacity(0.15),
+                            Color(hex: style.auraColor).opacity(extraGlow ? 0.85 : 0.55),
+                            Color(hex: style.auraColor).opacity(extraGlow ? 0.35 : 0.15),
                             Color.clear
                         ],
                         center: .center,
                         startRadius: 10,
-                        endRadius: size * 0.55
+                        endRadius: size * (extraGlow ? 0.72 : 0.55)
                     )
                 )
-                .frame(width: size * 0.9, height: size * 0.45)
+                .frame(width: size * (extraGlow ? 1.15 : 0.9), height: size * (extraGlow ? 0.6 : 0.45))
                 .offset(y: size * 0.28)
-                .blur(radius: 18)
+                .blur(radius: extraGlow ? 28 : 18)
                 .scaleEffect(pulse ? 1.08 : 0.92)
                 .opacity(pulse ? 0.9 : 0.65)
+            
+            if extraGlow {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                EmberColors.ember.opacity(0.7),
+                                EmberColors.gold.opacity(0.35),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 3
+                    )
+                    .frame(width: size * 0.95, height: size * 1.05)
+                    .blur(radius: 4)
+                    .opacity(pulse ? 0.85 : 0.55)
+            }
             
             FlameSVG(blaze: blaze, style: style)
                 .frame(width: size, height: size * 1.15)
