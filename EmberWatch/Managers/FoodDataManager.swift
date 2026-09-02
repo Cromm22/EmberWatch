@@ -124,5 +124,74 @@ class FoodDataManager: ObservableObject {
     func entries(forMealType meal: MealType) -> [FoodEntry] {
         todayFoodEntries.filter { $0.resolvedMealType == meal.rawValue }
     }
+    
+    /// Copies yesterday's entries for `meal` onto today (new IDs, today's calendar date).
+    /// Allows re-copy (adds another set of entries). Returns number of entries copied.
+    @discardableResult
+    func copyYesterdayMeal(toToday meal: MealType) -> Int {
+        guard let modelContext else { return 0 }
+        
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+        guard let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday),
+              let endOfYesterday = calendar.date(byAdding: .day, value: 1, to: startOfYesterday) else {
+            return 0
+        }
+        
+        let predicate = #Predicate<FoodEntry> { entry in
+            entry.timestamp >= startOfYesterday && entry.timestamp < endOfYesterday
+        }
+        
+        let descriptor = FetchDescriptor<FoodEntry>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.timestamp, order: .forward)]
+        )
+        
+        do {
+            let yesterdayEntries = try modelContext.fetch(descriptor)
+            let mealRaw = meal.rawValue
+            let toCopy = yesterdayEntries.filter { $0.resolvedMealType == mealRaw }
+            guard !toCopy.isEmpty else { return 0 }
+            
+            let now = Date()
+            for (index, source) in toCopy.enumerated() {
+                // Preserve time-of-day on today's date
+                let comps = calendar.dateComponents([.hour, .minute, .second], from: source.timestamp)
+                var timestamp = calendar.date(
+                    bySettingHour: comps.hour ?? 12,
+                    minute: comps.minute ?? 0,
+                    second: comps.second ?? 0,
+                    of: now
+                ) ?? now
+                if index > 0 {
+                    timestamp = timestamp.addingTimeInterval(TimeInterval(index) * 0.001)
+                }
+                
+                let copy = FoodEntry(
+                    name: source.name,
+                    calories: source.calories,
+                    protein: source.protein,
+                    carbs: source.carbs,
+                    fat: source.fat,
+                    timestamp: timestamp,
+                    mealType: mealRaw,
+                    servings: source.servings,
+                    caloriesPerServing: source.effectiveCaloriesPerServing,
+                    proteinPerServing: source.effectiveProteinPerServing,
+                    carbsPerServing: source.effectiveCarbsPerServing,
+                    fatPerServing: source.effectiveFatPerServing
+                )
+                modelContext.insert(copy)
+            }
+            
+            try? modelContext.save()
+            fetchTodayEntries()
+            fetchRecentEntries()
+            return toCopy.count
+        } catch {
+            print("Failed to copy yesterday meal: \(error)")
+            return 0
+        }
+    }
 }
 

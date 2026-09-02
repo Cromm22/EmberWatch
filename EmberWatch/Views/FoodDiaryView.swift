@@ -11,6 +11,7 @@ struct FoodDiaryView: View {
     @State private var showingServingPicker = false
     @State private var showingFoodSearch = false
     @State private var entryToEdit: FoodEntry?
+    @State private var copyToastMessage: String?
     
     var remainingCalories: Double {
         calorieGoalManager.calculateRemainingCalories(
@@ -125,6 +126,27 @@ struct FoodDiaryView: View {
             .onChange(of: scannedProduct) { newValue in
                 if newValue != nil {
                     showingServingPicker = true
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if let copyToastMessage {
+                    Text(copyToastMessage)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(EmberColors.cream)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(EmberColors.dusk2.opacity(0.95))
+                                .overlay(
+                                    Capsule()
+                                        .strokeBorder(EmberColors.ember.opacity(0.45), lineWidth: 1)
+                                )
+                        )
+                        .padding(.bottom, 24)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .allowsHitTesting(false)
                 }
             }
         }
@@ -274,6 +296,43 @@ struct FoodDiaryView: View {
                     Text("\(Int(items.reduce(0) { $0 + $1.calories })) cal")
                         .font(.caption)
                         .foregroundColor(EmberColors.cream.opacity(0.55))
+                }
+                if meal != .snack {
+                    Button {
+                        copyMealFromYesterday(meal)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.caption2)
+                            Text("Copy")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(EmberColors.ember)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(EmberColors.dusk)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Copy yesterday's \(meal.rawValue)")
+                }
+            }
+        }
+    }
+    
+    private func copyMealFromYesterday(_ meal: MealType) {
+        let count = foodDataManager.copyYesterdayMeal(toToday: meal)
+        let message = count == 0 ? "Nothing to copy" : "Copied \(count) item\(count == 1 ? "" : "s")"
+        withAnimation(.easeInOut(duration: 0.2)) {
+            copyToastMessage = message
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                if copyToastMessage == message {
+                    copyToastMessage = nil
                 }
             }
         }
