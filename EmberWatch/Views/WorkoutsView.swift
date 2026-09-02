@@ -1,10 +1,54 @@
 import SwiftUI
 import HealthKit
 
+enum WorkoutFlamePhase {
+    case idle
+    case growing
+    case glowing
+    case blazing
+    
+    init(calories: Double) {
+        switch calories {
+        case ..<800:
+            self = .idle
+        case 800..<1200:
+            self = .growing
+        case 1200..<2000:
+            self = .glowing
+        default:
+            self = .blazing
+        }
+    }
+    
+    var scale: CGFloat {
+        switch self {
+        case .idle: return 1.0
+        case .growing: return 1.2
+        case .glowing: return 1.5
+        case .blazing: return 2.0
+        }
+    }
+    
+    var showsGlow: Bool {
+        switch self {
+        case .idle, .growing: return false
+        case .glowing, .blazing: return true
+        }
+    }
+    
+    var pulses: Bool {
+        self == .blazing
+    }
+}
+
 struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @State private var showingQuickAdd = false
-    @State private var showingManualAdd = false
+    @State private var flamePulse = false
+    
+    private var flamePhase: WorkoutFlamePhase {
+        WorkoutFlamePhase(calories: healthKitManager.totalCaloriesBurned)
+    }
     
     var body: some View {
         NavigationView {
@@ -32,27 +76,31 @@ struct WorkoutsView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingManualAdd = true }) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(EmberColors.ember)
-                    }
-                }
-            }
             .sheet(isPresented: $showingQuickAdd) {
                 QuickAddWorkoutView(isPresented: $showingQuickAdd)
                     .environmentObject(healthKitManager)
             }
-            .sheet(isPresented: $showingManualAdd) {
-                ManualWorkoutView(isPresented: $showingManualAdd)
-                    .environmentObject(healthKitManager)
-            }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
+                updateFlamePulse()
+            }
+            .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
+                updateFlamePulse()
             }
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
+            }
+        }
+    }
+    
+    private func updateFlamePulse() {
+        if flamePhase.pulses {
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                flamePulse = true
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                flamePulse = false
             }
         }
     }
@@ -89,6 +137,21 @@ struct WorkoutsView: View {
             Image(systemName: "flame.fill")
                 .font(.system(size: 40))
                 .foregroundColor(EmberColors.ember)
+                .scaleEffect(flamePhase.scale * (flamePulse ? 1.08 : 1.0))
+                .shadow(
+                    color: flamePhase.showsGlow
+                        ? EmberColors.ember.opacity(flamePulse ? 0.85 : 0.55)
+                        : .clear,
+                    radius: flamePhase.showsGlow ? (flamePulse ? 22 : 14) : 0
+                )
+                .shadow(
+                    color: flamePhase.showsGlow
+                        ? Color.orange.opacity(flamePulse ? 0.45 : 0.25)
+                        : .clear,
+                    radius: flamePhase.showsGlow ? (flamePulse ? 32 : 20) : 0
+                )
+                .animation(.easeInOut(duration: 0.45), value: flamePhase.scale)
+                .animation(.easeInOut(duration: 0.45), value: flamePhase.showsGlow)
             
             if healthKitManager.isLoading {
                 ProgressView()

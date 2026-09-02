@@ -43,14 +43,6 @@ struct HomeView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingGoalSettings = true }) {
-                        Image(systemName: "gearshape.fill")
-                            .foregroundColor(EmberColors.cream)
-                    }
-                }
-            }
             .sheet(isPresented: $showingGoalSettings) {
                 GoalSettingsView(isPresented: $showingGoalSettings)
                     .environmentObject(calorieGoalManager)
@@ -156,6 +148,13 @@ struct HomeView: View {
                     .foregroundColor(EmberColors.cream)
                 
                 Spacer()
+                
+                Button(action: { showingGoalSettings = true }) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(EmberColors.ember)
+                }
+                .accessibilityLabel("Edit calorie goal")
             }
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {

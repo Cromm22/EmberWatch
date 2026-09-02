@@ -45,14 +45,6 @@ struct FoodDiaryView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddFood = true }) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(EmberColors.ember)
-                    }
-                }
-            }
             .sheet(isPresented: $showingAddFood) {
                 AddFoodView(isPresented: $showingAddFood)
                     .environmentObject(foodDataManager)
@@ -197,11 +189,22 @@ struct FoodDiaryView: View {
     
     private var foodEntriesList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Today's Meals")
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundColor(EmberColors.cream)
-                .padding(.horizontal, 4)
+            HStack {
+                Text("Today's Meals")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(EmberColors.cream)
+                
+                Spacer()
+                
+                Button(action: { showingAddFood = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(EmberColors.ember)
+                }
+                .accessibilityLabel("Add food")
+            }
+            .padding(.horizontal, 4)
             
             if foodDataManager.todayFoodEntries.isEmpty {
                 emptyStateView
@@ -224,7 +227,7 @@ struct FoodDiaryView: View {
                 .font(.title3)
                 .foregroundColor(EmberColors.cream.opacity(0.7))
             
-            Text("Tap + to add your first meal")
+            Text("Tap + above to add your first meal")
                 .font(.subheadline)
                 .foregroundColor(EmberColors.cream.opacity(0.5))
         }
