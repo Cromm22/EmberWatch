@@ -31,7 +31,7 @@ struct OnboardingView: View {
                     nameStep.tag(1)
                     xpStep(
                         title: "Earn XP every day",
-                        bodyText: "Log water servings, burn calories, finish workouts, and challenge friends — each action fuels your Ember.",
+                        bodyText: "Log water, burn calories, complete workouts, and challenge friends to fuel your Ember",
                         icon: "flame.fill"
                     ).tag(2)
                     xpStep(
