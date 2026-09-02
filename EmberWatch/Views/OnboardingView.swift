@@ -3,6 +3,7 @@ import SwiftUI
 struct OnboardingView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var friendsManager: FriendsManager
     
     @State private var step = 0
     @State private var nameDraft = ""
@@ -105,6 +106,14 @@ struct OnboardingView: View {
         }
         if step >= totalSteps - 1 {
             avatarManager.completeOnboarding()
+            // Update CloudKit profile with onboarding data
+            Task {
+                await friendsManager.updateMyProfile(
+                    name: avatarManager.emberName,
+                    avatarId: avatarManager.selectedAvatarId,
+                    weeklyXP: levelManager.totalXP
+                )
+            }
             return
         }
         withAnimation { step += 1 }
