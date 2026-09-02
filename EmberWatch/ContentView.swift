@@ -79,6 +79,8 @@ struct ContentView: View {
                     .tag(3)
                     .environmentObject(levelManager)
                     .environmentObject(sparksManager)
+                    .environmentObject(friendsManager)
+                    .environmentObject(avatarManager)
                 
                 ShareView()
                     .tabItem {
@@ -90,6 +92,8 @@ struct ContentView: View {
                     .environmentObject(calorieGoalManager)
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
+                    .environmentObject(friendsManager)
+                    .environmentObject(sparksManager)
             }
             .tint(EmberColors.ember)
             

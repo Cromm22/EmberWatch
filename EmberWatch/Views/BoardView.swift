@@ -11,19 +11,31 @@ struct BoardEntry: Identifiable {
 struct BoardView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var sparksManager: SparksManager
+    @EnvironmentObject var friendsManager: FriendsManager
+    @EnvironmentObject var avatarManager: AvatarManager
     
-    private var mockFriends: [BoardEntry] {
-        [
-            BoardEntry(id: "you", name: "Jules Park", level: levelManager.level, xp: levelManager.totalXP, isCurrentUser: true),
-            BoardEntry(id: "alex", name: "Alex Chen", level: 8, xp: 450, isCurrentUser: false),
-            BoardEntry(id: "sam", name: "Sam Rivera", level: 7, xp: 320, isCurrentUser: false),
-            BoardEntry(id: "taylor", name: "Taylor Kim", level: 6, xp: 580, isCurrentUser: false),
-            BoardEntry(id: "jordan", name: "Jordan Lee", level: 5, xp: 290, isCurrentUser: false)
-        ]
+    @State private var showAddFriend = false
+    @State private var addFriendCode = ""
+    @State private var addFriendError: String?
+    @State private var isAddingFriend = false
+    
+    private var allEntries: [BoardEntry] {
+        var entries: [BoardEntry] = []
+        
+        // Current user
+        let userName = avatarManager.emberName.isEmpty ? "You" : avatarManager.emberName
+        entries.append(BoardEntry(id: "you", name: userName, level: levelManager.level, xp: levelManager.totalXP, isCurrentUser: true))
+        
+        // Real friends
+        for friend in friendsManager.friends {
+            entries.append(BoardEntry(id: friend.id, name: friend.name, level: 1, xp: friend.weeklyXP, isCurrentUser: false))
+        }
+        
+        return entries
     }
     
     private var rankedBoard: [BoardEntry] {
-        mockFriends.sorted { lhs, rhs in
+        allEntries.sorted { lhs, rhs in
             if lhs.level != rhs.level { return lhs.level > rhs.level }
             return lhs.xp > rhs.xp
         }
@@ -41,6 +53,22 @@ struct BoardView: View {
                 
                 ScrollView {
                     VStack(spacing: 16) {
+                        if let error = friendsManager.cloudKitError {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.icloud.fill")
+                                    .foregroundColor(EmberColors.ember)
+                                Text(error)
+                                    .font(.subheadline)
+                                    .foregroundColor(EmberColors.cream)
+                                Spacer()
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(EmberColors.lightPlum)
+                            )
+                        }
+                        
                         if let boost = levelManager.boardMultiplierLabel {
                             HStack(spacing: 8) {
                                 Image(systemName: "bolt.fill")
@@ -56,6 +84,8 @@ struct BoardView: View {
                                     .fill(EmberColors.lightPlum)
                             )
                         }
+                        
+                        myFriendCodeCard
                         
                         weeklyBoardCard
                     }
@@ -87,6 +117,195 @@ struct BoardView: View {
         _ = sparksManager.earnBoardFirstIfEligible(rank: userRank)
     }
     
+    private var myFriendCodeCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("My Friend Code")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    
+                    Text(friendsManager.myFriendCode)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .foregroundColor(EmberColors.ember)
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    Button {
+                        UIPasteboard.general.string = friendsManager.myFriendCode
+                        friendsManager.toast = "Code copied!"
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            friendsManager.toast = nil
+                        }
+                    } label: {
+                        Image(systemName: "doc.on.doc.fill")
+                            .font(.title3)
+                            .foregroundColor(EmberColors.ember)
+                            .padding(10)
+                            .background(Circle().fill(EmberColors.dusk))
+                    }
+                    
+                    Button {
+                        shareCode()
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.title3)
+                            .foregroundColor(EmberColors.ember)
+                            .padding(10)
+                            .background(Circle().fill(EmberColors.dusk))
+                    }
+                }
+            }
+            
+            Button {
+                showAddFriend = true
+            } label: {
+                HStack {
+                    Image(systemName: "person.badge.plus")
+                    Text("Add Friend")
+                        .font(.headline)
+                }
+                .foregroundColor(EmberColors.cream)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(EmberColors.ember)
+                )
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
+        .sheet(isPresented: $showAddFriend) {
+            addFriendSheet
+        }
+        .overlay(alignment: .top) {
+            if let toast = friendsManager.toast {
+                Text(toast)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(EmberColors.ink)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(EmberColors.gold))
+                    .offset(y: -40)
+                    .transition(.opacity)
+            }
+        }
+    }
+    
+    private var addFriendSheet: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk.ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    Text("Enter your friend's code to add them")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.top)
+                    
+                    TextField("Friend Code", text: $addFriendCode)
+                        .font(.system(size: 24, weight: .bold, design: .monospaced))
+                        .foregroundColor(EmberColors.cream)
+                        .textInputAutocapitalization(.characters)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(EmberColors.lightPlum)
+                        )
+                        .disabled(isAddingFriend)
+                    
+                    if let error = addFriendError {
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                    }
+                    
+                    Button {
+                        addFriend()
+                    } label: {
+                        if isAddingFriend {
+                            ProgressView()
+                                .tint(EmberColors.cream)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else {
+                            Text("Add Friend")
+                                .font(.headline)
+                                .foregroundColor(EmberColors.cream)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(EmberColors.ember)
+                    )
+                    .disabled(addFriendCode.isEmpty || isAddingFriend)
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationTitle("Add Friend")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showAddFriend = false
+                        addFriendCode = ""
+                        addFriendError = nil
+                    }
+                    .foregroundColor(EmberColors.ember)
+                }
+            }
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        }
+    }
+    
+    private func addFriend() {
+        addFriendError = nil
+        isAddingFriend = true
+        
+        Task {
+            do {
+                try await friendsManager.addFriend(code: addFriendCode)
+                await MainActor.run {
+                    isAddingFriend = false
+                    showAddFriend = false
+                    addFriendCode = ""
+                }
+            } catch {
+                await MainActor.run {
+                    isAddingFriend = false
+                    addFriendError = error.localizedDescription
+                }
+            }
+        }
+    }
+    
+    private func shareCode() {
+        let message = "Add me on Ember! My friend code is \(friendsManager.myFriendCode)"
+        let activityVC = UIActivityViewController(
+            activityItems: [message],
+            applicationActivities: nil
+        )
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            rootViewController.present(activityVC, animated: true)
+        }
+    }
+    
     private var weeklyBoardCard: some View {
         VStack(spacing: 0) {
             Text("This Week")
@@ -95,26 +314,46 @@ struct BoardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             
-            ForEach(Array(rankedBoard.enumerated()), id: \.element.id) { index, entry in
-                LeaderboardRow(
-                    rank: index + 1,
-                    name: entry.name,
-                    level: entry.level,
-                    xp: entry.xp,
-                    isCurrentUser: entry.isCurrentUser,
-                    canChallenge: !entry.isCurrentUser && levelManager.canChallenge(friendId: entry.id),
-                    onChallenge: {
-                        let xp = levelManager.awardChallenge(friendId: entry.id)
-                        if xp > 0 {
-                            _ = sparksManager.earnChallenge(friendId: entry.id)
+            if friendsManager.friends.isEmpty && friendsManager.isCloudKitAvailable {
+                VStack(spacing: 16) {
+                    Image(systemName: "person.2.slash")
+                        .font(.system(size: 40))
+                        .foregroundColor(EmberColors.cream.opacity(0.3))
+                    
+                    Text("No friends yet")
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                    
+                    Text("Share your code or add a friend to start competing")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream.opacity(0.6))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .padding(.horizontal)
+            } else {
+                ForEach(Array(rankedBoard.enumerated()), id: \.element.id) { index, entry in
+                    LeaderboardRow(
+                        rank: index + 1,
+                        name: entry.name,
+                        level: entry.level,
+                        xp: entry.xp,
+                        isCurrentUser: entry.isCurrentUser,
+                        canChallenge: !entry.isCurrentUser && levelManager.canChallenge(friendId: entry.id),
+                        onChallenge: {
+                            let xp = levelManager.awardChallenge(friendId: entry.id)
+                            if xp > 0 {
+                                _ = sparksManager.earnChallenge(friendId: entry.id)
+                            }
                         }
+                    )
+                    
+                    if index < rankedBoard.count - 1 {
+                        Divider()
+                            .background(EmberColors.cream.opacity(0.1))
+                            .padding(.horizontal)
                     }
-                )
-                
-                if index < rankedBoard.count - 1 {
-                    Divider()
-                        .background(EmberColors.cream.opacity(0.1))
-                        .padding(.horizontal)
                 }
             }
         }

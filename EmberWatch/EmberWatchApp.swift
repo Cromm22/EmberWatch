@@ -12,6 +12,7 @@ struct EmberWatchApp: App {
     @StateObject private var sparksManager: SparksManager
     @StateObject private var feedbackManager = FeedbackManager()
     @StateObject private var weightManager = WeightManager()
+    @StateObject private var friendsManager = FriendsManager()
     
     init() {
         let sparks = SparksManager()
@@ -68,11 +69,15 @@ struct EmberWatchApp: App {
                 .environmentObject(sparksManager)
                 .environmentObject(feedbackManager)
                 .environmentObject(weightManager)
+                .environmentObject(friendsManager)
                 .modelContainer(sharedModelContainer)
                 .onAppear {
                     foodDataManager.setModelContext(sharedModelContainer.mainContext)
                     // Keep Sparks ↔ Level link in case it was cleared.
                     levelManager.sparksManager = sparksManager
+                }
+                .task {
+                    await friendsManager.setupCloudKit()
                 }
         }
     }

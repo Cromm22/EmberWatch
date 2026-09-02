@@ -7,15 +7,10 @@ struct ShareView: View {
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var friendsManager: FriendsManager
+    @EnvironmentObject var sparksManager: SparksManager
     
     @State private var challengeToast: String?
-    
-    private let challengeTargets: [(id: String, name: String)] = [
-        ("alex", "Alex Chen"),
-        ("sam", "Sam Rivera"),
-        ("taylor", "Taylor Kim"),
-        ("jordan", "Jordan Lee")
-    ]
     
     var body: some View {
         NavigationView {
@@ -103,36 +98,56 @@ struct ShareView: View {
                 .font(.caption)
                 .foregroundColor(EmberColors.cream.opacity(0.6))
             
-            ForEach(challengeTargets, id: \.id) { friend in
-                let can = levelManager.canChallenge(friendId: friend.id)
-                Button {
-                    let gained = levelManager.awardChallenge(friendId: friend.id)
-                    withAnimation {
-                        challengeToast = gained > 0
-                            ? "Challenged \(friend.name)! +\(gained) XP"
-                            : "Already challenged \(friend.name) today"
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        withAnimation { challengeToast = nil }
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "flag.fill")
-                            .foregroundColor(EmberColors.ember)
-                        Text(friend.name)
-                            .foregroundColor(EmberColors.cream)
-                        Spacer()
-                        Text(can ? "Challenge" : "Sent")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(can ? EmberColors.ink : EmberColors.cream.opacity(0.5))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(can ? EmberColors.ember : EmberColors.dusk))
-                    }
-                    .padding()
-                    .background(RoundedRectangle(cornerRadius: 14).fill(EmberColors.lightPlum))
+            if friendsManager.friends.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 32))
+                        .foregroundColor(EmberColors.cream.opacity(0.3))
+                    
+                    Text("Add friends on the Board tab to challenge them")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream.opacity(0.6))
+                        .multilineTextAlignment(.center)
                 }
-                .disabled(!can)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+                .padding(.horizontal)
+                .background(RoundedRectangle(cornerRadius: 14).fill(EmberColors.lightPlum))
+            } else {
+                ForEach(friendsManager.friends) { friend in
+                    let can = levelManager.canChallenge(friendId: friend.id)
+                    Button {
+                        let gained = levelManager.awardChallenge(friendId: friend.id)
+                        if gained > 0 {
+                            _ = sparksManager.earnChallenge(friendId: friend.id)
+                        }
+                        withAnimation {
+                            challengeToast = gained > 0
+                                ? "Challenged \(friend.name)! +\(gained) XP"
+                                : "Already challenged \(friend.name) today"
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            withAnimation { challengeToast = nil }
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "flag.fill")
+                                .foregroundColor(EmberColors.ember)
+                            Text(friend.name)
+                                .foregroundColor(EmberColors.cream)
+                            Spacer()
+                            Text(can ? "Challenge" : "Sent")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(can ? EmberColors.ink : EmberColors.cream.opacity(0.5))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Capsule().fill(can ? EmberColors.ember : EmberColors.dusk))
+                        }
+                        .padding()
+                        .background(RoundedRectangle(cornerRadius: 14).fill(EmberColors.lightPlum))
+                    }
+                    .disabled(!can)
+                }
             }
         }
     }
