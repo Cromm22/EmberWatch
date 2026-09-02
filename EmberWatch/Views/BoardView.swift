@@ -207,11 +207,28 @@ struct BoardView: View {
                 EmberColors.dusk.ignoresSafeArea()
                 
                 VStack(spacing: 24) {
+                    if !friendsManager.isCloudKitAvailable {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.icloud.fill")
+                                .foregroundColor(EmberColors.ember)
+                            Text(friendsManager.cloudKitError ?? "iCloud unavailable")
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream)
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(EmberColors.lightPlum)
+                        )
+                        .padding(.top)
+                    }
+                    
                     Text("Enter your friend's code to add them")
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
                         .multilineTextAlignment(.center)
-                        .padding(.top)
+                        .padding(.top, friendsManager.isCloudKitAvailable ? 16 : 0)
                     
                     TextField("Friend Code", text: $addFriendCode)
                         .font(.system(size: 24, weight: .bold, design: .monospaced))
@@ -251,7 +268,7 @@ struct BoardView: View {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(EmberColors.ember)
                     )
-                    .disabled(addFriendCode.isEmpty || isAddingFriend)
+                    .disabled(addFriendCode.isEmpty || isAddingFriend || !friendsManager.isCloudKitAvailable)
                     
                     Spacer()
                 }
@@ -317,17 +334,21 @@ struct BoardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             
-            if friendsManager.friends.isEmpty && friendsManager.isCloudKitAvailable {
+            if friendsManager.friends.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "person.2.slash")
                         .font(.system(size: 40))
                         .foregroundColor(EmberColors.cream.opacity(0.3))
                     
-                    Text("No friends yet")
+                    Text(friendsManager.isCloudKitAvailable ? "No friends yet" : "Friends need iCloud")
                         .font(.headline)
                         .foregroundColor(EmberColors.cream)
                     
-                    Text("Share your code or add a friend to start competing")
+                    Text(
+                        friendsManager.isCloudKitAvailable
+                            ? "Share your code or add a friend to start competing"
+                            : (friendsManager.cloudKitError ?? "iCloud unavailable — local friend code still works for sharing")
+                    )
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream.opacity(0.6))
                         .multilineTextAlignment(.center)

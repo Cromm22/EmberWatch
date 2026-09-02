@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import CloudKit
+import Security
 
 /// Friend model for local display
 struct Friend: Identifiable, Codable {
@@ -13,7 +14,9 @@ struct Friend: Identifiable, Codable {
     var isCurrentUser: Bool = false
 }
 
-/// CloudKit-based friends system with invite codes
+/// CloudKit-based friends system with invite codes.
+/// Safe without CloudKit entitlements: never calls CKContainer APIs unless
+/// the process is signed with iCloud CloudKit services.
 @MainActor
 final class FriendsManager: ObservableObject {
     // MARK: - Published State
@@ -27,8 +30,9 @@ final class FriendsManager: ObservableObject {
     
     // MARK: - Private State
     
-    private let container: CKContainer
-    private let publicDB: CKDatabase
+    /// Nil when the binary lacks CloudKit entitlement (device Personal Team builds).
+    private let container: CKContainer?
+    private let publicDB: CKDatabase?
     private var myRecordID: CKRecord.ID?
     
     private var friendIds: Set<String> {
@@ -51,10 +55,20 @@ final class FriendsManager: ObservableObject {
     // MARK: - Init
     
     init() {
-        self.container = CKContainer.default()
-        self.publicDB = container.publicCloudDatabase
+        // CKContainer.default() SIGTRAPs when CloudKit entitlement is missing.
+        // Gate creation on the signed entitlement so Personal Team / HealthKit-only
+        // device builds still launch and show local friend-code UI.
+        let entitled = Self.hasCloudKitEntitlement()
+        if entitled {
+            let ck = CKContainer.default()
+            self.container = ck
+            self.publicDB = ck.publicCloudDatabase
+        } else {
+            self.container = nil
+            self.publicDB = nil
+        }
         
-        // Initialize stored properties before any further self use
+        // Initialize remaining stored properties before any further self use
         let savedIds = UserDefaults.standard.stringArray(forKey: Keys.friendIds) ?? []
         self.friendIds = Set(savedIds)
         
@@ -69,36 +83,69 @@ final class FriendsManager: ObservableObject {
         
         // Load cached friends from UserDefaults
         loadCachedFriends()
+        
+        if !entitled {
+            isCloudKitAvailable = false
+            cloudKitError = "iCloud unavailable on this build"
+        }
+    }
+    
+    /// True when the running binary includes CloudKit in icloud-services.
+    /// Must be checked before any CKContainer call — missing entitlement traps.
+    private static func hasCloudKitEntitlement() -> Bool {
+        guard let task = SecTaskCreateFromSelf(nil) else { return false }
+        var error: CFError?
+        guard let value = SecTaskCopyValueForEntitlement(
+            task,
+            "com.apple.developer.icloud-services" as CFString,
+            &error
+        ) else {
+            return false
+        }
+        if let services = value as? [String] {
+            return services.contains("CloudKit")
+        }
+        // Some profiles may encode a single string
+        if let service = value as? String {
+            return service == "CloudKit"
+        }
+        return false
     }
     
     // MARK: - Setup
     
     /// Check CloudKit availability and publish profile
     func setupCloudKit() async {
+        guard let container else {
+            isCloudKitAvailable = false
+            if cloudKitError == nil {
+                cloudKitError = "iCloud unavailable on this build"
+            }
+            return
+        }
+        
         do {
             let status = try await container.accountStatus()
             
-            await MainActor.run {
-                switch status {
-                case .available:
-                    isCloudKitAvailable = true
-                    cloudKitError = nil
-                case .noAccount:
-                    isCloudKitAvailable = false
-                    cloudKitError = "Sign in to iCloud in Settings to add friends"
-                case .restricted:
-                    isCloudKitAvailable = false
-                    cloudKitError = "iCloud access restricted"
-                case .couldNotDetermine:
-                    isCloudKitAvailable = false
-                    cloudKitError = "Could not determine iCloud status"
-                case .temporarilyUnavailable:
-                    isCloudKitAvailable = false
-                    cloudKitError = "iCloud temporarily unavailable"
-                @unknown default:
-                    isCloudKitAvailable = false
-                    cloudKitError = "Unknown iCloud status"
-                }
+            switch status {
+            case .available:
+                isCloudKitAvailable = true
+                cloudKitError = nil
+            case .noAccount:
+                isCloudKitAvailable = false
+                cloudKitError = "Sign in to iCloud in Settings to add friends"
+            case .restricted:
+                isCloudKitAvailable = false
+                cloudKitError = "iCloud access restricted"
+            case .couldNotDetermine:
+                isCloudKitAvailable = false
+                cloudKitError = "Could not determine iCloud status"
+            case .temporarilyUnavailable:
+                isCloudKitAvailable = false
+                cloudKitError = "iCloud temporarily unavailable"
+            @unknown default:
+                isCloudKitAvailable = false
+                cloudKitError = "Unknown iCloud status"
             }
             
             if status == .available {
@@ -106,16 +153,14 @@ final class FriendsManager: ObservableObject {
                 await fetchFriends()
             }
         } catch {
-            await MainActor.run {
-                isCloudKitAvailable = false
-                cloudKitError = "CloudKit error: \(error.localizedDescription)"
-            }
+            isCloudKitAvailable = false
+            cloudKitError = "CloudKit error: \(error.localizedDescription)"
         }
     }
     
     /// Update my profile when name/avatar/XP changes
     func updateMyProfile(name: String, avatarId: String, weeklyXP: Int) async {
-        guard isCloudKitAvailable else { return }
+        guard isCloudKitAvailable, publicDB != nil else { return }
         await publishMyProfile(name: name, avatarId: avatarId, weeklyXP: weeklyXP)
     }
     
@@ -123,6 +168,10 @@ final class FriendsManager: ObservableObject {
     
     /// Look up friend by code and add if found
     func addFriend(code: String) async throws {
+        guard isCloudKitAvailable, let publicDB else {
+            throw FriendError.icloudUnavailable
+        }
+        
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         
         guard !trimmed.isEmpty else {
@@ -162,19 +211,17 @@ final class FriendsManager: ObservableObject {
                 lastUpdated: Date()
             )
             
-            await MainActor.run {
-                if !friends.contains(where: { $0.id == friend.id }) {
-                    friends.append(friend)
-                    saveCachedFriends()
-                }
+            if !friends.contains(where: { $0.id == friend.id }) {
+                friends.append(friend)
+                saveCachedFriends()
             }
             
             // Create bidirectional friendship record in CloudKit
             await createFriendship(friendRecordID: recordID)
             
-            await MainActor.run {
-                showToast("Added \(friend.name)!")
-            }
+            showToast("Added \(friend.name)!")
+        } catch let error as FriendError {
+            throw error
         } catch {
             if (error as? CKError)?.code == .networkFailure || (error as? CKError)?.code == .networkUnavailable {
                 throw FriendError.networkError
@@ -187,7 +234,7 @@ final class FriendsManager: ObservableObject {
     
     /// Fetch all friends' latest profiles
     func fetchFriends() async {
-        guard isCloudKitAvailable, !friendIds.isEmpty else { return }
+        guard isCloudKitAvailable, let publicDB, !friendIds.isEmpty else { return }
         
         let predicate = NSPredicate(format: "friendCode IN %@", Array(friendIds))
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
@@ -210,10 +257,8 @@ final class FriendsManager: ObservableObject {
                 updated.append(friend)
             }
             
-            await MainActor.run {
-                friends = updated
-                saveCachedFriends()
-            }
+            friends = updated
+            saveCachedFriends()
         } catch {
             print("FriendsManager: Failed to fetch friends: \(error)")
         }
@@ -222,6 +267,8 @@ final class FriendsManager: ObservableObject {
     // MARK: - Private CloudKit
     
     private func publishMyProfile(name: String? = nil, avatarId: String? = nil, weeklyXP: Int? = nil) async {
+        guard let publicDB else { return }
+        
         // Get current values from UserDefaults if not provided
         let displayName = name ?? UserDefaults.standard.string(forKey: "emberName") ?? "Unknown"
         let avatar = avatarId ?? UserDefaults.standard.string(forKey: "selectedAvatarId") ?? "classic"
@@ -260,7 +307,7 @@ final class FriendsManager: ObservableObject {
     }
     
     private func createFriendship(friendRecordID: CKRecord.ID) async {
-        guard let myID = myRecordID else { return }
+        guard let publicDB, let myID = myRecordID else { return }
         
         let friendship = CKRecord(recordType: RecordType.friendship)
         friendship["user1"] = CKRecord.Reference(recordID: myID, action: .none)
@@ -321,6 +368,7 @@ enum FriendError: LocalizedError {
     case alreadyFriends
     case notFound
     case networkError
+    case icloudUnavailable
     
     var errorDescription: String? {
         switch self {
@@ -334,6 +382,8 @@ enum FriendError: LocalizedError {
             return "Friend code not found"
         case .networkError:
             return "Network error. Try again."
+        case .icloudUnavailable:
+            return "iCloud unavailable"
         }
     }
 }
