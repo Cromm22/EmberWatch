@@ -41,6 +41,13 @@ struct FoodDiaryView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     
+                    Section {
+                        macrosSummaryCard
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    
                     if !foodDataManager.recentFoodEntries.isEmpty {
                         Section {
                             ForEach(foodDataManager.recentFoodEntries, id: \.id) { entry in
@@ -58,13 +65,6 @@ struct FoodDiaryView: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                     }
-                    
-                    Section {
-                        macrosSummaryCard
-                    }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
                     
                     Section {
                         if foodDataManager.todayFoodEntries.isEmpty {

@@ -9,9 +9,7 @@ struct HomeView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var weightManager: WeightManager
-    @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
-    @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
     
     var remainingCalories: Double {
@@ -77,18 +75,10 @@ struct HomeView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .sheet(isPresented: $showingGoalSettings) {
-                GoalSettingsView(isPresented: $showingGoalSettings)
-                    .environmentObject(calorieGoalManager)
-            }
             .sheet(isPresented: $showingAvatarPicker) {
                 AvatarPickerView()
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
-            }
-            .sheet(isPresented: $showingWaterGoal) {
-                WaterGoalSettingsView(isPresented: $showingWaterGoal)
-                    .environmentObject(waterManager)
             }
             .sheet(isPresented: $showingWeightSettings) {
                 WeightSettingsView(isPresented: $showingWeightSettings)
@@ -223,13 +213,6 @@ struct HomeView: View {
                     .foregroundColor(EmberColors.cream)
                 
                 Spacer()
-                
-                Button(action: { showingGoalSettings = true }) {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(EmberColors.ember)
-                }
-                .accessibilityLabel("Edit calorie goal")
             }
             
             HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -355,13 +338,6 @@ struct HomeView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(EmberColors.cream)
                     .lineLimit(1)
-                
-                Button(action: { showingWaterGoal = true }) {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(EmberColors.ember)
-                }
-                .accessibilityLabel("Edit water goal")
             }
             
             Text("\(waterManager.totalMl) mL")
@@ -434,7 +410,7 @@ struct HomeView: View {
     
     private var quickStatsCard: some View {
         VStack(spacing: 16) {
-            Text("Quick Stats")
+            Text("Macros")
                 .font(.headline)
                 .foregroundColor(EmberColors.cream)
                 .frame(maxWidth: .infinity, alignment: .leading)
