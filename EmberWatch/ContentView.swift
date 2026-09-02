@@ -22,6 +22,7 @@ struct ContentView: View {
                 OnboardingView()
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
+                    .environmentObject(friendsManager)
             } else {
                 mainTabs
             }
