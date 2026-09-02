@@ -21,9 +21,20 @@ final class FeedbackManager: ObservableObject {
     @Published var lastSendSucceeded = false
     
     private let storageKey = "emberFeedbackEntries"
+    private var hasBackfilled = false
     
     init() {
         load()
+    }
+    
+    /// Returns the Application Support directory path for feedback.json
+    private func applicationSupportURL() -> URL? {
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let emberDir = appSupport.appendingPathComponent("EmberWatch")
+        try? FileManager.default.createDirectory(at: emberDir, withIntermediateDirectories: true)
+        return emberDir.appendingPathComponent("feedback.json")
     }
     
     func submit(_ text: String) async -> Bool {
@@ -54,6 +65,18 @@ final class FeedbackManager: ObservableObject {
     }
 
     private func load() {
+        // Try Application Support first
+        if let fileURL = applicationSupportURL(),
+           let data = try? Data(contentsOf: fileURL) {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            if let decoded = try? decoder.decode([FeedbackEntry].self, from: data) {
+                entries = decoded.sorted { $0.createdAt > $1.createdAt }
+                return
+            }
+        }
+        
+        // Fallback to UserDefaults
         guard let data = UserDefaults.standard.data(forKey: storageKey) else {
             entries = []
             return
@@ -61,6 +84,11 @@ final class FeedbackManager: ObservableObject {
         do {
             let decoded = try JSONDecoder().decode([FeedbackEntry].self, from: data)
             entries = decoded.sorted { $0.createdAt > $1.createdAt }
+            // Backfill to Application Support once
+            if !hasBackfilled {
+                hasBackfilled = true
+                persistToApplicationSupport()
+            }
         } catch {
             print("FeedbackManager: failed to decode entries: \(error)")
             entries = []
@@ -71,8 +99,26 @@ final class FeedbackManager: ObservableObject {
         do {
             let data = try JSONEncoder().encode(entries)
             UserDefaults.standard.set(data, forKey: storageKey)
+            persistToApplicationSupport()
         } catch {
             print("FeedbackManager: failed to encode entries: \(error)")
+        }
+    }
+    
+    private func persistToApplicationSupport() {
+        guard let fileURL = applicationSupportURL() else {
+            print("FeedbackManager: could not get Application Support URL")
+            return
+        }
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(entries)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            print("FeedbackManager: failed to write to Application Support: \(error)")
         }
     }
     
