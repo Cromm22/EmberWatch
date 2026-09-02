@@ -93,6 +93,9 @@ struct BoardView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 16)
                 }
+                .refreshable {
+                    await friendsManager.fetchFriends()
+                }
             }
             .navigationTitle("Board")
             .navigationBarTitleDisplayMode(.inline)

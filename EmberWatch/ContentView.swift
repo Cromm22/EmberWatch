@@ -10,6 +10,7 @@ struct ContentView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var feedbackManager: FeedbackManager
+    @EnvironmentObject var friendsManager: FriendsManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var showingFeedback = false
@@ -29,6 +30,14 @@ struct ContentView: View {
             guard phase == .active, avatarManager.hasCompletedOnboarding else { return }
             _ = levelManager.checkDailyOpenReward()
             _ = sparksManager.earnDailyLogin()
+            // Update CloudKit profile with latest data
+            Task {
+                await friendsManager.updateMyProfile(
+                    name: avatarManager.emberName,
+                    avatarId: avatarManager.selectedAvatarId,
+                    weeklyXP: levelManager.totalXP
+                )
+            }
         }
         .onAppear {
             guard avatarManager.hasCompletedOnboarding else { return }
