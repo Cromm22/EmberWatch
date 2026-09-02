@@ -6,7 +6,9 @@ struct HomeView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var waterManager: WaterManager
+    @EnvironmentObject var avatarManager: AvatarManager
     @State private var showingGoalSettings = false
+    @State private var showingAvatarPicker = false
     
     var remainingCalories: Double {
         calorieGoalManager.calculateRemainingCalories(
@@ -53,6 +55,11 @@ struct HomeView: View {
                 GoalSettingsView(isPresented: $showingGoalSettings)
                     .environmentObject(calorieGoalManager)
             }
+            .sheet(isPresented: $showingAvatarPicker) {
+                AvatarPickerView()
+                    .environmentObject(avatarManager)
+                    .environmentObject(calorieGoalManager)
+            }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
@@ -66,7 +73,30 @@ struct HomeView: View {
     
     private var emberAvatarCard: some View {
         VStack(spacing: 16) {
-            EmberFlameAvatar(level: calorieGoalManager.currentLevel, size: 220)
+            ZStack(alignment: .topTrailing) {
+                EmberFlameAvatar(
+                    level: calorieGoalManager.currentLevel,
+                    size: 220,
+                    style: avatarManager.selectedStyle
+                )
+                .onTapGesture {
+                    showingAvatarPicker = true
+                }
+                
+                Button(action: { showingAvatarPicker = true }) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(EmberColors.ember)
+                        .background(
+                            Circle()
+                                .fill(EmberColors.dusk)
+                                .frame(width: 34, height: 34)
+                        )
+                        .shadow(color: EmberColors.ember.opacity(0.3), radius: 8)
+                }
+                .padding(.top, 8)
+                .padding(.trailing, 16)
+            }
             
             Text("Your Ember")
                 .font(.headline)

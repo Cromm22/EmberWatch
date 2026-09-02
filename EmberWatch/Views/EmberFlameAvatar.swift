@@ -4,6 +4,7 @@ import SwiftUI
 struct EmberFlameAvatar: View {
     var level: Int = 1
     var size: CGFloat = 220
+    var style: AvatarStyle = AvatarStyle.presets[0]
     
     @State private var pulse = false
     @State private var sparkle = false
@@ -17,8 +18,8 @@ struct EmberFlameAvatar: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color(hex: "#ff7a3c").opacity(0.55),
-                            Color(hex: "#ff7a3c").opacity(0.15),
+                            Color(hex: style.auraColor).opacity(0.55),
+                            Color(hex: style.auraColor).opacity(0.15),
                             Color.clear
                         ],
                         center: .center,
@@ -32,25 +33,59 @@ struct EmberFlameAvatar: View {
                 .scaleEffect(pulse ? 1.08 : 0.92)
                 .opacity(pulse ? 0.9 : 0.65)
             
-            FlameSVG(blaze: blaze)
+            FlameSVG(blaze: blaze, style: style)
                 .frame(width: size, height: size * 1.15)
                 .scaleEffect(pulse ? 1.03 : 0.97)
-                .shadow(color: Color(hex: "#ff6a1a").opacity(0.55), radius: 22, y: 8)
+                .shadow(color: Color(hex: style.outerColors[2]).opacity(0.55), radius: 22, y: 8)
             
             // Sparks
             Circle()
-                .fill(Color(hex: "#ffe08a"))
+                .fill(Color(hex: style.sparkColors[0]))
                 .frame(width: 7, height: 7)
                 .offset(x: -size * 0.28, y: -size * 0.22)
                 .opacity(sparkle ? 1 : 0.35)
                 .scaleEffect(sparkle ? 1.2 : 0.7)
             
             Circle()
-                .fill(Color(hex: "#ffd27a"))
+                .fill(Color(hex: style.sparkColors[1]))
                 .frame(width: 5.5, height: 5.5)
                 .offset(x: size * 0.3, y: -size * 0.26)
                 .opacity(sparkle ? 0.4 : 1)
                 .scaleEffect(sparkle ? 0.7 : 1.15)
+            
+            // Side sparks (optional)
+            if style.hasSideSparks {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color(hex: style.sparkColors[0]))
+                        .frame(width: 4, height: 4)
+                        .offset(
+                            x: size * (index % 2 == 0 ? -0.35 : 0.35),
+                            y: size * (-0.05 + CGFloat(index) * 0.08)
+                        )
+                        .opacity(sparkle ? 0.8 : 0.3)
+                        .scaleEffect(sparkle ? 1.3 : 0.8)
+                }
+            }
+            
+            // Circlet accessory (optional)
+            if style.hasCirclet {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: style.sparkColors[0]).opacity(0.8),
+                                Color(hex: style.sparkColors[1]).opacity(0.4)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2.5
+                    )
+                    .frame(width: size * 0.28, height: size * 0.28)
+                    .offset(y: -size * 0.38)
+                    .rotationEffect(.degrees(sparkle ? 5 : -5))
+            }
         }
         .frame(width: size, height: size * 1.2)
         .onAppear {
@@ -67,6 +102,7 @@ struct EmberFlameAvatar: View {
 
 private struct FlameSVG: View {
     var blaze: Bool
+    var style: AvatarStyle
     
     var body: some View {
         Canvas { context, size in
@@ -80,10 +116,10 @@ private struct FlameSVG: View {
             // Outer flame gradient
             let outerRect = CGRect(origin: .zero, size: size)
             let outerGradient = Gradient(stops: [
-                .init(color: Color(hex: "#ffe08a"), location: 0),
-                .init(color: Color(hex: "#ff9a3c"), location: 0.38),
-                .init(color: Color(hex: "#ff6a1a"), location: 0.78),
-                .init(color: Color(hex: "#d9480f"), location: 1)
+                .init(color: Color(hex: style.outerColors[0]), location: 0),
+                .init(color: Color(hex: style.outerColors[1]), location: 0.38),
+                .init(color: Color(hex: style.outerColors[2]), location: 0.78),
+                .init(color: Color(hex: style.outerColors[3]), location: 1)
             ])
             
             if blaze {
@@ -121,9 +157,9 @@ private struct FlameSVG: View {
             
             // Inner flame
             let innerGradient = Gradient(stops: [
-                .init(color: Color(hex: "#fff6c8"), location: 0),
-                .init(color: Color(hex: "#ffd27a"), location: 0.55),
-                .init(color: Color(hex: "#ff9f43"), location: 1)
+                .init(color: Color(hex: style.innerColors[0]), location: 0),
+                .init(color: Color(hex: style.innerColors[1]), location: 0.55),
+                .init(color: Color(hex: style.innerColors[2]), location: 1)
             ])
             var inner = Path()
             if blaze {
@@ -152,16 +188,16 @@ private struct FlameSVG: View {
                 height: coreRy * 2 * sy
             ))
             let coreGradient = Gradient(stops: [
-                .init(color: Color(hex: "#fffef5"), location: 0),
-                .init(color: Color(hex: "#ffe08a"), location: 0.7),
-                .init(color: Color(hex: "#ffb347").opacity(0.2), location: 1)
+                .init(color: Color(hex: style.coreColors[0]), location: 0),
+                .init(color: Color(hex: style.coreColors[1]), location: 0.7),
+                .init(color: Color(hex: style.coreColors[2]).opacity(0.2), location: 1)
             ])
             context.fill(core, with: .radialGradient(coreGradient, center: p(100, coreY), startRadius: 0, endRadius: coreRx * sx * 1.4))
             
             // Eyes
             let eyeY: CGFloat = blaze ? 138 : 146
-            drawEye(context: context, cx: 82 * sx, cy: eyeY * sy, scale: sx)
-            drawEye(context: context, cx: 118 * sx, cy: eyeY * sy, scale: sx, wide: true)
+            drawEye(context: context, cx: 82 * sx, cy: eyeY * sy, scale: sx, eyeStyle: style.eyeStyle)
+            drawEye(context: context, cx: 118 * sx, cy: eyeY * sy, scale: sx, wide: true, eyeStyle: style.eyeStyle)
             
             // Smile
             let mouthY: CGFloat = blaze ? 174 : 174
@@ -176,15 +212,15 @@ private struct FlameSVG: View {
         }
     }
     
-    private func drawEye(context: GraphicsContext, cx: CGFloat, cy: CGFloat, scale: CGFloat, wide: Bool = false) {
+    private func drawEye(context: GraphicsContext, cx: CGFloat, cy: CGFloat, scale: CGFloat, wide: Bool = false, eyeStyle: AvatarStyle.EyeStyle) {
         let rx: CGFloat = 8 * scale
-        let ry: CGFloat = 8 * scale
+        let ry: CGFloat = eyeStyle == .sleepy ? 6 * scale : (eyeStyle == .excited ? 9 * scale : 8 * scale)
         let white = Path(ellipseIn: CGRect(x: cx - rx, y: cy - ry, width: rx * 2, height: ry * 2))
         context.fill(white, with: .color(Color(hex: "#fff8ee")))
         
-        let pupilR = 3.4 * scale
+        let pupilR = eyeStyle == .wide ? 4 * scale : (eyeStyle == .excited ? 4.2 * scale : 3.4 * scale)
         let px = cx + (wide ? 1.2 * scale : 0)
-        let py = cy + 1 * scale
+        let py = cy + (eyeStyle == .sleepy ? 1.5 * scale : 1 * scale)
         let pupil = Path(ellipseIn: CGRect(x: px - pupilR, y: py - pupilR, width: pupilR * 2, height: pupilR * 2))
         context.fill(pupil, with: .color(Color(hex: "#2a1208")))
         

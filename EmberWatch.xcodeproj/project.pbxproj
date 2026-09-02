@@ -14,6 +14,8 @@
 		8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */; };
 		17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D178C9F2CD744DFAA82F292E /* WaterManager.swift */; };
 		7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */; };
+		9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */; };
+		6D4F8A2C9E1B3D5A7C0E4F91 /* AvatarPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */; };
 		3A0000010000000000000001 /* EmberWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000020000000000000001 /* EmberWatchApp.swift */; };
 		3A0000030000000000000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000040000000000000001 /* ContentView.swift */; };
 		3A0000050000000000000001 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0000060000000000000001 /* HomeView.swift */; };
@@ -37,6 +39,8 @@
 		E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodLookupService.swift; sourceTree = "<group>"; };
 		D178C9F2CD744DFAA82F292E /* WaterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterManager.swift; sourceTree = "<group>"; };
 		1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberFlameAvatar.swift; sourceTree = "<group>"; };
+		4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarManager.swift; sourceTree = "<group>"; };
+		2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarPickerView.swift; sourceTree = "<group>"; };
 		3A0000000000000000000001 /* EmberWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmberWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A0000020000000000000001 /* EmberWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberWatchApp.swift; sourceTree = "<group>"; };
 		3A0000040000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -109,6 +113,7 @@
 				B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */,
 				3A0000060000000000000001 /* HomeView.swift */,
 				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
+				2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */,
 				3A0000080000000000000001 /* HealthConnectView.swift */,
 				3A00002C0000000000000001 /* FoodDiaryView.swift */,
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
@@ -140,6 +145,7 @@
 				3A00000A0000000000000001 /* HealthKitManager.swift */,
 				3A0000280000000000000001 /* FoodDataManager.swift */,
 				3A00002A0000000000000001 /* CalorieGoalManager.swift */,
+				4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -231,6 +237,8 @@
 				8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */,
 				17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */,
 				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
+				9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */,
+				6D4F8A2C9E1B3D5A7C0E4F91 /* AvatarPickerView.swift in Sources */,
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,
 				3A0000090000000000000001 /* HealthKitManager.swift in Sources */,
 				3A00000B0000000000000001 /* WorkoutModel.swift in Sources */,
