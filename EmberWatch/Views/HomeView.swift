@@ -9,6 +9,7 @@ struct HomeView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var weightManager: WeightManager
+    @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
     @State private var showingWeightSettings = false
     
@@ -75,6 +76,10 @@ struct HomeView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .sheet(isPresented: $showingGoalSettings) {
+                GoalSettingsView(isPresented: $showingGoalSettings)
+                    .environmentObject(calorieGoalManager)
+            }
             .sheet(isPresented: $showingAvatarPicker) {
                 AvatarPickerView()
                     .environmentObject(avatarManager)
@@ -203,40 +208,47 @@ struct HomeView: View {
     }
     
     private var remainingCaloriesCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: remainingCalories >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundColor(remainingCalories >= 0 ? Color.green : Color.orange)
+        Button(action: { showingGoalSettings = true }) {
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: remainingCalories >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundColor(remainingCalories >= 0 ? Color.green : Color.orange)
+                    
+                    Text("Calories")
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                    
+                    Spacer()
+                }
                 
-                Text("Calories")
-                    .font(.headline)
-                    .foregroundColor(EmberColors.cream)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(Int(remainingCalories))")
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(remainingCalories >= 0 ? EmberColors.ember : Color.orange)
+                    
+                    Text("cal")
+                        .font(.title3)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    
+                    Spacer()
+                }
                 
-                Spacer()
-            }
-            
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(Int(remainingCalories))")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundColor(remainingCalories >= 0 ? EmberColors.ember : Color.orange)
-                
-                Text("cal")
-                    .font(.title3)
+                Text(calorieGoalManager.ignoreFoodFromRemaining ? "remaining (food ignored)" : "remaining")
+                    .font(.subheadline)
                     .foregroundColor(EmberColors.cream.opacity(0.7))
-                
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            
-            Text(calorieGoalManager.ignoreFoodFromRemaining ? "remaining (food ignored)" : "remaining")
-                .font(.subheadline)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(EmberColors.lightPlum)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16))
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(EmberColors.lightPlum)
-        )
+        .buttonStyle(.plain)
+        .accessibilityLabel("Edit calorie goal")
+        .accessibilityHint("Opens daily calorie goal and food settings")
     }
     
 
