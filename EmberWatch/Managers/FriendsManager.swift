@@ -54,17 +54,18 @@ final class FriendsManager: ObservableObject {
         self.container = CKContainer.default()
         self.publicDB = container.publicCloudDatabase
         
+        // Initialize stored properties before any further self use
+        let savedIds = UserDefaults.standard.stringArray(forKey: Keys.friendIds) ?? []
+        self.friendIds = Set(savedIds)
+        
         // Load saved friend code or generate new
         if let saved = UserDefaults.standard.string(forKey: Keys.myFriendCode), !saved.isEmpty {
             self.myFriendCode = saved
         } else {
-            self.myFriendCode = Self.generateFriendCode()
-            UserDefaults.standard.set(self.myFriendCode, forKey: Keys.myFriendCode)
+            let code = Self.generateFriendCode()
+            self.myFriendCode = code
+            UserDefaults.standard.set(code, forKey: Keys.myFriendCode)
         }
-        
-        // Load cached friend IDs
-        let savedIds = UserDefaults.standard.stringArray(forKey: Keys.friendIds) ?? []
-        self.friendIds = Set(savedIds)
         
         // Load cached friends from UserDefaults
         loadCachedFriends()
