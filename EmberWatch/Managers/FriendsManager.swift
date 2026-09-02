@@ -1,7 +1,19 @@
 import Foundation
 import SwiftUI
 import CloudKit
-import Security
+
+// SecTask entitlement APIs exist on iOS (linked via Security.framework) but are
+// omitted from the public SDK headers. Declare the subset we need so we can
+// detect a stripped CloudKit entitlement before CKContainer.default() traps.
+private typealias EmberSecTask = OpaquePointer
+@_silgen_name("SecTaskCreateFromSelf")
+private func EmberSecTaskCreateFromSelf(_ allocator: CFAllocator?) -> EmberSecTask?
+@_silgen_name("SecTaskCopyValueForEntitlement")
+private func EmberSecTaskCopyValueForEntitlement(
+    _ task: EmberSecTask?,
+    _ entitlement: CFString,
+    _ error: UnsafeMutablePointer<Unmanaged<CFError>?>?
+) -> CFTypeRef?
 
 /// Friend model for local display
 struct Friend: Identifiable, Codable {
@@ -93,20 +105,20 @@ final class FriendsManager: ObservableObject {
     /// True when the running binary includes CloudKit in icloud-services.
     /// Must be checked before any CKContainer call — missing entitlement traps.
     private static func hasCloudKitEntitlement() -> Bool {
-        guard let task = SecTaskCreateFromSelf(nil) else { return false }
-        var error: CFError?
-        guard let value = SecTaskCopyValueForEntitlement(
+        guard let task = EmberSecTaskCreateFromSelf(nil) else { return false }
+        var error: Unmanaged<CFError>?
+        guard let value = EmberSecTaskCopyValueForEntitlement(
             task,
             "com.apple.developer.icloud-services" as CFString,
             &error
         ) else {
             return false
         }
-        if let services = value as? [String] {
+        let any = value as AnyObject
+        if let services = any as? [String] {
             return services.contains("CloudKit")
         }
-        // Some profiles may encode a single string
-        if let service = value as? String {
+        if let service = any as? String {
             return service == "CloudKit"
         }
         return false
