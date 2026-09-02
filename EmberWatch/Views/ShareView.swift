@@ -5,6 +5,7 @@ struct ShareView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
+    @EnvironmentObject var avatarManager: AvatarManager
     
     @State private var shareImage: UIImage?
     
@@ -41,7 +42,8 @@ struct ShareView: View {
             remaining: Int(calorieGoalManager.calculateRemainingCalories(
                 burned: healthKitManager.totalCaloriesBurned,
                 consumed: foodDataManager.totalCaloriesConsumed
-            ))
+            )),
+            avatarStyle: avatarManager.selectedStyle
         )
     }
     
@@ -89,11 +91,12 @@ struct ShareCard: View {
     let burned: Int
     let eaten: Int
     let remaining: Int
+    var avatarStyle: AvatarStyle = AvatarStyle.presets[0]
     
     var body: some View {
         VStack(spacing: 24) {
             VStack(spacing: 12) {
-                EmberFlameAvatar(level: level, size: 160)
+                EmberFlameAvatar(level: level, size: 160, style: avatarStyle)
                 
                 Text("Level \(level)")
                     .font(.system(size: 32, weight: .bold, design: .rounded))

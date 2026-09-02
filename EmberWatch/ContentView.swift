@@ -6,6 +6,7 @@ struct ContentView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var waterManager: WaterManager
+    @EnvironmentObject var avatarManager: AvatarManager
     @State private var selectedTab = 0
     
     var body: some View {
@@ -22,6 +23,7 @@ struct ContentView: View {
                     .environmentObject(foodDataManager)
                     .environmentObject(calorieGoalManager)
                     .environmentObject(waterManager)
+                    .environmentObject(avatarManager)
                 
                 FoodDiaryView()
                     .tabItem {
@@ -54,6 +56,7 @@ struct ContentView: View {
                     .environmentObject(healthKitManager)
                     .environmentObject(foodDataManager)
                     .environmentObject(calorieGoalManager)
+                    .environmentObject(avatarManager)
             }
             .tint(EmberColors.ember)
         }
