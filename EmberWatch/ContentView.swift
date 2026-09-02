@@ -8,7 +8,9 @@ struct ContentView: View {
     @EnvironmentObject var waterManager: WaterManager
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var feedbackManager: FeedbackManager
     @State private var selectedTab = 0
+    @State private var showingFeedback = false
     
     var body: some View {
         Group {
@@ -23,7 +25,7 @@ struct ContentView: View {
     }
     
     private var mainTabs: some View {
-        ZStack {
+        ZStack(alignment: .bottomTrailing) {
             EmberColors.dusk.ignoresSafeArea()
             
             TabView(selection: $selectedTab) {
@@ -75,6 +77,13 @@ struct ContentView: View {
                     .environmentObject(levelManager)
             }
             .tint(EmberColors.ember)
+            
+            FeedbackFAB(isPresented: $showingFeedback)
+                .padding(.bottom, 56) // sit above tab bar without eating tab hits
+        }
+        .sheet(isPresented: $showingFeedback) {
+            FeedbackSheetView(isPresented: $showingFeedback)
+                .environmentObject(feedbackManager)
         }
         .onAppear {
             let appearance = UITabBarAppearance()

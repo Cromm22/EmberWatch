@@ -32,12 +32,16 @@
 		3A0000290000000000000001 /* CalorieGoalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A00002A0000000000000001 /* CalorieGoalManager.swift */; };
 		3A00002B0000000000000001 /* FoodDiaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A00002C0000000000000001 /* FoodDiaryView.swift */; };
 		3A00002D0000000000000001 /* WorkoutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A00002E0000000000000001 /* WorkoutsView.swift */; };
+		E0F1A2B3C4D5E60718293A4B /* FeedbackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */; };
+		C8D9E0F1A2B3C4D5E6071829 /* FeedbackSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackManager.swift; sourceTree = "<group>"; };
+		D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackSheetView.swift; sourceTree = "<group>"; };
 		241794DFC4C04FC2B1D379C7 /* ShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
 		8721E5A5D76F49409FD1125D /* ServingSizePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServingSizePickerView.swift; sourceTree = "<group>"; };
 		BD9F37E2885F4A5DA562B21E /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
@@ -124,6 +128,7 @@
 				3A0000080000000000000001 /* HealthConnectView.swift */,
 				3A00002C0000000000000001 /* FoodDiaryView.swift */,
 				C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */,
+				D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */,
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
 			);
 			path = Views;
@@ -155,6 +160,7 @@
 				3A00002A0000000000000001 /* CalorieGoalManager.swift */,
 				4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */,
 				A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */,
+				F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -249,6 +255,8 @@
 				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
 				9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */,
 				B2C3D4E5F60718293A4B5C6D /* LevelManager.swift in Sources */,
+				E0F1A2B3C4D5E60718293A4B /* FeedbackManager.swift in Sources */,
+				C8D9E0F1A2B3C4D5E6071829 /* FeedbackSheetView.swift in Sources */,
 				6D4F8A2C9E1B3D5A7C0E4F91 /* AvatarPickerView.swift in Sources */,
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,
 				3A0000090000000000000001 /* HealthKitManager.swift in Sources */,

@@ -37,6 +37,8 @@
 	<string>Ember needs access to your workout data and active energy burned to display your daily activity.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Ember needs permission to update your health data.</string>
+	<key>EMBER_FEEDBACK_WEBHOOK_URL</key>
+	<string></string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ember needs camera access to scan food barcodes and automatically look up nutritional information.</string>
 </dict>

@@ -202,7 +202,12 @@ struct ServingSizePickerView: View {
             protein: product.proteinPerServing * selectedMultiplier,
             carbs: product.carbsPerServing * selectedMultiplier,
             fat: product.fatPerServing * selectedMultiplier,
-            mealType: selectedMealType.rawValue
+            mealType: selectedMealType.rawValue,
+            servings: selectedMultiplier,
+            caloriesPerServing: product.caloriesPerServing,
+            proteinPerServing: product.proteinPerServing,
+            carbsPerServing: product.carbsPerServing,
+            fatPerServing: product.fatPerServing
         )
         
         onConfirm(entry)
