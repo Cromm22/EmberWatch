@@ -32,9 +32,9 @@ A native iOS app built with SwiftUI that provides real-time HealthKit integratio
 - **Quick Stats**: View daily totals for calories and macros
 
 ### Water Tracking
-- **8 Glass Goal**: Track daily water intake with 8-glass default
-- **Dual Units**: Shows both fl oz (8 oz per glass) and mL
-- **Ember Tumbler Icons**: Custom glass icons with ember/cream colors
+- **125 fl oz Default Goal**: Daily hydration goal defaults to 125 fl oz (cups still log 8 oz servings)
+- **Dual Units**: Shows both fl oz and mL; goal stored in fl oz as source of truth
+- **Ember Tumbler Icons**: Custom glass icons with ember/cream colors (cup count derived from goal ÷ 8)
 - **Independent Tracking**: Water does NOT affect calorie calculations
 
 ### Workout Features
@@ -107,7 +107,7 @@ EmberWatch/
     │   ├── HealthKitManager.swift  # HealthKit API + observers
     │   ├── FoodDataManager.swift   # SwiftData food + recents
     │   ├── CalorieGoalManager.swift # Goal + XP management
-    │   └── WaterManager.swift      # Water tracking (8 glasses)
+    │   └── WaterManager.swift      # Water tracking (125 fl oz default)
     ├── Services/
     │   └── FoodLookupService.swift # Open Food Facts + USDA APIs
     └── Assets.xcassets/
@@ -147,8 +147,8 @@ EmberWatch/
 6. Item added to diary and recents
 
 ### Tracking Water
-1. Home tab shows 8 glass tracker
-2. Tap glasses to log water intake
+1. Home tab shows cup tracker sized to the fl oz goal (default 125)
+2. Tap cups to log 8 fl oz servings
 3. See fl oz and mL totals
 4. Water does NOT affect calorie remaining
 

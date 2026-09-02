@@ -754,7 +754,7 @@ struct WeightSettingsView: View {
 struct WaterGoalSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var waterManager: WaterManager
-    @State private var glassesInput: String = ""
+    @State private var flOzInput: String = ""
     
     var body: some View {
         NavigationView {
@@ -767,7 +767,7 @@ struct WaterGoalSettingsView: View {
                             .font(.headline)
                             .foregroundColor(EmberColors.cream)
                         
-                        TextField("Glasses", text: $glassesInput)
+                        TextField("fl oz", text: $flOzInput)
                             .keyboardType(.numberPad)
                             .font(.system(size: 48, weight: .bold, design: .rounded))
                             .foregroundColor(EmberColors.ember)
@@ -778,19 +778,20 @@ struct WaterGoalSettingsView: View {
                                     .fill(EmberColors.lightPlum)
                             )
                         
-                        Text("glasses · 8 fl oz each")
+                        Text("fl oz / day")
                             .font(.subheadline)
                             .foregroundColor(EmberColors.cream.opacity(0.7))
                         
-                        if let n = Int(glassesInput), n > 0 {
-                            Text("≈ \(n * 8) fl oz / \(Int(Double(n * 8) * 29.5735)) mL")
+                        if let n = Int(flOzInput), n > 0 {
+                            let cups = Int(ceil(Double(n) / WaterManager.ozPerGlass))
+                            Text("≈ \(cups) cups · \(Int(WaterManager.ozPerGlass)) fl oz each / \(Int(Double(n) * 29.5735)) mL")
                                 .font(.caption)
                                 .foregroundColor(EmberColors.cream.opacity(0.55))
                         }
                     }
                     .padding()
                     
-                    Text("Logged servings are unchanged, only daily glass goal is updated.")
+                    Text("Cups still log 8 fl oz servings. Goal is stored in fl oz (default 125).")
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -812,8 +813,8 @@ struct WaterGoalSettingsView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        if let n = Int(glassesInput) {
-                            waterManager.glassesGoal = max(1, min(n, 20))
+                        if let n = Int(flOzInput), n > 0 {
+                            waterManager.goalFlOz = Double(n)
                         }
                         isPresented = false
                     }
@@ -821,7 +822,7 @@ struct WaterGoalSettingsView: View {
                 }
             }
             .onAppear {
-                glassesInput = String(waterManager.glassesGoal)
+                flOzInput = String(Int(waterManager.goalFlOz))
             }
         }
     }
