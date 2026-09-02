@@ -12,7 +12,9 @@ class HealthKitManager: ObservableObject {
     private let healthStore = HKHealthStore()
 
     @Published var workouts: [WorkoutData] = []
+    /// Prefer Active Energy (Watch Move) for remaining calories — not workout-only sum.
     @Published var totalCaloriesBurned: Double = 0
+    @Published var workoutCaloriesBurned: Double = 0
     @Published var authorizationStatus: AuthorizationStatus = .notDetermined
     @Published var isLoading: Bool = false
     @Published var lastErrorMessage: String?
@@ -24,7 +26,6 @@ class HealthKitManager: ObservableObject {
     private var activeEnergyObserverQuery: HKObserverQuery?
 
     init() {
-        // Read authorization is intentionally opaque on iOS — probe by querying.
         refreshAccessByQuerying()
     }
     
@@ -32,14 +33,13 @@ class HealthKitManager: ObservableObject {
         stopObserving()
     }
 
-    /// Prefer this over authorizationStatus(for:) for *read* types.
     func refreshAccessByQuerying() {
         guard HKHealthStore.isHealthDataAvailable() else {
             authorizationStatus = .denied
             lastErrorMessage = "Health data isn’t available on this device."
             return
         }
-        fetchTodayWorkouts(markAccessFromResult: true)
+        fetchTodayActivity(markAccessFromResult: true)
     }
 
     func requestAuthorization() {
@@ -56,9 +56,7 @@ class HealthKitManager: ObservableObject {
                 if let error {
                     self?.lastErrorMessage = error.localizedDescription
                 }
-                // Whether Allow or Don’t Allow, the sheet completes with success=true.
-                // Probe by reading — empty result still means authorized.
-                self?.fetchTodayWorkouts(markAccessFromResult: true)
+                self?.fetchTodayActivity(markAccessFromResult: true)
             }
         }
     }
@@ -71,21 +69,102 @@ class HealthKitManager: ObservableObject {
         }
     }
 
+    /// Public entry used by Home / Workout refresh.
     func fetchTodayWorkouts(markAccessFromResult: Bool = false) {
+        fetchTodayActivity(markAccessFromResult: markAccessFromResult)
+    }
+
+    private func dayBounds() -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: Date())
+        let end = calendar.date(byAdding: .day, value: 1, to: start)!
+        return (start, end)
+    }
+
+    private func fetchTodayActivity(markAccessFromResult: Bool) {
         isLoading = true
         lastErrorMessage = nil
 
-        let calendar = Calendar.current
-        let now = Date()
-        let startOfDay = calendar.startOfDay(for: now)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        let group = DispatchGroup()
+        var activeEnergy: Double = 0
+        var workoutRows: [WorkoutData] = []
+        var workoutSum: Double = 0
+        var fetchError: Error?
 
+        group.enter()
+        fetchActiveEnergyToday { kcal, error in
+            if let error { fetchError = error }
+            activeEnergy = kcal
+            group.leave()
+        }
+
+        group.enter()
+        fetchWorkoutsToday { rows, error in
+            if let error { fetchError = error }
+            workoutRows = rows
+            workoutSum = rows.reduce(0) { $0 + $1.caloriesBurned }
+            group.leave()
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard let self else { return }
+            self.isLoading = false
+
+            if let error = fetchError {
+                let ns = error as NSError
+                if ns.domain == "com.apple.healthkit", ns.code == 5 {
+                    if markAccessFromResult {
+                        self.authorizationStatus = .denied
+                    }
+                    self.lastErrorMessage = "Health access is off. Enable Workouts + Active Energy for EmberWatch in the Health app."
+                } else {
+                    self.lastErrorMessage = error.localizedDescription
+                }
+                return
+            }
+
+            if markAccessFromResult {
+                self.authorizationStatus = .authorized
+                self.startObserving()
+            }
+
+            self.workouts = workoutRows
+            self.workoutCaloriesBurned = workoutSum
+            // Watch Move ring ≈ Active Energy. Fall back to workout sum if energy is 0 but workouts exist.
+            self.totalCaloriesBurned = activeEnergy > 0 ? activeEnergy : workoutSum
+        }
+    }
+
+    private func fetchActiveEnergyToday(completion: @escaping (Double, Error?) -> Void) {
+        let bounds = dayBounds()
         let predicate = HKQuery.predicateForSamples(
-            withStart: startOfDay,
-            end: endOfDay,
+            withStart: bounds.start,
+            end: bounds.end,
             options: .strictStartDate
         )
 
+        let query = HKStatisticsQuery(
+            quantityType: activeEnergyType,
+            quantitySamplePredicate: predicate,
+            options: .cumulativeSum
+        ) { _, statistics, error in
+            if let error {
+                completion(0, error)
+                return
+            }
+            let kcal = statistics?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
+            completion(kcal, nil)
+        }
+        healthStore.execute(query)
+    }
+
+    private func fetchWorkoutsToday(completion: @escaping ([WorkoutData], Error?) -> Void) {
+        let bounds = dayBounds()
+        let predicate = HKQuery.predicateForSamples(
+            withStart: bounds.start,
+            end: bounds.end,
+            options: .strictStartDate
+        )
         let sortDescriptor = NSSortDescriptor(
             key: HKSampleSortIdentifierStartDate,
             ascending: false
@@ -96,101 +175,56 @@ class HealthKitManager: ObservableObject {
             predicate: predicate,
             limit: HKObjectQueryNoLimit,
             sortDescriptors: [sortDescriptor]
-        ) { [weak self] _, samples, error in
-            guard let self else { return }
-
-            DispatchQueue.main.async {
-                self.isLoading = false
-
-                if let error {
-                    // Protected data / no permission typically surfaces here.
-                    let ns = error as NSError
-                    if ns.domain == "com.apple.healthkit", ns.code == 5 {
-                        // Authorization not determined / denied for read
-                        if markAccessFromResult {
-                            // If user previously denied, keep denied; otherwise notDetermined.
-                            let energy = self.healthStore.authorizationStatus(for: self.activeEnergyType)
-                            let workout = self.healthStore.authorizationStatus(for: self.workoutType)
-                            if energy == .sharingDenied || workout == .sharingDenied {
-                                self.authorizationStatus = .denied
-                            } else if self.authorizationStatus != .authorized {
-                                self.authorizationStatus = .denied
-                            }
-                        }
-                        self.lastErrorMessage = "Health access is off. Enable Workouts + Active Energy for EmberWatch in the Health app."
-                    } else {
-                        self.lastErrorMessage = error.localizedDescription
-                    }
-                    return
-                }
-
-                if markAccessFromResult {
-                    self.authorizationStatus = .authorized
-                    // Start observing once we confirm authorization
-                    self.startObserving()
-                }
-
-                let workoutSamples = (samples as? [HKWorkout]) ?? []
-                let workoutData = workoutSamples.map { workout -> WorkoutData in
-                    let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
-                    return WorkoutData(
-                        id: workout.uuid,
-                        workoutType: workout.workoutActivityType,
-                        duration: workout.duration,
-                        caloriesBurned: calories,
-                        startDate: workout.startDate
-                    )
-                }
-
-                self.workouts = workoutData
-                self.totalCaloriesBurned = workoutData.reduce(0) { $0 + $1.caloriesBurned }
+        ) { _, samples, error in
+            if let error {
+                completion([], error)
+                return
             }
-        }
 
+            let workoutSamples = (samples as? [HKWorkout]) ?? []
+            let rows: [WorkoutData] = workoutSamples.map { workout in
+                var calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
+                // Newer HealthKit often leaves totalEnergyBurned nil — use statistics when available.
+                if calories <= 0 {
+                    if let stats = workout.statistics(for: self.activeEnergyType),
+                       let qty = stats.sumQuantity() {
+                        calories = qty.doubleValue(for: .kilocalorie())
+                    }
+                }
+                return WorkoutData(
+                    id: workout.uuid,
+                    workoutType: workout.workoutActivityType,
+                    duration: workout.duration,
+                    caloriesBurned: calories,
+                    startDate: workout.startDate
+                )
+            }
+            completion(rows, nil)
+        }
         healthStore.execute(query)
     }
     
     func startObserving() {
         guard authorizationStatus == .authorized else { return }
-        
-        // Stop any existing observers first
         stopObserving()
         
-        // Observe workout changes
-        workoutObserverQuery = HKObserverQuery(sampleType: workoutType, predicate: nil) { [weak self] query, completionHandler, error in
-            guard let self else {
-                completionHandler()
-                return
-            }
-            
+        workoutObserverQuery = HKObserverQuery(sampleType: workoutType, predicate: nil) { [weak self] _, completionHandler, error in
             if let error {
                 print("Workout observer error: \(error.localizedDescription)")
             }
-            
-            // Fetch updated workouts on main thread
             DispatchQueue.main.async {
-                self.fetchTodayWorkouts()
+                self?.fetchTodayActivity(markAccessFromResult: false)
             }
-            
             completionHandler()
         }
         
-        // Observe active energy changes
-        activeEnergyObserverQuery = HKObserverQuery(sampleType: activeEnergyType, predicate: nil) { [weak self] query, completionHandler, error in
-            guard let self else {
-                completionHandler()
-                return
-            }
-            
+        activeEnergyObserverQuery = HKObserverQuery(sampleType: activeEnergyType, predicate: nil) { [weak self] _, completionHandler, error in
             if let error {
                 print("Active energy observer error: \(error.localizedDescription)")
             }
-            
-            // Fetch updated workouts on main thread
             DispatchQueue.main.async {
-                self.fetchTodayWorkouts()
+                self?.fetchTodayActivity(markAccessFromResult: false)
             }
-            
             completionHandler()
         }
         
@@ -201,14 +235,13 @@ class HealthKitManager: ObservableObject {
             healthStore.execute(activeEnergyObserverQuery)
         }
         
-        // Enable background delivery for immediate updates
-        healthStore.enableBackgroundDelivery(for: workoutType, frequency: .immediate) { success, error in
+        healthStore.enableBackgroundDelivery(for: workoutType, frequency: .immediate) { _, error in
             if let error {
                 print("Background delivery error for workouts: \(error.localizedDescription)")
             }
         }
         
-        healthStore.enableBackgroundDelivery(for: activeEnergyType, frequency: .immediate) { success, error in
+        healthStore.enableBackgroundDelivery(for: activeEnergyType, frequency: .immediate) { _, error in
             if let error {
                 print("Background delivery error for active energy: \(error.localizedDescription)")
             }
