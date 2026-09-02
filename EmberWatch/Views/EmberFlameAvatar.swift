@@ -253,6 +253,83 @@ private struct FlameSVG: View {
     }
 }
 
+
+/// Stroke-only flame silhouette reused from EmberFlameAvatar body paths (200×240 design space).
+struct EmberFlameOutlineShape: Shape {
+    /// `false` = beginner / compact; `true` = fully grown / imposing (blaze body + side tongues).
+    var blaze: Bool = false
+    
+    func path(in rect: CGRect) -> Path {
+        let sx = rect.width / 200
+        let sy = rect.height / 240
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + x * sx, y: rect.minY + y * sy)
+        }
+        
+        var path = Path()
+        
+        if blaze {
+            // Left tongue
+            path.move(to: p(38, 118))
+            path.addCurve(to: p(58, 48), control1: p(18, 92), control2: p(28, 54))
+            path.addCurve(to: p(52, 122), control1: p(48, 78), control2: p(42, 98))
+            path.closeSubpath()
+            
+            // Right tongue
+            path.move(to: p(162, 118))
+            path.addCurve(to: p(142, 48), control1: p(182, 92), control2: p(172, 54))
+            path.addCurve(to: p(148, 122), control1: p(152, 78), control2: p(158, 98))
+            path.closeSubpath()
+            
+            // Main body
+            path.move(to: p(100, 16))
+            path.addCurve(to: p(168, 148), control1: p(132, 40), control2: p(176, 78))
+            path.addCurve(to: p(100, 232), control1: p(160, 196), control2: p(124, 226))
+            path.addCurve(to: p(32, 148), control1: p(76, 226), control2: p(40, 196))
+            path.addCurve(to: p(100, 16), control1: p(24, 78), control2: p(68, 40))
+        } else {
+            path.move(to: p(100, 28))
+            path.addCurve(to: p(154, 164), control1: p(138, 56), control2: p(168, 108))
+            path.addCurve(to: p(100, 228), control1: p(142, 204), control2: p(116, 224))
+            path.addCurve(to: p(46, 164), control1: p(84, 224), control2: p(58, 204))
+            path.addCurve(to: p(100, 28), control1: p(32, 108), control2: p(62, 56))
+        }
+        
+        return path
+    }
+}
+
+/// Beginner outline beside a larger powerful outline — reads as Ember growth.
+struct EmberGrowthOutlineIcon: View {
+    private let tealAccent = Color(hex: "#2dd4bf")
+    
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 18) {
+            EmberFlameOutlineShape(blaze: false)
+                .stroke(
+                    EmberColors.ember.opacity(0.9),
+                    style: StrokeStyle(lineWidth: 2.25, lineCap: .round, lineJoin: .round)
+                )
+                .frame(width: 36, height: 43)
+            
+            EmberFlameOutlineShape(blaze: true)
+                .stroke(
+                    LinearGradient(
+                        colors: [EmberColors.ember, tealAccent],
+                        startPoint: .top,
+                        endPoint: .bottomTrailing
+                    ),
+                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+                )
+                .frame(width: 72, height: 86)
+                .shadow(color: EmberColors.ember.opacity(0.35), radius: 14, y: 4)
+                .shadow(color: tealAccent.opacity(0.2), radius: 10, y: 2)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Ember growing from beginner to full power")
+    }
+}
+
 #Preview {
     ZStack {
         Color(hex: "#100814").ignoresSafeArea()

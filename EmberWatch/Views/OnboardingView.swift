@@ -31,19 +31,31 @@ struct OnboardingView: View {
                     nameStep.tag(1)
                     xpStep(
                         title: "Earn XP every day",
-                        bodyText: "Log water, burn calories, complete workouts, and challenge friends to fuel your Ember",
-                        icon: "flame.fill"
-                    ).tag(2)
+                        bodyText: "Log water, burn calories, complete workouts, and challenge friends to fuel your Ember"
+                    ) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 56))
+                            .foregroundColor(EmberColors.ember)
+                            .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
+                    }
+                    .tag(2)
                     xpStep(
                         title: "Level 1 → 100",
-                        bodyText: "XP fills your bar. As you level up, your Ember grows in power. Level 100 is a real grind — keep the fire going.",
-                        icon: "chart.line.uptrend.xyaxis"
-                    ).tag(3)
+                        bodyText: "Complete daily goals to power your Ember."
+                    ) {
+                        EmberGrowthOutlineIcon()
+                    }
+                    .tag(3)
                     xpStep(
                         title: "Board multipliers",
-                        bodyText: "Climb the weekly Board. Top ranks boost all XP: 3rd +10%, 2nd +20%, 1st +30%.",
-                        icon: "trophy.fill"
-                    ).tag(4)
+                        bodyText: "Climb the weekly Board. Top ranks boost all XP: 3rd +10%, 2nd +20%, 1st +30%."
+                    ) {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 56))
+                            .foregroundColor(EmberColors.ember)
+                            .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
+                    }
+                    .tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.25), value: step)
@@ -184,14 +196,15 @@ struct OnboardingView: View {
         }
     }
     
-    private func xpStep(title: String, bodyText: String, icon: String) -> some View {
+    private func xpStep<Icon: View>(
+        title: String,
+        bodyText: String,
+        @ViewBuilder icon: () -> Icon
+    ) -> some View {
         VStack(spacing: 28) {
             Spacer(minLength: 40)
             
-            Image(systemName: icon)
-                .font(.system(size: 56))
-                .foregroundColor(EmberColors.ember)
-                .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
+            icon()
             
             Text(title)
                 .font(.title.bold())
