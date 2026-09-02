@@ -11,6 +11,7 @@ struct HomeView: View {
     @EnvironmentObject var weightManager: WeightManager
     @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
+    @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
     
     var remainingCalories: Double {
@@ -88,6 +89,10 @@ struct HomeView: View {
                 AvatarPickerView()
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
+            }
+            .sheet(isPresented: $showingWaterGoal) {
+                WaterGoalSettingsView(isPresented: $showingWaterGoal)
+                    .environmentObject(waterManager)
             }
             .sheet(isPresented: $showingWeightSettings) {
                 WeightSettingsView(isPresented: $showingWeightSettings)
@@ -380,10 +385,17 @@ struct HomeView: View {
             .padding(.top, 8)
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(EmberColors.lightPlum)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .onTapGesture {
+            showingWaterGoal = true
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityHint("Tap card (outside cups) to edit water goal")
     }
     
     private var dailySummaryCard: some View {
@@ -431,23 +443,9 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             
             HStack(spacing: 12) {
-                QuickStatItem(
-                    icon: "figure.run",
-                    value: "\(healthKitManager.workouts.count)",
-                    label: "Workouts"
-                )
-                
-                QuickStatItem(
-                    icon: "fork.knife",
-                    value: "\(foodDataManager.todayFoodEntries.count)",
-                    label: "Meals"
-                )
-                
-                QuickStatItem(
-                    icon: "bolt.fill",
-                    value: "\(Int(foodDataManager.totalProtein))g",
-                    label: "Protein"
-                )
+                MacroCard(name: "Protein", amount: Int(foodDataManager.totalProtein), color: .orange, icon: "flame.fill")
+                MacroCard(name: "Carbs", amount: Int(foodDataManager.totalCarbs), color: .blue, icon: "bolt.fill")
+                MacroCard(name: "Fat", amount: Int(foodDataManager.totalFat), color: .yellow, icon: "drop.fill")
             }
         }
         .padding()
@@ -488,33 +486,6 @@ struct SummaryItem: View {
     }
 }
 
-struct QuickStatItem: View {
-    let icon: String
-    let value: String
-    let label: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(EmberColors.ember)
-            
-            Text(value)
-                .font(.headline)
-                .foregroundColor(EmberColors.cream)
-            
-            Text(label)
-                .font(.caption)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(EmberColors.darkPlum)
-        )
-    }
-}
 
 struct GoalSettingsView: View {
     @Binding var isPresented: Bool
@@ -861,22 +832,26 @@ struct WaterGlassView: View {
     let onTap: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isFilled ? EmberColors.ember : EmberColors.dusk)
-                    .frame(width: 32, height: 40)
+        ZStack {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isFilled ? EmberColors.ember : EmberColors.dusk)
+                .frame(width: 32, height: 40)
+            
+            VStack(spacing: 2) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(isFilled ? EmberColors.cream : EmberColors.cream.opacity(0.3))
+                    .frame(width: 24, height: 3)
                 
-                VStack(spacing: 2) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(isFilled ? EmberColors.cream : EmberColors.cream.opacity(0.3))
-                        .frame(width: 24, height: 3)
-                    
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(isFilled ? EmberColors.cream.opacity(0.9) : EmberColors.cream.opacity(0.2))
-                        .frame(width: 20, height: 28)
-                }
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(isFilled ? EmberColors.cream.opacity(0.9) : EmberColors.cream.opacity(0.2))
+                    .frame(width: 20, height: 28)
             }
         }
+        .contentShape(Rectangle())
+        .highPriorityGesture(
+            TapGesture().onEnded { _ in onTap() }
+        )
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(isFilled ? "Filled water glass" : "Empty water glass")
     }
 }
