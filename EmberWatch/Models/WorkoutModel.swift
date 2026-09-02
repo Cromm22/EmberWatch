@@ -7,8 +7,37 @@ struct WorkoutData: Identifiable {
     let duration: TimeInterval
     let caloriesBurned: Double
     let startDate: Date
+    /// Optional override when HK type alone is ambiguous (e.g. Indoor vs Outdoor walk).
+    let customName: String?
+    /// Miles walked / traveled when logged via Quick Add (optional).
+    let distanceMiles: Double?
+    /// True for EmberWatch Quick Add / manual entries (not from HealthKit).
+    let isLocal: Bool
+    
+    init(
+        id: UUID = UUID(),
+        workoutType: HKWorkoutActivityType,
+        duration: TimeInterval,
+        caloriesBurned: Double,
+        startDate: Date,
+        customName: String? = nil,
+        distanceMiles: Double? = nil,
+        isLocal: Bool = false
+    ) {
+        self.id = id
+        self.workoutType = workoutType
+        self.duration = duration
+        self.caloriesBurned = caloriesBurned
+        self.startDate = startDate
+        self.customName = customName
+        self.distanceMiles = distanceMiles
+        self.isLocal = isLocal
+    }
     
     var displayName: String {
+        if let customName, !customName.isEmpty {
+            return customName
+        }
         switch workoutType {
         case .walking:
             return "Outdoor Walk"
@@ -86,6 +115,14 @@ struct WorkoutData: Identifiable {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: startDate)
+    }
+    
+    var formattedDistance: String? {
+        guard let distanceMiles, distanceMiles > 0 else { return nil }
+        if distanceMiles < 10 {
+            return String(format: "%.2f mi", distanceMiles)
+        }
+        return String(format: "%.1f mi", distanceMiles)
     }
 }
 

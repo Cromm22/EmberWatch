@@ -19,6 +19,9 @@ class HealthKitManager: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var lastErrorMessage: String?
 
+    /// Quick Add / manual workouts for today — merged into `workouts`, never written to HealthKit.
+    private var localWorkouts: [WorkoutData] = []
+
     private let workoutType = HKObjectType.workoutType()
     private let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
     
@@ -72,6 +75,30 @@ class HealthKitManager: ObservableObject {
     /// Public entry used by Home / Workout refresh.
     func fetchTodayWorkouts(markAccessFromResult: Bool = false) {
         fetchTodayActivity(markAccessFromResult: markAccessFromResult)
+    }
+    
+    /// Append a Quick Add workout to today's list without writing to HealthKit
+    /// and without changing Active Energy (`totalCaloriesBurned`).
+    func addLocalWorkout(_ workout: WorkoutData) {
+        pruneLocalWorkoutsToToday()
+        localWorkouts.insert(workout, at: 0)
+        var merged = localWorkouts
+        let localIDs = Set(localWorkouts.map(\.id))
+        merged.append(contentsOf: workouts.filter { !localIDs.contains($0.id) && !$0.isLocal })
+        workouts = merged
+        workoutCaloriesBurned = workouts.reduce(0) { $0 + $1.caloriesBurned }
+        // Intentionally do NOT touch totalCaloriesBurned — Active Energy stays source of truth.
+    }
+    
+    private func pruneLocalWorkoutsToToday() {
+        let start = Calendar.current.startOfDay(for: Date())
+        localWorkouts = localWorkouts.filter { $0.startDate >= start }
+    }
+    
+    private func mergeWithLocal(_ hkRows: [WorkoutData]) -> [WorkoutData] {
+        pruneLocalWorkoutsToToday()
+        let localIDs = Set(localWorkouts.map(\.id))
+        return localWorkouts + hkRows.filter { !localIDs.contains($0.id) }
     }
 
     private func dayBounds() -> (start: Date, end: Date) {
@@ -128,9 +155,11 @@ class HealthKitManager: ObservableObject {
                 self.startObserving()
             }
 
-            self.workouts = workoutRows
-            self.workoutCaloriesBurned = workoutSum
-            // Watch Move ring ≈ Active Energy. Fall back to workout sum if energy is 0 but workouts exist.
+            let merged = self.mergeWithLocal(workoutRows)
+            self.workouts = merged
+            self.workoutCaloriesBurned = merged.reduce(0) { $0 + $1.caloriesBurned }
+            // Watch Move ring ≈ Active Energy. Fall back to HK workout sum if energy is 0 but workouts exist.
+            // Local Quick Add calories never inflate Active Energy / Move total.
             self.totalCaloriesBurned = activeEnergy > 0 ? activeEnergy : workoutSum
         }
     }

@@ -41,11 +41,37 @@ enum WorkoutFlamePhase {
     }
 }
 
+private struct QuickAddExercise: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let type: HKWorkoutActivityType
+    let icon: String
+}
+
 struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var levelManager: LevelManager
-    @State private var showingQuickAdd = false
     @State private var flamePulse = false
+    
+    /// Only one Quick Add drawer open at a time.
+    @State private var expandedQuickAddID: String? = nil
+    @State private var distanceText = ""
+    @State private var timeText = "30"
+    @State private var caloriesText = ""
+    @FocusState private var focusedQuickField: QuickAddField?
+    
+    private enum QuickAddField: Hashable {
+        case distance, time, calories
+    }
+    
+    private let quickAddExercises: [QuickAddExercise] = [
+        QuickAddExercise(id: "outdoor-walk", name: "Outdoor walk", type: .walking, icon: "figure.walk"),
+        QuickAddExercise(id: "indoor-walk", name: "Indoor walk", type: .walking, icon: "figure.walk"),
+        QuickAddExercise(id: "strength", name: "Functional strength training", type: .functionalStrengthTraining, icon: "dumbbell.fill"),
+        QuickAddExercise(id: "pool-swim", name: "Pool swim", type: .swimming, icon: "figure.pool.swim"),
+        QuickAddExercise(id: "hiit", name: "High Intensity Interval training", type: .highIntensityIntervalTraining, icon: "bolt.fill"),
+        QuickAddExercise(id: "outdoor-cycle", name: "Outdoor cycle", type: .cycling, icon: "bicycle")
+    ]
     
     private var flamePhase: WorkoutFlamePhase {
         WorkoutFlamePhase(calories: healthKitManager.totalCaloriesBurned)
@@ -61,7 +87,7 @@ struct WorkoutsView: View {
                     VStack(spacing: 20) {
                         caloriesSummaryCard
                         
-                        quickAddButtons
+                        quickAddSection
                         
                         if healthKitManager.workouts.isEmpty && !healthKitManager.isLoading {
                             emptyStateView
@@ -101,10 +127,14 @@ struct WorkoutsView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .sheet(isPresented: $showingQuickAdd) {
-                QuickAddWorkoutView(isPresented: $showingQuickAdd)
-                    .environmentObject(healthKitManager)
-                    .environmentObject(levelManager)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedQuickField = nil
+                    }
+                    .foregroundColor(EmberColors.ember)
+                }
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
@@ -143,7 +173,9 @@ struct WorkoutsView: View {
         }
     }
     
-    private var quickAddButtons: some View {
+    // MARK: - Quick Add (accordion drawers)
+    
+    private var quickAddSection: some View {
         VStack(spacing: 12) {
             Text("Quick Add")
                 .font(.headline)
@@ -151,24 +183,224 @@ struct WorkoutsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
             
-            Button(action: { showingQuickAdd = true }) {
-                HStack {
-                    Image(systemName: "bolt.circle.fill")
-                        .font(.title2)
-                    
-                    Text("Log Workout")
-                        .font(.headline)
+            VStack(spacing: 10) {
+                ForEach(quickAddExercises) { exercise in
+                    quickAddRow(exercise)
                 }
-                .foregroundColor(EmberColors.cream)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(EmberColors.ember)
-                )
             }
         }
     }
+    
+    private func quickAddRow(_ exercise: QuickAddExercise) -> some View {
+        let isExpanded = expandedQuickAddID == exercise.id
+        
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                toggleQuickAdd(exercise)
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: exercise.icon)
+                        .font(.title2)
+                        .foregroundColor(EmberColors.ember)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(EmberColors.dusk)
+                        )
+                    
+                    Text(exercise.name)
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(EmberColors.cream.opacity(0.5))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            
+            if isExpanded {
+                quickAddDrawer(for: exercise)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 14)
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .top)),
+                            removal: .opacity
+                        )
+                    )
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            isExpanded ? EmberColors.ember.opacity(0.45) : Color.clear,
+                            lineWidth: 1
+                        )
+                )
+        )
+        .animation(.easeInOut(duration: 0.28), value: isExpanded)
+    }
+    
+    private func quickAddDrawer(for exercise: QuickAddExercise) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+                .background(EmberColors.cream.opacity(0.2))
+            
+            drawerField(
+                title: "Distance",
+                unit: "mi",
+                placeholder: "0",
+                text: $distanceText,
+                keyboard: .decimalPad,
+                field: .distance
+            )
+            
+            drawerField(
+                title: "Time",
+                unit: "min",
+                placeholder: "30",
+                text: $timeText,
+                keyboard: .numberPad,
+                field: .time
+            )
+            
+            drawerField(
+                title: "Calories burned",
+                unit: "kcal",
+                placeholder: "0",
+                text: $caloriesText,
+                keyboard: .numberPad,
+                field: .calories
+            )
+            
+            Button {
+                logQuickAdd(exercise)
+            } label: {
+                Text("Log")
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(canLogQuickAdd ? EmberColors.ember : EmberColors.ember.opacity(0.35))
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(!canLogQuickAdd)
+            .padding(.top, 4)
+        }
+    }
+    
+    private func drawerField(
+        title: String,
+        unit: String,
+        placeholder: String,
+        text: Binding<String>,
+        keyboard: UIKeyboardType,
+        field: QuickAddField
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+            
+            HStack(spacing: 8) {
+                TextField(placeholder, text: text)
+                    .keyboardType(keyboard)
+                    .focused($focusedQuickField, equals: field)
+                    .foregroundColor(EmberColors.cream)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(EmberColors.dusk)
+                    )
+                
+                Text(unit)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(EmberColors.cream.opacity(0.55))
+                    .frame(width: 40, alignment: .leading)
+            }
+        }
+    }
+    
+    private var canLogQuickAdd: Bool {
+        let minutes = Int(timeText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        let caloriesOK: Bool = {
+            let trimmed = caloriesText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return true } // blank → 0
+            return Double(trimmed) != nil
+        }()
+        let distanceOK: Bool = {
+            let trimmed = distanceText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return true }
+            return Double(trimmed) != nil
+        }()
+        return minutes > 0 && caloriesOK && distanceOK
+    }
+    
+    private func toggleQuickAdd(_ exercise: QuickAddExercise) {
+        focusedQuickField = nil
+        withAnimation(.easeInOut(duration: 0.28)) {
+            if expandedQuickAddID == exercise.id {
+                expandedQuickAddID = nil
+            } else {
+                expandedQuickAddID = exercise.id
+                resetQuickAddFields()
+            }
+        }
+    }
+    
+    private func resetQuickAddFields() {
+        distanceText = ""
+        timeText = "30"
+        caloriesText = ""
+    }
+    
+    private func logQuickAdd(_ exercise: QuickAddExercise) {
+        focusedQuickField = nil
+        
+        let minutes = max(1, Int(timeText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 30)
+        let caloriesTrimmed = caloriesText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let calories = Double(caloriesTrimmed) ?? 0
+        let distanceTrimmed = distanceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let distance = Double(distanceTrimmed).flatMap { $0 > 0 ? $0 : nil }
+        
+        let workout = WorkoutData(
+            workoutType: exercise.type,
+            duration: TimeInterval(minutes * 60),
+            caloriesBurned: max(0, calories),
+            startDate: Date(),
+            customName: exercise.name.capitalizedWordsPreservingAcronyms,
+            distanceMiles: distance,
+            isLocal: true
+        )
+        
+        // Local list only — does not write HealthKit / Active Energy.
+        healthKitManager.addLocalWorkout(workout)
+        // LevelManager workout XP path (deduped by id).
+        _ = levelManager.awardWorkout(id: workout.id.uuidString)
+        
+        withAnimation(.easeInOut(duration: 0.28)) {
+            expandedQuickAddID = nil
+            resetQuickAddFields()
+        }
+        
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+    
+    // MARK: - Summary / list
     
     private var caloriesSummaryCard: some View {
         VStack(spacing: 8) {
@@ -250,6 +482,24 @@ struct WorkoutsView: View {
     }
 }
 
+private extension String {
+    /// Title-style capitalize while keeping HIIT / common acronyms readable.
+    var capitalizedWordsPreservingAcronyms: String {
+        let lower = self
+        if lower.localizedCaseInsensitiveContains("High Intensity Interval") {
+            return "High Intensity Interval Training"
+        }
+        if lower.localizedCaseInsensitiveContains("Functional strength") {
+            return "Functional Strength Training"
+        }
+        return lower.split(separator: " ").map { part -> String in
+            let s = String(part)
+            if s.uppercased() == "HIIT" { return "HIIT" }
+            return s.prefix(1).uppercased() + s.dropFirst().lowercased()
+        }.joined(separator: " ")
+    }
+}
+
 struct WorkoutDetailRow: View {
     let workout: WorkoutData
     
@@ -270,9 +520,16 @@ struct WorkoutDetailRow: View {
                         .font(.headline)
                         .foregroundColor(EmberColors.cream)
                     
-                    Text(workout.formattedStartTime)
-                        .font(.caption)
-                        .foregroundColor(EmberColors.cream.opacity(0.6))
+                    HStack(spacing: 6) {
+                        Text(workout.formattedStartTime)
+                            .font(.caption)
+                            .foregroundColor(EmberColors.cream.opacity(0.6))
+                        if workout.isLocal {
+                            Text("· Quick Add")
+                                .font(.caption)
+                                .foregroundColor(EmberColors.ember.opacity(0.85))
+                        }
+                    }
                 }
                 
                 Spacer()
@@ -290,6 +547,14 @@ struct WorkoutDetailRow: View {
                     .frame(height: 40)
                 
                 WorkoutStatItem(icon: "flame.fill", label: "Calories", value: "\(Int(workout.caloriesBurned))")
+                
+                if let distance = workout.formattedDistance {
+                    Divider()
+                        .background(EmberColors.cream.opacity(0.2))
+                        .frame(height: 40)
+                    
+                    WorkoutStatItem(icon: "figure.walk", label: "Distance", value: distance)
+                }
             }
             .padding()
         }
@@ -326,163 +591,5 @@ struct WorkoutStatItem: View {
             
             Spacer()
         }
-    }
-}
-
-struct QuickAddWorkoutView: View {
-    @Binding var isPresented: Bool
-    @EnvironmentObject var healthKitManager: HealthKitManager
-    @EnvironmentObject var levelManager: LevelManager
-    
-    private let workoutTypes: [(name: String, type: HKWorkoutActivityType, icon: String)] = [
-        ("Outdoor walk", .walking, "figure.walk"),
-        ("Indoor walk", .walking, "figure.walk"),
-        ("Functional strength training", .functionalStrengthTraining, "dumbbell.fill"),
-        ("Pool swim", .swimming, "figure.pool.swim"),
-        ("High Intensity Interval training", .highIntensityIntervalTraining, "bolt.fill"),
-        ("Outdoor cycle", .cycling, "bicycle")
-    ]
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                EmberColors.dusk
-                    .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(workoutTypes, id: \.name) { workout in
-                            Button(action: {
-                                selectWorkout(name: workout.name, type: workout.type)
-                            }) {
-                                HStack(spacing: 16) {
-                                    Image(systemName: workout.icon)
-                                        .font(.title2)
-                                        .foregroundColor(EmberColors.ember)
-                                        .frame(width: 44, height: 44)
-                                        .background(
-                                            Circle()
-                                                .fill(EmberColors.dusk)
-                                        )
-                                    
-                                    Text(workout.name)
-                                        .font(.headline)
-                                        .foregroundColor(EmberColors.cream)
-                                    
-                                    Spacer()
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.subheadline)
-                                        .foregroundColor(EmberColors.cream.opacity(0.5))
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(EmberColors.lightPlum)
-                                )
-                            }
-                        }
-                    }
-                    .padding()
-                }
-            }
-            .navigationTitle("Quick Add")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
-                    .foregroundColor(EmberColors.cream)
-                }
-            }
-        }
-    }
-    
-    private func selectWorkout(name: String, type: HKWorkoutActivityType) {
-        // Local log id — Quick Add does not write to HealthKit (read-only). Award XP once per log.
-        let logId = "quickadd-\(UUID().uuidString)"
-        _ = levelManager.awardWorkout(id: logId)
-        // Soft bump burned for UI feedback without inventing HK samples (keeps Active Energy as source of truth).
-        _ = type
-        _ = name
-        isPresented = false
-    }
-}
-
-struct ManualWorkoutView: View {
-    @Binding var isPresented: Bool
-    @EnvironmentObject var healthKitManager: HealthKitManager
-    @EnvironmentObject var levelManager: LevelManager
-    
-    @State private var workoutName = ""
-    @State private var duration = ""
-    @State private var calories = ""
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                EmberColors.dusk
-                    .ignoresSafeArea()
-                
-                Form {
-                    Section {
-                        TextField("Workout Name", text: $workoutName)
-                            .foregroundColor(EmberColors.cream)
-                    } header: {
-                        Text("Details")
-                    }
-                    .listRowBackground(EmberColors.lightPlum)
-                    
-                    Section {
-                        TextField("Duration (minutes)", text: $duration)
-                            .keyboardType(.numberPad)
-                            .foregroundColor(EmberColors.cream)
-                        
-                        TextField("Calories Burned", text: $calories)
-                            .keyboardType(.numberPad)
-                            .foregroundColor(EmberColors.cream)
-                    } header: {
-                        Text("Metrics")
-                    }
-                    .listRowBackground(EmberColors.lightPlum)
-                }
-                .scrollContentBackground(.hidden)
-            }
-            .navigationTitle("Log Workout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
-                    .foregroundColor(EmberColors.cream)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add") {
-                        addWorkout()
-                    }
-                    .foregroundColor(EmberColors.ember)
-                    .disabled(!isValid)
-                }
-            }
-        }
-    }
-    
-    private var isValid: Bool {
-        !workoutName.isEmpty && Double(calories) != nil
-    }
-    
-    private func addWorkout() {
-        let logId = "manual-\(UUID().uuidString)"
-        _ = levelManager.awardWorkout(id: logId)
-        isPresented = false
     }
 }
