@@ -18,6 +18,8 @@ class SearchHistoryManager: ObservableObject {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count >= 2 else { return }
         
+        cleanupOldSearches()
+        
         // Remove duplicate if exists
         recentSearches.removeAll { $0.query.lowercased() == trimmed.lowercased() }
         
@@ -31,10 +33,9 @@ class SearchHistoryManager: ObservableObject {
         saveHistory()
     }
     
-    /// Get recent searches that are still within 48 hours
+    /// Snapshot of recent searches (no mutation — safe to read from view body).
     func getRecentSearches() -> [SearchHistoryItem] {
-        cleanupOldSearches()
-        return recentSearches
+        recentSearches
     }
     
     /// Clear all search history
@@ -63,6 +64,9 @@ class SearchHistoryManager: ObservableObject {
         // Filter out old items on load
         let cutoff = Date().addingTimeInterval(-Self.maxAge)
         recentSearches = items.filter { $0.timestamp >= cutoff }
+        if recentSearches.count != items.count {
+            saveHistory()
+        }
     }
     
     private func saveHistory() {

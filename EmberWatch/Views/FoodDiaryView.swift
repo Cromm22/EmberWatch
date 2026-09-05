@@ -75,7 +75,7 @@ struct FoodDiaryView: View {
             }
             .navigationTitle("Food")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
@@ -397,12 +397,6 @@ struct FoodEntryRow: View {
                     }
                     .font(.subheadline)
                     .foregroundColor(EmberColors.cream.opacity(0.7))
-                    
-                    if entry.protein > 0 || entry.carbs > 0 || entry.fat > 0 {
-                        Text("P:\(Int(entry.protein)) C:\(Int(entry.carbs)) F:\(Int(entry.fat))")
-                            .font(.caption)
-                            .foregroundColor(EmberColors.cream.opacity(0.55))
-                    }
                 }
                 
                 Spacer(minLength: 8)
@@ -668,7 +662,7 @@ struct EditServingsView: View {
             }
             .navigationTitle("Edit Servings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
@@ -769,7 +763,7 @@ struct AddFoodView: View {
             }
             .navigationTitle("Add Food")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {

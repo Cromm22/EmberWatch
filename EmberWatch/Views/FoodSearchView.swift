@@ -30,7 +30,7 @@ struct FoodSearchView: View {
             }
             .navigationTitle("Search Foods")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
@@ -148,10 +148,9 @@ struct FoodSearchView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if results.isEmpty {
-            // Show search history when no results
-            let recentSearches = searchHistory.getRecentSearches()
-            if !recentSearches.isEmpty && query.isEmpty {
-                searchHistoryView(recentSearches)
+            // Show search history when no results (read published property — no body side effects)
+            if !searchHistory.recentSearches.isEmpty && query.isEmpty {
+                searchHistoryView(searchHistory.recentSearches)
             } else {
                 VStack(spacing: 12) {
                     Image(systemName: "fork.knife.circle")
@@ -251,7 +250,7 @@ struct FoodSearchView: View {
         debounceTask?.cancel()
         lookupService.cancelSearch()
         debounceTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
+            try? await Task.sleep(nanoseconds: 400_000_000)
             guard !Task.isCancelled else { return }
             await runSearch(value)
         }
