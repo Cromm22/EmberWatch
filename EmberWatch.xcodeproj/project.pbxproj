@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		SHMGR0000000000000000002 /* SearchHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = SHMGR0000000000000000001 /* SearchHistoryManager.swift */; };
 		S1P2A3R4K5S6M7A8N9A0B1 /* SparksManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */; };
 		F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */; };
 		D4E5F60718293A4B5C6D7E8F /* FoodSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */; };
@@ -41,6 +42,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		SHMGR0000000000000000001 /* SearchHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryManager.swift; sourceTree = "<group>"; };
 		S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksManager.swift; sourceTree = "<group>"; };
 		E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
@@ -173,6 +175,7 @@
 				F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */,
 				B1C2D3E4F5061728394A5B6C /* WeightManager.swift */,
 				8FFD5926647D460D8448F0BD /* FriendsManager.swift */,
+				SHMGR0000000000000000001 /* SearchHistoryManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -272,6 +275,7 @@
 				E0F1A2B3C4D5E60718293A4B /* FeedbackManager.swift in Sources */,
 				A0B1C2D3E4F5061728394A5B /* WeightManager.swift in Sources */,
 				4D69EF69965942DDB28F80CF /* FriendsManager.swift in Sources */,
+				SHMGR0000000000000000002 /* SearchHistoryManager.swift in Sources */,
 				C8D9E0F1A2B3C4D5E6071829 /* FeedbackSheetView.swift in Sources */,
 				6D4F8A2C9E1B3D5A7C0E4F91 /* AvatarPickerView.swift in Sources */,
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,

@@ -62,8 +62,8 @@ class FoodLookupService: ObservableObject {
     private var searchGeneration = 0
     private var activeSearchTask: Task<[FoodProduct], Never>?
     
-    private static let maxResults = 20
-    private static let session: URLSession = {
+    nonisolated private static let maxResults = 20
+    nonisolated private static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 12
         config.timeoutIntervalForResource = 18
@@ -73,7 +73,7 @@ class FoodLookupService: ObservableObject {
     }()
     
     // Nutritionix credentials from Info.plist
-    private static let nutritionixAppId: String? = {
+    nonisolated private static let nutritionixAppId: String? = {
         guard let value = Bundle.main.object(forInfoDictionaryKey: "NUTRITIONIX_APP_ID") as? String,
               !value.trimmingCharacters(in: .whitespaces).isEmpty else {
             return nil
@@ -81,7 +81,7 @@ class FoodLookupService: ObservableObject {
         return value
     }()
     
-    private static let nutritionixApiKey: String? = {
+    nonisolated private static let nutritionixApiKey: String? = {
         guard let value = Bundle.main.object(forInfoDictionaryKey: "NUTRITIONIX_API_KEY") as? String,
               !value.trimmingCharacters(in: .whitespaces).isEmpty else {
             return nil
@@ -89,7 +89,7 @@ class FoodLookupService: ObservableObject {
         return value
     }()
     
-    private static var hasNutritionix: Bool {
+    nonisolated private static var hasNutritionix: Bool {
         nutritionixAppId != nil && nutritionixApiKey != nil
     }
     
@@ -234,7 +234,7 @@ class FoodLookupService: ObservableObject {
         switch outcome {
         case .success(let results):
             if results.isEmpty {
-                errorMessage = "No foods found for "\(trimmed)"."
+                errorMessage = "No foods found for \"\(trimmed)\"."
             } else {
                 errorMessage = nil
             }
