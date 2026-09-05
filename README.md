@@ -213,7 +213,7 @@ The app uses a clean light theme with ember brand accents:
 - [ ] Save quick-add workouts to HealthKit
 - [ ] Real leaderboard with multiplayer
 - [ ] Production USDA API key
-- [ ] Additional food databases (e.g., Nutritionix)
+- [ ] Additional food databases (e.g., more branded food APIs)
 - [ ] Meal photo recognition
 - [ ] WatchOS companion app
 

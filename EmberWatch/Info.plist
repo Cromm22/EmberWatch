@@ -39,9 +39,9 @@
 	<string>Ember needs permission to update your health data.</string>
 	<key>EMBER_FEEDBACK_WEBHOOK_URL</key>
 	<string></string>
-	<key>NUTRITIONIX_APP_ID</key>
+	<key>FATSECRET_CLIENT_ID</key>
 	<string></string>
-	<key>NUTRITIONIX_API_KEY</key>
+	<key>FATSECRET_CLIENT_SECRET</key>
 	<string></string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ember needs camera access to scan food barcodes and automatically look up nutritional information.</string>
