@@ -353,7 +353,7 @@ struct EmberGrowthOutlineIcon: View {
 
 #Preview {
     ZStack {
-        Color(hex: "#100814").ignoresSafeArea()
+        EmberColors.dusk.ignoresSafeArea()
         EmberFlameAvatar(level: 1, size: 240)
     }
 }
