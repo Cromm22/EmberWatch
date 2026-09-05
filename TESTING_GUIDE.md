@@ -42,24 +42,24 @@
 2. ✅ EXPECTED: All history disappears
 ```
 
-### 3. Nutritionix (Optional - Requires API Keys)
+### 3. FatSecret (Optional - Requires API Keys)
 
-**To enable Nutritionix:**
-1. Get free API keys from https://www.nutritionix.com/business/api
+**To enable FatSecret:**
+1. Get free API keys from https://platform.fatsecret.com/api/
 2. Edit `EmberWatch/Info.plist`:
    ```xml
-   <key>NUTRITIONIX_APP_ID</key>
-   <string>YOUR_APP_ID_HERE</string>
-   <key>NUTRITIONIX_API_KEY</key>
-   <string>YOUR_API_KEY_HERE</string>
+   <key>FATSECRET_CLIENT_ID</key>
+   <string>YOUR_CLIENT_ID_HERE</string>
+   <key>FATSECRET_CLIENT_SECRET</key>
+   <string>YOUR_CLIENT_SECRET_HERE</string>
    ```
 3. Rebuild and run
 
-**Test with Nutritionix:**
+**Test with FatSecret:**
 - Search "chipotle bowl" → More detailed restaurant items
 - Search "kraft mac and cheese" → Branded packaged foods
 
-**Test without Nutritionix (default):**
+**Test without FatSecret (default):**
 - Leave keys empty in Info.plist
 - ✅ EXPECTED: Search still works, uses curated + OFF + USDA
 
@@ -99,11 +99,11 @@
 
 ### ✅ Search "chipotle"
 - **Top results:** Burrito Bowl, Steak Burrito, Chicken Burrito, Tacos
-- **Source:** Curated seed + Nutritionix (if enabled)
+- **Source:** Curated seed + FatSecret (if enabled)
 
 ### ✅ Search "starbucks"
 - **Top results:** Pike Place, Latte, Breakfast Sandwich
-- **Source:** Curated seed + Nutritionix (if enabled)
+- **Source:** Curated seed + FatSecret (if enabled)
 
 ### ✅ Search "banana" (generic food)
 - **Results:** Various banana products from OFF/USDA
@@ -116,9 +116,9 @@
 
 ## Known Limitations
 
-1. **Curated seed is limited:** Only 6 major chains (McDonald's, Chipotle, Starbucks, Wendy's, Taco Bell, Subway) with ~5 items each. Other chains fall back to Nutritionix/OFF.
+1. **Curated seed is limited:** Only 6 major chains (McDonald's, Chipotle, Starbucks, Wendy's, Taco Bell, Subway) with ~5 items each. Other chains fall back to FatSecret/OFF.
 
-2. **Nutritionix requires keys:** Without API keys, search relies on curated seed + improved OFF ranking. Still much better than before, but fewer restaurant options.
+2. **FatSecret requires keys:** Without API keys, search relies on curated seed + improved OFF ranking. Still much better than before, but fewer restaurant options.
 
 3. **OFF data quality varies:** Some products may have incomplete brand data. The ranking logic handles this gracefully but can't fix missing data.
 
@@ -132,7 +132,7 @@
 
 **Issue:** "mcdonalds" still shows unrelated items
 - **Check:** Are curated items appearing first? (They should)
-- **Check:** Is Nutritionix enabled? (Optional but helps)
+- **Check:** Is FatSecret enabled? (Optional but helps)
 - **Possible cause:** OFF data quality improved but not perfect
 
 **Issue:** Search history not appearing
@@ -141,7 +141,7 @@
 - **Check:** Are searches older than 48 hours? (Auto-cleaned)
 
 **Issue:** App won't build
-- **Check:** Did you add non-empty Nutritionix keys? If so, ensure they're valid strings (not required to be real API keys for compilation)
+- **Check:** Did you add non-empty FatSecret keys? If so, ensure they're valid strings (not required to be real API keys for compilation)
 - **Check:** Xcode version (requires Swift 5.5+ for async/await)
 
 ## Manual Test Checklist
@@ -158,7 +158,7 @@ Copy this checklist for testing:
 - [ ] Serving picker still works
 - [ ] Food logs to diary successfully
 - [ ] Rapid typing doesn't hang UI
-- [ ] Nutritionix fallback works (leave keys empty, search still succeeds)
+- [ ] FatSecret fallback works (leave keys empty, search still succeeds)
 - [ ] No crashes or errors
 
 ## Performance Metrics
@@ -174,7 +174,7 @@ Copy this checklist for testing:
 
 ✅ **Accuracy:** "mcdonalds" search no longer returns unrelated Apple Juice  
 ✅ **Speed:** Cancellation, off-main work, result caps  
-✅ **Coverage:** Nutritionix wired + curated seed + improved OFF ranking  
+✅ **Coverage:** FatSecret wired + curated seed + improved OFF ranking  
 ✅ **History:** 2-day search history with persistence  
 
 ## Next Steps After Testing
