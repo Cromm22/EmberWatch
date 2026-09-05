@@ -16,7 +16,7 @@ struct AvatarPickerView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "#100814")
+                EmberColors.dusk
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -108,8 +108,8 @@ struct AvatarPickerView: View {
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sparksManager.toast)
             .navigationTitle("Avatar Gallery")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(Color(hex: "#100814"), for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

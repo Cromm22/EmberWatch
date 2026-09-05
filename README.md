@@ -167,14 +167,15 @@ EmberWatch/
 
 ## Color Scheme
 
-The app matches the web demo color palette:
-- **Dusk**: `#100814` - Main background
-- **Cream**: `#fff1dc` - Primary text
-- **Ember**: `#ff7a3c` - Primary accent/CTA
+The app uses a clean light theme with ember brand accents:
+- **Dusk**: `#ffffff` - Main background (white)
+- **Cream**: `#1a1a1a` - Primary text (dark)
+- **Ember**: `#ff7a3c` - Primary accent/CTA (brand orange)
 - **Ember Accent**: `#f97316` - Secondary accent
-- **Gold**: `#ffd27a` - Medals/highlights
-- **Light Plum**: `#1a0d22` - Cards/surfaces
-- **Plum**: `#3a1848` - Secondary surfaces
+- **Gold**: `#ffc107` - Medals/highlights
+- **Light Plum**: `#f5f5f5` - Cards/surfaces (light gray)
+- **Plum**: `#f0f0f0` - Secondary surfaces
+- **Muted**: `#666666` - Secondary text
 
 ## Data Persistence
 

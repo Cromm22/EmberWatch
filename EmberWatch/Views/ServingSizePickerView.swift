@@ -31,7 +31,7 @@ struct ServingSizePickerView: View {
             }
             .navigationTitle("Confirm Serving")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {

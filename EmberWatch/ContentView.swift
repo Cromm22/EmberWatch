@@ -134,7 +134,7 @@ struct ContentView: View {
             
             appearance.stackedLayoutAppearance.selected.iconColor = UIColor(EmberColors.ember)
             appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
-                .foregroundColor: UIColor(EmberColors.cream)
+                .foregroundColor: UIColor(EmberColors.ember)
             ]
             
             UITabBar.appearance().standardAppearance = appearance
@@ -144,16 +144,21 @@ struct ContentView: View {
 }
 
 struct EmberColors {
-    static let dusk = Color(hex: "#100814")
-    static let dusk2 = Color(hex: "#1a0d22")
-    static let plum = Color(hex: "#3a1848")
+    // Light theme backgrounds
+    static let dusk = Color(hex: "#ffffff")
+    static let dusk2 = Color(hex: "#f5f5f5")
+    static let plum = Color(hex: "#f0f0f0")
+    
+    // Brand colors (keep ember orange)
     static let ember = Color(hex: "#ff7a3c")
     static let emberAccent = Color(hex: "#f97316")
-    static let gold = Color(hex: "#ffd27a")
-    static let cream = Color(hex: "#fff1dc")
-    static let creamAlt = Color(hex: "#f6ead9")
-    static let muted = Color(hex: "#c9b4a4")
-    static let ink = Color(hex: "#140c09")
+    static let gold = Color(hex: "#ffc107")
+    
+    // Text colors (inverted for light theme)
+    static let cream = Color(hex: "#1a1a1a")
+    static let creamAlt = Color(hex: "#2a2a2a")
+    static let muted = Color(hex: "#666666")
+    static let ink = Color(hex: "#ffffff")
     
     // Back-compat aliases used by existing views
     static let darkPlum = dusk
