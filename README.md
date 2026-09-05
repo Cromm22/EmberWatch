@@ -212,7 +212,7 @@ The app matches the web demo color palette:
 - [ ] Save quick-add workouts to HealthKit
 - [ ] Real leaderboard with multiplayer
 - [ ] Production USDA API key
-- [ ] Additional food databases (e.g., Nutritionix)
+- [ ] Additional food databases (e.g., more branded food APIs)
 - [ ] Meal photo recognition
 - [ ] WatchOS companion app
 

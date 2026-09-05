@@ -16,7 +16,7 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
     enum FoodSource: String, Sendable {
         case openFoodFacts = "OFF"
         case usda = "USDA"
-        case nutritionix = "Nutritionix"
+        case fatSecret = "FatSecret"
         case curated = "Curated"
     }
     
@@ -60,44 +60,140 @@ class FoodLookupService: ObservableObject {
     
     /// Bumped on each new search so stale responses are ignored.
     private var searchGeneration = 0
-    private var activeSearchTask: Task<[FoodProduct], Never>?
+    private var activeSearchTask: Task<Result<[FoodProduct], Error>, Never>?
     
     nonisolated private static let maxResults = 20
+    /// Hard ceiling for an entire text search (network + rank). UI never waits longer.
+    nonisolated private static let searchDeadlineNanoseconds: UInt64 = 7_000_000_000
     nonisolated private static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 12
-        config.timeoutIntervalForResource = 18
+        config.timeoutIntervalForRequest = 5
+        config.timeoutIntervalForResource = 7
         config.waitsForConnectivity = false
         config.urlCache = nil
         return URLSession(configuration: config)
     }()
     
-    // Nutritionix credentials from Info.plist
-    nonisolated private static let nutritionixAppId: String? = {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "NUTRITIONIX_APP_ID") as? String,
-              !value.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return nil
-        }
-        return value
-    }()
-    
-    nonisolated private static let nutritionixApiKey: String? = {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "NUTRITIONIX_API_KEY") as? String,
-              !value.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return nil
-        }
-        return value
-    }()
-    
-    nonisolated private static var hasNutritionix: Bool {
-        nutritionixAppId != nil && nutritionixApiKey != nil
+    // FatSecret credentials from Info.plist
+    nonisolated private static func sanitizedCredential(_ key: String) -> String? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let lower = trimmed.lowercased()
+        // Treat placeholders / empty-key installs as absent — never call FatSecret.
+        let rejected = ["your_client_id", "your_client_secret", "changeme", "todo", "xxx", "null", "none"]
+        if rejected.contains(lower) { return nil }
+        return trimmed
     }
+    
+    nonisolated private static let fatSecretClientId: String? = sanitizedCredential("FATSECRET_CLIENT_ID")
+    
+    nonisolated private static let fatSecretClientSecret: String? = sanitizedCredential("FATSECRET_CLIENT_SECRET")
+    
+    nonisolated private static var hasFatSecret: Bool {
+        fatSecretClientId != nil && fatSecretClientSecret != nil
+    }
+    
+    // FatSecret OAuth token cache (in-memory)
+    private actor FatSecretTokenCache {
+        private var accessToken: String?
+        private var tokenExpiry: Date?
+        
+        func getToken() -> String? {
+            guard let token = accessToken, let expiry = tokenExpiry, expiry > Date() else {
+                return nil
+            }
+            return token
+        }
+        
+        func setToken(_ token: String, expiresIn: Int) {
+            self.accessToken = token
+            self.tokenExpiry = Date().addingTimeInterval(Double(expiresIn - 60))
+        }
+        
+        func clearToken() {
+            self.accessToken = nil
+            self.tokenExpiry = nil
+        }
+    }
+    
+    nonisolated private static let tokenCache = FatSecretTokenCache()
     
     func cancelSearch() {
         searchGeneration += 1
         activeSearchTask?.cancel()
         activeSearchTask = nil
         isLoading = false
+    }
+    
+    /// Cooperative cancel + hard deadline around a detached search body.
+    nonisolated private static func withSearchDeadline<T: Sendable>(
+        _ operation: @Sendable @escaping () async -> T
+    ) async -> T? {
+        let work = Task.detached(priority: .userInitiated) { () -> T in
+            await operation()
+        }
+        return await withTaskGroup(of: T?.self) { group in
+            group.addTask {
+                let value = await work.value
+                return value
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: Self.searchDeadlineNanoseconds)
+                work.cancel()
+                return nil
+            }
+            var result: T? = nil
+            for await value in group {
+                if let value {
+                    result = value
+                    group.cancelAll()
+                    break
+                }
+            }
+            work.cancel()
+            return result
+        }
+    }
+    
+    /// Fetch bytes only for 2xx responses; never decode error/HTML bodies.
+    nonisolated private static func fetchOK(_ url: URL) async throws -> Data {
+        let (data, response) = try await session.data(from: url)
+        try Task.checkCancellation()
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return data
+    }
+    
+    nonisolated private static func fetchOK(request: URLRequest) async throws -> Data {
+        let (data, response) = try await session.data(for: request)
+        try Task.checkCancellation()
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return data
+    }
+    
+    nonisolated private static func mergeProducts(
+        into results: inout [FoodProduct],
+        seenKeys: inout Set<String>,
+        products: [FoodProduct]
+    ) {
+        for product in products {
+            guard product.hasValidMacros else { continue }
+            let key = dedupeKey(product)
+            if seenKeys.insert(key).inserted {
+                results.append(product)
+                if results.count >= maxResults { return }
+            }
+        }
     }
     
     func lookupBarcode(_ barcode: String) async -> FoodProduct? {
@@ -129,8 +225,9 @@ class FoodLookupService: ObservableObject {
         }
     }
     
-    /// Text / name search across Nutritionix (if available), curated chains, Open Food Facts, then USDA.
-    /// Never blocks the main thread for network/JSON — work runs off-main; only state updates hop back.
+    /// Text / name search across curated chains, Nutritionix (only if keyed), Open Food Facts, then USDA.
+    /// Never blocks the main thread for network/JSON. Curated hits return immediately (no OFF wait).
+    /// Hard ~7s deadline; cancelSearch cancels the in-flight detached task.
     func searchFoods(query: String) async -> [FoodProduct] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else {
@@ -149,64 +246,33 @@ class FoodLookupService: ObservableObject {
         let task = Task.detached(priority: .userInitiated) { () -> Result<[FoodProduct], Error> in
             do {
                 try Task.checkCancellation()
+                
+                let brandQuery = Self.extractBrandQuery(trimmed)
                 var results: [FoodProduct] = []
                 var seenKeys = Set<String>()
                 
-                let brandQuery = Self.extractBrandQuery(trimmed)
-                
-                // 1. Curated chain seed (instant, guaranteed hits)
+                // 1. Curated chain seed — instant, never waits on network.
                 let curated = Self.searchCuratedChains(query: trimmed, brandQuery: brandQuery)
-                for product in curated {
-                    let key = Self.dedupeKey(product)
-                    if !seenKeys.contains(key) {
-                        seenKeys.insert(key)
-                        results.append(product)
-                    }
+                Self.mergeProducts(into: &results, seenKeys: &seenKeys, products: curated)
+                
+                // Brand curated hits are enough — return immediately (do not block on OFF/USDA/Nix).
+                if !curated.isEmpty {
+                    return .success(Array(results.prefix(Self.maxResults)))
                 }
                 
-                // 2. Nutritionix (preferred for restaurant/branded foods)
-                if Self.hasNutritionix {
-                    let nix = try await Self.searchNutritionix(query: trimmed)
-                    try Task.checkCancellation()
-                    for product in nix {
-                        let key = Self.dedupeKey(product)
-                        if !seenKeys.contains(key), product.hasValidMacros {
-                            seenKeys.insert(key)
-                            results.append(product)
-                            if results.count >= Self.maxResults { break }
-                        }
-                    }
-                }
+                try Task.checkCancellation()
                 
-                // 3. Open Food Facts with brand-aware ranking
-                if results.count < Self.maxResults {
-                    let off = try await Self.searchOpenFoodFacts(query: trimmed)
-                    try Task.checkCancellation()
-                    let ranked = Self.rankAndFilterResults(off, query: trimmed, brandQuery: brandQuery)
-                    for product in ranked {
-                        let key = Self.dedupeKey(product)
-                        if !seenKeys.contains(key), product.hasValidMacros {
-                            seenKeys.insert(key)
-                            results.append(product)
-                            if results.count >= Self.maxResults { break }
-                        }
-                    }
+                // 2–4. Network sources under a hard deadline (no endless spinner on OFF 503/hang).
+                if let network = await Self.withSearchDeadline({
+                    await Self.collectNetworkResults(
+                        query: trimmed,
+                        brandQuery: brandQuery,
+                        seed: results,
+                        seenKeys: seenKeys
+                    )
+                }) {
+                    return .success(network)
                 }
-                
-                // 4. USDA fallback
-                if results.count < 8 {
-                    let usda = try await Self.searchUSDA(query: trimmed)
-                    try Task.checkCancellation()
-                    for product in usda {
-                        let key = Self.dedupeKey(product)
-                        if !seenKeys.contains(key), product.hasValidMacros {
-                            seenKeys.insert(key)
-                            results.append(product)
-                            if results.count >= Self.maxResults { break }
-                        }
-                    }
-                }
-                
                 return .success(Array(results.prefix(Self.maxResults)))
             } catch is CancellationError {
                 return .failure(CancellationError())
@@ -214,17 +280,14 @@ class FoodLookupService: ObservableObject {
                 return .failure(error)
             }
         }
-        activeSearchTask = Task {
-            switch await task.value {
-            case .success(let r): return r
-            case .failure: return []
-            }
-        }
+        
+        // cancelSearch cancels this detached task (cooperative cancel of URLSession + ranking).
+        activeSearchTask = task
         
         let outcome = await task.value
         
-        // Stale generation — a newer keystroke owns the UI now.
         guard generation == searchGeneration else {
+            task.cancel()
             return []
         }
         
@@ -248,6 +311,53 @@ class FoodLookupService: ObservableObject {
         }
     }
     
+    /// Parallel OFF (+ optional Nutritionix) then USDA fill, respecting cancellation.
+    nonisolated private static func collectNetworkResults(
+        query: String,
+        brandQuery: String?,
+        seed: [FoodProduct],
+        seenKeys: Set<String>
+    ) async -> [FoodProduct] {
+        var results = seed
+        var seen = seenKeys
+        
+        // FatSecret only when real credentials exist — never hit the network with empty keys.
+        if hasFatSecret {
+            if let fs = try? await searchFatSecret(query: query) {
+                try? Task.checkCancellation()
+                mergeProducts(into: &results, seenKeys: &seen, products: fs)
+            }
+        }
+        
+        if results.count >= maxResults || Task.isCancelled {
+            return Array(results.prefix(maxResults))
+        }
+        
+        await withTaskGroup(of: [FoodProduct].self) { group in
+            group.addTask {
+                let raw = (try? await searchOpenFoodFacts(query: query)) ?? []
+                return rankAndFilterResults(raw, query: query, brandQuery: brandQuery)
+            }
+            group.addTask {
+                (try? await searchUSDA(query: query)) ?? []
+            }
+            
+            for await batch in group {
+                if Task.isCancelled {
+                    group.cancelAll()
+                    break
+                }
+                mergeProducts(into: &results, seenKeys: &seen, products: batch)
+                if results.count >= maxResults {
+                    group.cancelAll()
+                    break
+                }
+            }
+        }
+        
+        return Array(results.prefix(maxResults))
+    }
+
     /// Returns true if the product has incomplete nutrition data and should be enriched.
     func needsDetailEnrichment(_ product: FoodProduct) -> Bool {
         return !product.hasValidMacros
@@ -270,7 +380,7 @@ class FoodLookupService: ObservableObject {
                     }
                 }
                 
-                if !product.barcode.starts(with: "usda-"), !product.barcode.starts(with: "off-"), !product.barcode.starts(with: "nix-") {
+                if !product.barcode.starts(with: "usda-"), !product.barcode.starts(with: "off-"), !product.barcode.starts(with: "fs-") {
                     if let enriched = try await Self.lookupOpenFoodFacts(barcode: product.barcode) {
                         return .success(enriched)
                     }
@@ -452,8 +562,7 @@ class FoodLookupService: ObservableObject {
             return nil
         }
         
-        let (data, _) = try await session.data(from: url)
-        try Task.checkCancellation()
+        let data = try await fetchOK(url)
         let response = try JSONDecoder().decode(OFFResponse.self, from: data)
         
         guard response.status == 1,
@@ -471,8 +580,7 @@ class FoodLookupService: ObservableObject {
             return nil
         }
         
-        let (data, _) = try await session.data(from: url)
-        try Task.checkCancellation()
+        let data = try await fetchOK(url)
         let response = try JSONDecoder().decode(USDAResponse.self, from: data)
         guard let food = response.foods.first else { return nil }
         return makeUSDAProduct(food)
@@ -484,8 +592,7 @@ class FoodLookupService: ObservableObject {
             return nil
         }
         
-        let (data, _) = try await session.data(from: url)
-        try Task.checkCancellation()
+        let data = try await fetchOK(url)
         let detail = try JSONDecoder().decode(USDAFoodDetail.self, from: data)
         return makeUSDADetailProduct(detail)
     }
@@ -498,13 +605,12 @@ class FoodLookupService: ObservableObject {
             URLQueryItem(name: "search_simple", value: "1"),
             URLQueryItem(name: "action", value: "process"),
             URLQueryItem(name: "json", value: "1"),
-            URLQueryItem(name: "page_size", value: "30"),
+            URLQueryItem(name: "page_size", value: "15"),
             URLQueryItem(name: "fields", value: "code,product_name,brands,brands_tags,serving_size,serving_quantity,nutriments,countries_tags")
         ]
         guard let url = components.url else { return [] }
         
-        let (data, _) = try await session.data(from: url)
-        try Task.checkCancellation()
+        let data = try await fetchOK(url)
         
         let response = try JSONDecoder().decode(OFFSearchResponse.self, from: data)
         var out: [FoodProduct] = []
@@ -514,7 +620,7 @@ class FoodLookupService: ObservableObject {
                 continue
             }
             out.append(item)
-            if out.count >= 30 { break }
+            if out.count >= 15 { break }
         }
         return out
     }
@@ -529,51 +635,79 @@ class FoodLookupService: ObservableObject {
         ]
         guard let url = components.url else { return [] }
         
-        let (data, _) = try await session.data(from: url)
-        try Task.checkCancellation()
+        let data = try await fetchOK(url)
         let response = try JSONDecoder().decode(USDAResponse.self, from: data)
         return response.foods.compactMap { makeUSDAProduct($0) }.prefix(maxResults).map { $0 }
     }
     
-    nonisolated private static func searchNutritionix(query: String) async throws -> [FoodProduct] {
-        guard let appId = nutritionixAppId, let apiKey = nutritionixApiKey else {
+    nonisolated private static func searchFatSecret(query: String) async throws -> [FoodProduct] {
+        guard let clientId = fatSecretClientId, let clientSecret = fatSecretClientSecret else {
             return []
         }
         
-        guard let url = URL(string: "https://trackapi.nutritionix.com/v2/search/instant") else {
-            return []
+        // Get OAuth token (cached or fresh)
+        let token: String
+        if let cached = await tokenCache.getToken() {
+            token = cached
+        } else {
+            guard let freshToken = try? await fetchFatSecretToken(clientId: clientId, clientSecret: clientSecret) else {
+                return []
+            }
+            token = freshToken
         }
+        
+        // Search using FatSecret foods.search.v3
+        var components = URLComponents(string: "https://platform.fatsecret.com/rest/server.api")!
+        components.queryItems = [
+            URLQueryItem(name: "method", value: "foods.search.v3"),
+            URLQueryItem(name: "search_expression", value: query),
+            URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "max_results", value: "20")
+        ]
+        guard let url = components.url else { return [] }
         
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(appId, forHTTPHeaderField: "x-app-id")
-        request.setValue(apiKey, forHTTPHeaderField: "x-app-key")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let body: [String: Any] = ["query": query]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, _) = try await session.data(for: request)
-        try Task.checkCancellation()
-        
-        let response = try JSONDecoder().decode(NutritionixSearchResponse.self, from: data)
+        let data = try await fetchOK(request: request)
+        let response = try JSONDecoder().decode(FatSecretSearchResponse.self, from: data)
         var out: [FoodProduct] = []
         
-        // Branded foods
-        for item in response.branded ?? [] {
-            if let product = makeNutritionixProduct(item) {
+        for item in response.foods?.food ?? [] {
+            if let product = makeFatSecretProduct(item) {
                 out.append(product)
                 if out.count >= 15 { break }
             }
         }
         
-        // Common foods (restaurant items)
-        for item in response.common ?? [] {
-            // For common items, we need to fetch details (skip for now to keep it fast)
-            // Could enhance later with natural language endpoint
+        return out
+    }
+    
+    nonisolated private static func fetchFatSecretToken(clientId: String, clientSecret: String) async throws -> String? {
+        guard let url = URL(string: "https://oauth.fatsecret.com/connect/token") else {
+            return nil
         }
         
-        return out
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        
+        let credentials = "\(clientId):\(clientSecret)".data(using: .utf8)!.base64EncodedString()
+        request.setValue("Basic \(credentials)", forHTTPHeaderField: "Authorization")
+        
+        let body = "grant_type=client_credentials&scope=basic"
+        request.httpBody = body.data(using: .utf8)
+        
+        let data = try await fetchOK(request: request)
+        
+        struct TokenResponse: Codable {
+            let access_token: String
+            let expires_in: Int
+        }
+        
+        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+        await tokenCache.setToken(tokenResponse.access_token, expiresIn: tokenResponse.expires_in)
+        return tokenResponse.access_token
     }
     
     nonisolated private static func makeOFFProduct(_ product: OFFProduct, nutriments: OFFNutriments, fallbackBarcode: String) -> FoodProduct? {
@@ -645,12 +779,45 @@ class FoodLookupService: ObservableObject {
         )
     }
     
-    nonisolated private static func makeNutritionixProduct(_ item: NutritionixBrandedItem) -> FoodProduct? {
-        let calories = item.nfCalories ?? 0
-        let protein = item.nfProtein ?? 0
-        let carbs = item.nfTotalCarbohydrate ?? 0
-        let fat = item.nfTotalFat ?? 0
-        let servingGrams = item.servingWeightGrams ?? 100
+    nonisolated private static func makeFatSecretProduct(_ item: FatSecretFood) -> FoodProduct? {
+        guard let description = item.food_description, !description.isEmpty else {
+            return nil
+        }
+        
+        let lower = description.lowercased()
+        
+        // Extract serving amount (e.g., "per 100g")
+        var servingGrams: Double = 100
+        if let perIndex = lower.range(of: "per ") {
+            let afterPer = lower[perIndex.upperBound...]
+            if let gIndex = afterPer.range(of: "g") {
+                let segment = String(afterPer[..<gIndex.lowerBound])
+                if let extracted = extractNumber(from: segment), extracted > 0 {
+                    servingGrams = extracted
+                }
+            }
+        }
+        
+        // Extract nutrition values from pipe-separated components
+        let components = description.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+        
+        var calories: Double = 0
+        var fat: Double = 0
+        var carbs: Double = 0
+        var protein: Double = 0
+        
+        for component in components {
+            let lowerComp = component.lowercased()
+            if lowerComp.contains("cal") {
+                calories = extractNumber(from: component) ?? 0
+            } else if lowerComp.contains("fat") {
+                fat = extractNumber(from: component) ?? 0
+            } else if lowerComp.contains("carb") {
+                carbs = extractNumber(from: component) ?? 0
+            } else if lowerComp.contains("prot") {
+                protein = extractNumber(from: component) ?? 0
+            }
+        }
         
         // Convert to per 100g
         let cal100 = (calories / servingGrams) * 100
@@ -660,12 +827,12 @@ class FoodLookupService: ObservableObject {
         
         guard cal100 > 0 || pro100 > 0 || carb100 > 0 || fat100 > 0 else { return nil }
         
-        let name = item.foodName ?? item.brandName ?? "Unknown"
-        let brand = item.brandName
-        let servingSize = item.servingUnit ?? "\(Int(servingGrams))g"
+        let name = item.food_name ?? "Unknown"
+        let brand = item.brand_name?.trimmingCharacters(in: .whitespaces)
+        let servingSize = "\(Int(servingGrams))g"
         
         return FoodProduct(
-            barcode: "nix-\(item.nixItemId ?? "")",
+            barcode: "fs-\(item.food_id ?? "")",
             name: name,
             servingSize: servingSize,
             caloriesPer100g: cal100,
@@ -674,8 +841,18 @@ class FoodLookupService: ObservableObject {
             fatPer100g: fat100,
             servingSizeGrams: servingGrams,
             brand: brand,
-            source: .nutritionix
+            source: .fatSecret
         )
+    }
+    
+    nonisolated private static func extractNumber(from text: String) -> Double? {
+        let pattern = "[0-9]+\\.?[0-9]*"
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range, in: text) else {
+            return nil
+        }
+        return Double(text[range])
     }
 }
 
@@ -788,45 +965,20 @@ struct USDAFoodDetail: Codable, Sendable {
     let foodNutrients: [USDANutrient]
 }
 
-// MARK: - Nutritionix DTOs
+// MARK: - FatSecret DTOs
 
-struct NutritionixSearchResponse: Codable, Sendable {
-    let common: [NutritionixCommonItem]?
-    let branded: [NutritionixBrandedItem]?
+struct FatSecretSearchResponse: Codable, Sendable {
+    let foods: FatSecretFoodsContainer?
 }
 
-struct NutritionixCommonItem: Codable, Sendable {
-    let foodName: String?
-    let servingUnit: String?
-    let tagId: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case foodName = "food_name"
-        case servingUnit = "serving_unit"
-        case tagId = "tag_id"
-    }
+struct FatSecretFoodsContainer: Codable, Sendable {
+    let food: [FatSecretFood]?
 }
 
-struct NutritionixBrandedItem: Codable, Sendable {
-    let foodName: String?
-    let brandName: String?
-    let servingUnit: String?
-    let servingWeightGrams: Double?
-    let nfCalories: Double?
-    let nfTotalFat: Double?
-    let nfTotalCarbohydrate: Double?
-    let nfProtein: Double?
-    let nixItemId: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case foodName = "food_name"
-        case brandName = "brand_name"
-        case servingUnit = "serving_unit"
-        case servingWeightGrams = "serving_weight_grams"
-        case nfCalories = "nf_calories"
-        case nfTotalFat = "nf_total_fat"
-        case nfTotalCarbohydrate = "nf_total_carbohydrate"
-        case nfProtein = "nf_protein"
-        case nixItemId = "nix_item_id"
-    }
+struct FatSecretFood: Codable, Sendable {
+    let food_id: String?
+    let food_name: String?
+    let brand_name: String?
+    let food_description: String?
+    let food_type: String?
 }
