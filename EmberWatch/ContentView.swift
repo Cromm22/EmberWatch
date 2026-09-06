@@ -16,16 +16,39 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var showingFeedback = false
     @State private var showFeedbackFAB = false
+    @State private var showLevelUpCelebration = false
+    @State private var celebrationLevel: Int = 0
     
     var body: some View {
-        Group {
-            if !avatarManager.hasCompletedOnboarding {
-                OnboardingView()
-                    .environmentObject(avatarManager)
-                    .environmentObject(levelManager)
-                    .environmentObject(friendsManager)
-            } else {
-                mainTabs
+        ZStack {
+            Group {
+                if !avatarManager.hasCompletedOnboarding {
+                    OnboardingView()
+                        .environmentObject(avatarManager)
+                        .environmentObject(levelManager)
+                        .environmentObject(friendsManager)
+                } else {
+                    mainTabs
+                }
+            }
+            
+            // Level-up celebration overlay
+            if showLevelUpCelebration {
+                LevelUpCelebrationView(newLevel: celebrationLevel) {
+                    showLevelUpCelebration = false
+                }
+                .transition(.opacity)
+                .zIndex(1000)
+            }
+        }
+        .onChange(of: levelManager.levelUpEvent) { _, newLevel in
+            if let level = newLevel {
+                celebrationLevel = level
+                showLevelUpCelebration = true
+                // Clear the event after handling
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    levelManager.levelUpEvent = nil
+                }
             }
         }
         .onChange(of: scenePhase) { _, phase in
