@@ -1,97 +1,117 @@
 import Foundation
 import SwiftUI
 
-enum EmberTalkCategory {
-    case greeting
-    case water
-    case food
-    case workout
-}
-
-struct EmberPhrase {
-    let text: String
-    let category: EmberTalkCategory
-}
-
+/// Manages Ember's contextual speech/caption system with random phrases for user actions.
 @MainActor
-class EmberTalkManager: ObservableObject {
-    @Published var currentPhrase: EmberPhrase?
+final class EmberTalkManager: ObservableObject {
+    /// The current phrase being displayed (nil = no speech).
+    @Published private(set) var currentPhrase: String? = nil
     
-    private var lastPhrase: String?
-    private var dismissTask: Task<Void, Never>?
-    private let autoDismissDuration: TimeInterval = 2.5
+    /// Last phrase shown to avoid immediate repeats.
+    private var lastPhrase: String? = nil
+    
+    /// Auto-dismiss task.
+    private var dismissTask: Task<Void, Never>? = nil
+    
+    // MARK: - Phrase pools
     
     private let greetingPhrases = [
-        "Good morning! Let's beat yesterday!",
-        "Welcome back! I believe in you!",
-        "Let's get after it today!",
-        "Ready to crush it!"
+        "Good morning",
+        "Welcome back",
+        "Let's get after it",
+        "Let's beat yesterday",
+        "Ready to go?",
+        "Another day to shine"
     ]
     
     private let waterPhrases = [
-        "Hydration nation! 💧",
-        "Water is life! Keep it up!",
-        "You're doing great! Stay hydrated!",
-        "That's the spirit! More water!"
+        "Hydrate!",
+        "Stay flowing",
+        "Clear mind, clear water",
+        "Fuel up",
+        "Water is power",
+        "Keep it flowing"
     ]
     
     private let foodPhrases = [
-        "Mmm nutrition! Fuel that fire!",
-        "Healthy food is power!",
-        "Superfood is good!",
-        "Smart choices! Keep going!"
+        "Mmm, nutrition!",
+        "Healthy food is power",
+        "Superfood is good",
+        "Fuel the fire",
+        "Nutrition win!",
+        "Good choice!"
     ]
     
     private let workoutPhrases = [
-        "I feel stronger already!",
+        "I feel stronger",
         "I can feel the power!",
         "That was awesome!",
-        "You're on fire! 🔥"
+        "You crushed it!",
+        "Burning bright!",
+        "Let's go!"
     ]
     
+    // MARK: - Public API
+    
+    /// Show a random greeting (app open / daily first appearance).
     func showGreeting() {
-        showPhrase(from: greetingPhrases, category: .greeting)
+        showRandomPhrase(from: greetingPhrases)
     }
     
+    /// Show a random water encouragement.
     func showWaterPhrase() {
-        showPhrase(from: waterPhrases, category: .water)
+        showRandomPhrase(from: waterPhrases)
     }
     
+    /// Show a random food encouragement.
     func showFoodPhrase() {
-        showPhrase(from: foodPhrases, category: .food)
+        showRandomPhrase(from: foodPhrases)
     }
     
+    /// Show a random workout celebration.
     func showWorkoutPhrase() {
-        showPhrase(from: workoutPhrases, category: .workout)
+        showRandomPhrase(from: workoutPhrases)
     }
     
-    func dismiss() {
+    /// Manually clear the current phrase.
+    func clearPhrase() {
         dismissTask?.cancel()
-        withAnimation(.easeOut(duration: 0.3)) {
+        dismissTask = nil
+        withAnimation(.easeOut(duration: 0.25)) {
             currentPhrase = nil
         }
     }
     
-    private func showPhrase(from pool: [String], category: EmberTalkCategory) {
+    // MARK: - Internals
+    
+    private func showRandomPhrase(from pool: [String]) {
         guard !pool.isEmpty else { return }
         
-        dismissTask?.cancel()
-        
+        // Pick a phrase different from the last one if possible
         var candidates = pool
         if let last = lastPhrase, pool.count > 1 {
             candidates = pool.filter { $0 != last }
         }
         
-        guard let text = candidates.randomElement() else { return }
+        guard let phrase = candidates.randomElement() else { return }
         
-        lastPhrase = text
-        currentPhrase = EmberPhrase(text: text, category: category)
+        lastPhrase = phrase
         
-        dismissTask = Task {
-            try? await Task.sleep(nanoseconds: UInt64(autoDismissDuration * 1_000_000_000))
+        // Cancel any existing dismiss task
+        dismissTask?.cancel()
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            currentPhrase = phrase
+        }
+        
+        // Auto-dismiss after 2.5 seconds
+        dismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000) // 2.5 seconds
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.3)) {
-                currentPhrase = nil
+            withAnimation(.easeOut(duration: 0.25)) {
+                if currentPhrase == phrase {
+                    currentPhrase = nil
+                }
             }
         }
     }

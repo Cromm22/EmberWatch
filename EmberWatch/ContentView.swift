@@ -136,13 +136,9 @@ struct ContentView: View {
             
             if showFeedbackFAB {
                 FeedbackFAB(isPresented: $showingFeedback)
-                    .padding(.bottom, 56)
+                    .padding(.bottom, 56) // sit above tab bar without eating tab hits
                     .transition(.opacity)
             }
-            
-            EmberTalkOverlay()
-                .environmentObject(emberTalkManager)
-                .zIndex(100)
         }
         .sheet(isPresented: $showingFeedback) {
             FeedbackSheetView(isPresented: $showingFeedback)

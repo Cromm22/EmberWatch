@@ -56,7 +56,6 @@ struct FoodDiaryView: View {
                                     ForEach(foodDataManager.recentFoodEntries, id: \.id) { entry in
                                         RecentFoodRow(entry: entry)
                                             .environmentObject(foodDataManager)
-                                            .environmentObject(emberTalkManager)
                                     }
                                 }
                             }

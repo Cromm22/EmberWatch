@@ -57,6 +57,15 @@ struct HomeView: View {
                     .padding(.bottom, 16)
                 }
                 
+                if let emberPhrase = emberTalkManager.currentPhrase {
+                    VStack {
+                        EmberSpeechBubble(text: emberPhrase)
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+                    .zIndex(25)
+                }
+                
                 if let banner = levelManager.streakBanner
                     ?? levelManager.weightLossBanner
                     ?? levelManager.levelUpBanner
@@ -87,6 +96,7 @@ struct HomeView: View {
                     .zIndex(20)
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: emberTalkManager.currentPhrase)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.streakBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.weightLossBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.levelUpBanner)
