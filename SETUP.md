@@ -51,8 +51,9 @@ The new Swift files have been created but need to be added to the Xcode project 
 4. **Set your Development Team:**
    - Select the EmberWatch project in the navigator
    - Go to "Signing & Capabilities" tab
-   - Set your Personal Team or Apple Developer account
+   - Verify team is set to `Apple Development: chrusht@gmail.com (4UNUWW2348)`
    - Bundle ID is `com.ember.watch`
+   - CloudKit entitlements should be enabled automatically
 
 5. **Run on a physical device:**
    - Select your iPhone from the device dropdown
