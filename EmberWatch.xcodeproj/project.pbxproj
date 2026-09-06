@@ -39,6 +39,8 @@
 		C8D9E0F1A2B3C4D5E6071829 /* FeedbackSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */; };
 		A0B1C2D3E4F5061728394A5B /* WeightManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* WeightManager.swift */; };
 		4D69EF69965942DDB28F80CF /* FriendsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFD5926647D460D8448F0BD /* FriendsManager.swift */; };
+		42F967E4917D41CD9BAD3073 /* EmberTalkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */; };
+		E3FCA15BF0A145FEA778EC7E /* EmberSpeechBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,6 +79,8 @@
 		3A00002E0000000000000001 /* WorkoutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsView.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5061728394A5B6C /* WeightManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightManager.swift; sourceTree = "<group>"; };
 		8FFD5926647D460D8448F0BD /* FriendsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsManager.swift; sourceTree = "<group>"; };
+		9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberTalkManager.swift; sourceTree = "<group>"; };
+		9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberSpeechBubble.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +145,7 @@
 				C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */,
 				D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */,
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
+				9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -176,6 +181,7 @@
 				B1C2D3E4F5061728394A5B6C /* WeightManager.swift */,
 				8FFD5926647D460D8448F0BD /* FriendsManager.swift */,
 				SHMGR0000000000000000001 /* SearchHistoryManager.swift */,
+				9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -287,6 +293,8 @@
 				3A00002B0000000000000001 /* FoodDiaryView.swift in Sources */,
 				D4E5F60718293A4B5C6D7E8F /* FoodSearchView.swift in Sources */,
 				3A00002D0000000000000001 /* WorkoutsView.swift in Sources */,
+				42F967E4917D41CD9BAD3073 /* EmberTalkManager.swift in Sources */,
+				E3FCA15BF0A145FEA778EC7E /* EmberSpeechBubble.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

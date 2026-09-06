@@ -5,6 +5,7 @@ struct FoodDiaryView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
+    @EnvironmentObject var emberTalkManager: EmberTalkManager
     @State private var showingAddFood = false
     @State private var showingBarcodeScanner = false
     @State private var scannedProduct: FoodProduct?
@@ -96,6 +97,7 @@ struct FoodDiaryView: View {
             .sheet(isPresented: $showingAddFood) {
                 AddFoodView(isPresented: $showingAddFood)
                     .environmentObject(foodDataManager)
+                    .environmentObject(emberTalkManager)
             }
             .sheet(isPresented: $showingBarcodeScanner) {
                 BarcodeScannerView(
@@ -106,6 +108,7 @@ struct FoodDiaryView: View {
             .sheet(isPresented: $showingFoodSearch) {
                 FoodSearchView(isPresented: $showingFoodSearch)
                     .environmentObject(foodDataManager)
+                    .environmentObject(emberTalkManager)
             }
             .sheet(item: $scannedProduct) { product in
                 FoodServingSheet(
@@ -116,6 +119,7 @@ struct FoodDiaryView: View {
                     product: product,
                     onConfirm: { entry in
                         foodDataManager.addFoodEntry(entry)
+                        emberTalkManager.showFoodPhrase()
                         scannedProduct = nil
                     }
                 )
@@ -441,6 +445,7 @@ struct FoodEntryRow: View {
 struct RecentFoodRow: View {
     let entry: FoodEntry
     @EnvironmentObject var foodDataManager: FoodDataManager
+    @EnvironmentObject var emberTalkManager: EmberTalkManager
     
     var body: some View {
         Button(action: {
@@ -458,6 +463,7 @@ struct RecentFoodRow: View {
                 fatPerServing: entry.effectiveFatPerServing
             )
             foodDataManager.addFoodEntry(newEntry)
+            emberTalkManager.showFoodPhrase()
         }) {
             HStack(spacing: 10) {
                 Image(systemName: "clock.arrow.circlepath")
@@ -708,6 +714,7 @@ struct EditServingsView: View {
 struct AddFoodView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var foodDataManager: FoodDataManager
+    @EnvironmentObject var emberTalkManager: EmberTalkManager
     
     @State private var foodName = ""
     @State private var calories = ""
@@ -816,6 +823,7 @@ struct AddFoodView: View {
         )
         
         foodDataManager.addFoodEntry(entry)
+        emberTalkManager.showFoodPhrase()
         isPresented = false
     }
 }
