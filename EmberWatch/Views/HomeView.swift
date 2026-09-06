@@ -326,7 +326,7 @@ struct HomeView: View {
                             Spacer()
                             Text(levelManager.level >= LevelManager.maxLevel ? "Max Lv" : "Lv \(levelManager.level)")
                                 .font(.subheadline.weight(.bold))
-                                .foregroundColor(EmberColors.ink)
+                                .foregroundColor(.black)
                                 .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
                                 .shadow(color: EmberColors.cream.opacity(0.2), radius: 1, x: 0, y: 0)
                             Spacer()
