@@ -32,21 +32,56 @@ class EmberTalkManager: ObservableObject {
         "Hydration nation! 💧",
         "Water is life! Keep it up!",
         "You're doing great! Stay hydrated!",
-        "That's the spirit! More water!"
+        "That's the spirit! More water!",
+        "Perfect hydration timing",
+        "Your body thanks you",
+        "Cellular refresh in progress",
+        "Smart move, champion",
+        "That's self-care right there",
+        "Elevating your wellness game",
+        "Another win for your body",
+        "You're taking care of business",
+        "Excellence in hydration",
+        "This is how winners drink",
+        "Your future self approves",
+        "Pure refreshment achieved"
     ]
     
     private let foodPhrases = [
         "Mmm nutrition! Fuel that fire!",
         "Healthy food is power!",
-        "Superfood is good!",
-        "Smart choices! Keep going!"
+        "Smart choices! Keep going!",
+        "Fueling excellence",
+        "That's premium nutrition",
+        "Your body deserves this",
+        "Quality fuel, quality results",
+        "Nourishment on point",
+        "This is how champions eat",
+        "Elevating your energy",
+        "Smart nutrition choice",
+        "Building a stronger you",
+        "That's the good stuff",
+        "Investing in yourself",
+        "Whole food wisdom"
     ]
     
     private let workoutPhrases = [
         "I feel stronger already!",
         "I can feel the power!",
         "That was awesome!",
-        "You're on fire! 🔥"
+        "You're on fire! 🔥",
+        "Strength forged right now",
+        "That's pure dedication",
+        "Your power is showing",
+        "Excellence in motion",
+        "This is transformation",
+        "Building unstoppable momentum",
+        "That's championship effort",
+        "Your best self emerging",
+        "Raw strength unleashed",
+        "Elite performance unlocked",
+        "You're rewriting your limits",
+        "This is what winning looks like"
     ]
     
     func showGreeting() {
