@@ -3,6 +3,11 @@ import SwiftUI
 import UIKit
 
 /// Central XP / leveling (1…100). Tune base awards here.
+struct XPGainEvent: Equatable {
+    let amount: Int
+    let timestamp: Date
+}
+
 @MainActor
 final class LevelManager: ObservableObject {
     // MARK: - Tunable base XP (before board multiplier)
@@ -62,7 +67,7 @@ final class LevelManager: ObservableObject {
     @Published var levelUpBanner: String? = nil
     
     /// XP gain notification for animations (amount, timestamp)
-    @Published var xpGainEvent: (amount: Int, timestamp: Date)? = nil
+    @Published var xpGainEvent: XPGainEvent? = nil
     
     /// Optional Sparks hook (set from EmberWatchApp). Flat Sparks — no board XP multiplier.
     weak var sparksManager: SparksManager?
@@ -343,7 +348,7 @@ final class LevelManager: ObservableObject {
         recomputeLevel(from: totalXP, announce: true)
         
         // Trigger XP gain animation event
-        xpGainEvent = (amount: multiplied, timestamp: Date())
+        xpGainEvent = XPGainEvent(amount: multiplied, timestamp: Date())
         
         if level > previousLevel {
             let levelsGained = level - previousLevel
