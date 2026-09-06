@@ -41,6 +41,7 @@
 		4D69EF69965942DDB28F80CF /* FriendsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFD5926647D460D8448F0BD /* FriendsManager.swift */; };
 		42F967E4917D41CD9BAD3073 /* EmberTalkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */; };
 		E3FCA15BF0A145FEA778EC7E /* EmberSpeechBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */; };
+		WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = WPC0000000000000000000001 /* WeightProjectionChart.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -81,6 +82,7 @@
 		8FFD5926647D460D8448F0BD /* FriendsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsManager.swift; sourceTree = "<group>"; };
 		9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberTalkManager.swift; sourceTree = "<group>"; };
 		9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberSpeechBubble.swift; sourceTree = "<group>"; };
+		WPC0000000000000000000001 /* WeightProjectionChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightProjectionChart.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +148,7 @@
 				D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */,
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
 				9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */,
+				WPC0000000000000000000001 /* WeightProjectionChart.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -295,6 +298,7 @@
 				3A00002D0000000000000001 /* WorkoutsView.swift in Sources */,
 				42F967E4917D41CD9BAD3073 /* EmberTalkManager.swift in Sources */,
 				E3FCA15BF0A145FEA778EC7E /* EmberSpeechBubble.swift in Sources */,
+				WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

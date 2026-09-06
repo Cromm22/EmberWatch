@@ -819,6 +819,16 @@ struct WeightSettingsView: View {
                         }
                         .padding(.horizontal)
                         
+                        if let startingLb = draftStartingLb, let goalLb = draftGoalLb, abs(startingLb - goalLb) > 0.5 {
+                            WeightProjectionChart(
+                                startingWeightLb: startingLb,
+                                goalWeightLb: goalLb,
+                                currentWeightLb: draftCurrentLb,
+                                unit: unit
+                            )
+                            .padding(.horizontal)
+                        }
+                        
                         if !weightManager.history.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("Recent weigh-ins")
