@@ -123,8 +123,9 @@ EmberWatch/
 2. **Set Development Team**
    - Select the EmberWatch project in Xcode
    - Go to Signing & Capabilities
-   - Set your Personal Team
+   - Verify team: `Apple Development: chrusht@gmail.com (4UNUWW2348)`
    - Bundle ID: `com.ember.watch`
+   - CloudKit capability should be enabled for friend features
 
 3. **Run on Device**
    - Select your iPhone from the device menu
