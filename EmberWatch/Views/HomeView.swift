@@ -21,6 +21,7 @@ struct HomeView: View {
     @State private var xpGainAmount: Int = 0
     @State private var xpGainOffset: CGFloat = 0
     @State private var xpGainOpacity: Double = 0
+    @State private var wavePhase: CGFloat = 0
     
     var remainingCalories: Double {
         calorieGoalManager.calculateRemainingCalories(
@@ -118,6 +119,7 @@ struct HomeView: View {
                 syncXPFromHealth()
                 _ = levelManager.checkDailyOpenReward()
                 _ = sparksManager.earnDailyLogin()
+                startWaveAnimation()
             }
             .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
                 syncXPFromHealth()
@@ -169,6 +171,12 @@ struct HomeView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             showXPGain = false
+        }
+    }
+    
+    private func startWaveAnimation() {
+        withAnimation(.linear(duration: 2.0).repeatForever(autoreverses: false)) {
+            wavePhase = 1.0
         }
     }
     
@@ -241,45 +249,67 @@ struct HomeView: View {
                 .fontWeight(.bold)
                 .foregroundColor(EmberColors.cream)
             
-            // XP Progress Bar with label inside
+            // XP Progress Bar with level label inside
             ZStack {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         // Background bar
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 10)
                             .fill(EmberColors.darkPlum)
-                            .frame(height: 28)
+                            .frame(height: 36)
                         
-                        // Progress fill
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(
-                                LinearGradient(
-                                    colors: [EmberColors.ember, Color.orange],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                        // Progress fill with gradient
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            EmberColors.ember,
+                                            EmberColors.emberAccent,
+                                            Color.orange.opacity(0.9)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
                                 )
-                            )
-                            .frame(width: geometry.size.width * levelManager.progressFraction, height: 28)
-                            .scaleEffect(x: xpBarScale, y: xpBarScale, anchor: .leading)
+                                .frame(width: geometry.size.width * levelManager.progressFraction, height: 36)
+                                .scaleEffect(x: xpBarScale, y: xpBarScale, anchor: .leading)
+                            
+                            // Wave animation overlay
+                            if levelManager.progressFraction > 0 {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0),
+                                                Color.white.opacity(0.3),
+                                                Color.white.opacity(0),
+                                            ],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(width: 60, height: 36)
+                                    .offset(x: wavePhase * geometry.size.width * levelManager.progressFraction - 30)
+                                    .mask(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .frame(width: geometry.size.width * levelManager.progressFraction, height: 36)
+                                    )
+                            }
+                        }
                         
-                        // XP Label inside the bar
+                        // Level label inside the bar
                         HStack {
                             Spacer()
-                            if levelManager.level >= LevelManager.maxLevel {
-                                Text("\(levelManager.totalXP) XP · Max Level")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(EmberColors.ink)
-                            } else {
-                                Text("\(levelManager.xpIntoLevel) / \(levelManager.xpForNextLevel) XP")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(EmberColors.ink)
-                            }
+                            Text(levelManager.level >= LevelManager.maxLevel ? "Max Lv" : "Lv \(levelManager.level)")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundColor(EmberColors.ink)
                             Spacer()
                         }
-                        .frame(height: 28)
+                        .frame(height: 36)
                     }
                 }
-                .frame(height: 28)
+                .frame(height: 36)
                 
                 // Floating +XP animation
                 if showXPGain {
@@ -306,8 +336,8 @@ struct HomeView: View {
                     }
                 }
             }
-            .padding(.horizontal, 32)
-            .frame(height: 50)
+            .padding(.horizontal, 16)
+            .frame(height: 60)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
