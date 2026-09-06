@@ -67,22 +67,26 @@ final class FriendsManager: ObservableObject {
     // MARK: - Init
     
     init() {
-        // CKContainer.default() SIGTRAPs when CloudKit entitlement is missing.
-        // Gate creation on the signed entitlement so Personal Team / HealthKit-only
-        // device builds still launch and show local friend-code UI.
+        // CKContainer init can trap when CloudKit entitlement is missing or when
+        // the specified container doesn't exist. Gate creation on the signed
+        // entitlement so Personal Team / HealthKit-only device builds still launch.
         let entitled = Self.hasCloudKitEntitlement()
+        
+        // Initialize stored properties first
+        let savedIds = UserDefaults.standard.stringArray(forKey: Keys.friendIds) ?? []
+        self.friendIds = Set(savedIds)
+        
         if entitled {
-            let ck = CKContainer.default()
+            // Use explicit container identifier matching EmberWatch.entitlements.
+            // CKContainer.default() fails when custom container is specified.
+            // Container creation is synchronous but may fail if not provisioned.
+            let ck = CKContainer(identifier: "iCloud.com.ember.watch")
             self.container = ck
             self.publicDB = ck.publicCloudDatabase
         } else {
             self.container = nil
             self.publicDB = nil
         }
-        
-        // Initialize remaining stored properties before any further self use
-        let savedIds = UserDefaults.standard.stringArray(forKey: Keys.friendIds) ?? []
-        self.friendIds = Set(savedIds)
         
         // Load saved friend code or generate new
         if let saved = UserDefaults.standard.string(forKey: Keys.myFriendCode), !saved.isEmpty {
