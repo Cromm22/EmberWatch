@@ -232,7 +232,7 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity)
             
-            HStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Text(avatarManager.displayName)
                     .font(.headline)
                     .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
@@ -247,7 +247,6 @@ struct HomeView: View {
                         .accessibilityLabel("Day \(levelManager.streakCount) open streak")
                 }
                 
-                // Sparks balance chip (ember orange)
                 HStack(spacing: 3) {
                     Image(systemName: "sparkle")
                         .font(.system(size: 9, weight: .bold))
