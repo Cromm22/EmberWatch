@@ -61,6 +61,9 @@ final class LevelManager: ObservableObject {
     
     @Published var levelUpBanner: String? = nil
     
+    /// XP gain notification for animations (amount, timestamp)
+    @Published var xpGainEvent: (amount: Int, timestamp: Date)? = nil
+    
     /// Optional Sparks hook (set from EmberWatchApp). Flat Sparks — no board XP multiplier.
     weak var sparksManager: SparksManager?
     
@@ -338,6 +341,9 @@ final class LevelManager: ObservableObject {
         let previousLevel = level
         totalXP += multiplied
         recomputeLevel(from: totalXP, announce: true)
+        
+        // Trigger XP gain animation event
+        xpGainEvent = (amount: multiplied, timestamp: Date())
         
         if level > previousLevel {
             let levelsGained = level - previousLevel

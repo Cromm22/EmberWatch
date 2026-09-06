@@ -15,6 +15,13 @@ struct HomeView: View {
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
     
+    // XP animation states
+    @State private var xpBarScale: CGFloat = 1.0
+    @State private var showXPGain: Bool = false
+    @State private var xpGainAmount: Int = 0
+    @State private var xpGainOffset: CGFloat = 0
+    @State private var xpGainOpacity: Double = 0
+    
     var remainingCalories: Double {
         calorieGoalManager.calculateRemainingCalories(
             burned: healthKitManager.totalCaloriesBurned,
@@ -118,6 +125,10 @@ struct HomeView: View {
             .onChange(of: healthKitManager.workouts.map(\.id)) { _, _ in
                 syncXPFromHealth()
             }
+            .onChange(of: levelManager.xpGainEvent) { _, newValue in
+                guard let event = newValue else { return }
+                triggerXPGainAnimation(amount: event.amount)
+            }
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
@@ -130,6 +141,35 @@ struct HomeView: View {
     private func syncXPFromHealth() {
         _ = levelManager.processBurnedCalories(healthKitManager.totalCaloriesBurned)
         _ = levelManager.processWorkouts(ids: healthKitManager.workouts.map { $0.id.uuidString })
+    }
+    
+    private func triggerXPGainAnimation(amount: Int) {
+        guard amount > 0 else { return }
+        
+        // Bar bulge animation
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+            xpBarScale = 1.15
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                xpBarScale = 1.0
+            }
+        }
+        
+        // Floating +XP animation
+        xpGainAmount = amount
+        showXPGain = true
+        xpGainOffset = 0
+        xpGainOpacity = 1.0
+        
+        withAnimation(.easeOut(duration: 0.8)) {
+            xpGainOffset = -40
+            xpGainOpacity = 0
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            showXPGain = false
+        }
     }
     
     private var emberAvatarCard: some View {
@@ -201,32 +241,17 @@ struct HomeView: View {
                 .fontWeight(.bold)
                 .foregroundColor(EmberColors.cream)
             
-            VStack(spacing: 8) {
-                HStack {
-                    if levelManager.level >= LevelManager.maxLevel {
-                        Text("XP: \(levelManager.totalXP) · Max level")
-                            .font(.caption)
-                            .foregroundColor(EmberColors.cream.opacity(0.7))
-                    } else {
-                        Text("XP: \(levelManager.xpIntoLevel) / \(levelManager.xpForNextLevel)")
-                            .font(.caption)
-                            .foregroundColor(EmberColors.cream.opacity(0.7))
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Total \(levelManager.totalXP)")
-                        .font(.caption2)
-                        .foregroundColor(EmberColors.cream.opacity(0.45))
-                }
-                
+            // XP Progress Bar with label inside
+            ZStack {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
+                        // Background bar
+                        RoundedRectangle(cornerRadius: 8)
                             .fill(EmberColors.darkPlum)
-                            .frame(height: 8)
+                            .frame(height: 28)
                         
-                        RoundedRectangle(cornerRadius: 4)
+                        // Progress fill
+                        RoundedRectangle(cornerRadius: 8)
                             .fill(
                                 LinearGradient(
                                     colors: [EmberColors.ember, Color.orange],
@@ -234,12 +259,55 @@ struct HomeView: View {
                                     endPoint: .trailing
                                 )
                             )
-                            .frame(width: geometry.size.width * levelManager.progressFraction, height: 8)
+                            .frame(width: geometry.size.width * levelManager.progressFraction, height: 28)
+                            .scaleEffect(x: xpBarScale, y: xpBarScale, anchor: .leading)
+                        
+                        // XP Label inside the bar
+                        HStack {
+                            Spacer()
+                            if levelManager.level >= LevelManager.maxLevel {
+                                Text("\(levelManager.totalXP) XP · Max Level")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(EmberColors.ink)
+                            } else {
+                                Text("\(levelManager.xpIntoLevel) / \(levelManager.xpForNextLevel) XP")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(EmberColors.ink)
+                            }
+                            Spacer()
+                        }
+                        .frame(height: 28)
                     }
                 }
-                .frame(height: 8)
+                .frame(height: 28)
+                
+                // Floating +XP animation
+                if showXPGain {
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: "sparkle")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(EmberColors.ember)
+                            Text("+\(xpGainAmount)")
+                                .font(.headline.weight(.bold))
+                                .foregroundColor(EmberColors.ember)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(EmberColors.cream)
+                                .shadow(color: EmberColors.ember.opacity(0.4), radius: 8, y: 2)
+                        )
+                        .offset(y: xpGainOffset)
+                        .opacity(xpGainOpacity)
+                        Spacer()
+                    }
+                }
             }
             .padding(.horizontal, 32)
+            .frame(height: 50)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
