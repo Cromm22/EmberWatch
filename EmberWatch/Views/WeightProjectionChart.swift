@@ -122,6 +122,7 @@ struct WeightProjectionChart: View {
                 }
             }
             .frame(height: 200)
+            .chartXScale(domain: 0...monthsToGoal)
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: 5)) { value in
                     AxisValueLabel {
