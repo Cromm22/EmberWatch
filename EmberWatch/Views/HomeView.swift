@@ -269,11 +269,6 @@ struct HomeView: View {
                 }
             }
             
-            Text("Level \(levelManager.level)")
-                .font(.title)
-                .fontWeight(.bold)
-                .foregroundColor(EmberColors.cream)
-            
             // XP Progress Bar with level label inside
             ZStack {
                 GeometryReader { geometry in
@@ -323,15 +318,18 @@ struct HomeView: View {
                             }
                         }
                         
-                        // Level label inside the bar
+                        // Level label inside the bar - always visible with shadow for contrast
                         HStack {
                             Spacer()
                             Text(levelManager.level >= LevelManager.maxLevel ? "Max Lv" : "Lv \(levelManager.level)")
                                 .font(.subheadline.weight(.bold))
                                 .foregroundColor(EmberColors.ink)
+                                .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
+                                .shadow(color: EmberColors.cream.opacity(0.2), radius: 1, x: 0, y: 0)
                             Spacer()
                         }
                         .frame(height: 36)
+                        .allowsHitTesting(false)
                     }
                 }
                 .frame(height: 36)

@@ -42,6 +42,7 @@
 		42F967E4917D41CD9BAD3073 /* EmberTalkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */; };
 		E3FCA15BF0A145FEA778EC7E /* EmberSpeechBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */; };
 		WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = WPC0000000000000000000001 /* WeightProjectionChart.swift */; };
+		LUCELF774E9036E13409391 /* LevelUpCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -83,6 +84,7 @@
 		9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberTalkManager.swift; sourceTree = "<group>"; };
 		9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberSpeechBubble.swift; sourceTree = "<group>"; };
 		WPC0000000000000000000001 /* WeightProjectionChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightProjectionChart.swift; sourceTree = "<group>"; };
+		LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelUpCelebrationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -298,6 +300,7 @@
 				3A00002D0000000000000001 /* WorkoutsView.swift in Sources */,
 				42F967E4917D41CD9BAD3073 /* EmberTalkManager.swift in Sources */,
 				E3FCA15BF0A145FEA778EC7E /* EmberSpeechBubble.swift in Sources */,
+				LUCELF774E9036E13409391 /* LevelUpCelebrationView.swift in Sources */,
 				WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
