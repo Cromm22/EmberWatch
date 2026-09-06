@@ -50,10 +50,15 @@ struct FoodDiaryView: View {
                     
                     if !foodDataManager.recentFoodEntries.isEmpty {
                         Section {
-                            ForEach(foodDataManager.recentFoodEntries, id: \.id) { entry in
-                                RecentFoodRow(entry: entry)
-                                    .environmentObject(foodDataManager)
+                            ScrollView {
+                                VStack(spacing: 8) {
+                                    ForEach(foodDataManager.recentFoodEntries, id: \.id) { entry in
+                                        RecentFoodRow(entry: entry)
+                                            .environmentObject(foodDataManager)
+                                    }
+                                }
                             }
+                            .frame(height: 184)
                         } header: {
                             Text("Recents")
                                 .font(.subheadline)
