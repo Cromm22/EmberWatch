@@ -231,10 +231,10 @@ struct HomeView: View {
                     HStack(spacing: 3) {
                         Text("🔥")
                             .font(.caption2)
-                        Text("Daily Streak")
-                            .font(.caption2.weight(.semibold))
                         Text("\(levelManager.streakCount)d")
                             .font(.caption2.weight(.bold))
+                        Text("Daily Streak")
+                            .font(.caption2.weight(.semibold))
                     }
                     .foregroundColor(EmberColors.ink)
                     .padding(.horizontal, 8)
@@ -246,10 +246,10 @@ struct HomeView: View {
                 HStack(spacing: 3) {
                     Image(systemName: "sparkle")
                         .font(.system(size: 9, weight: .bold))
-                    Text("Sparks")
-                        .font(.caption2.weight(.semibold))
                     Text("\(sparksManager.balance)")
                         .font(.caption2.weight(.bold))
+                    Text("Sparks")
+                        .font(.caption2.weight(.semibold))
                 }
                 .foregroundColor(EmberColors.ink)
                 .padding(.horizontal, 8)
@@ -259,10 +259,10 @@ struct HomeView: View {
                 
                 if let boost = levelManager.boardMultiplierLabel {
                     HStack(spacing: 3) {
-                        Text("XP Boost")
-                            .font(.caption2.weight(.semibold))
                         Text(boost)
                             .font(.caption2.weight(.bold))
+                        Text("XP Boost")
+                            .font(.caption2.weight(.semibold))
                     }
                     .foregroundColor(EmberColors.ink)
                     .padding(.horizontal, 8)
