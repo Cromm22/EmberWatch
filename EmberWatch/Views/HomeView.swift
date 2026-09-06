@@ -261,7 +261,7 @@ struct HomeView: View {
                     HStack(spacing: 3) {
                         Text(boost)
                             .font(.caption2.weight(.bold))
-                        Text("XP Boost")
+                        Text("Boost")
                             .font(.caption2.weight(.semibold))
                     }
                     .foregroundColor(EmberColors.ink)
