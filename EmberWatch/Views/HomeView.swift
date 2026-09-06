@@ -212,19 +212,26 @@ struct HomeView: View {
                     .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
                 
                 if levelManager.streakCount > 0 {
-                    Text("🔥 \(levelManager.streakCount)d")
-                        .font(.caption2.weight(.bold))
-                        .foregroundColor(EmberColors.ink)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(EmberColors.ember))
-                        .accessibilityLabel("Day \(levelManager.streakCount) open streak")
+                    HStack(spacing: 3) {
+                        Text("🔥")
+                            .font(.caption2)
+                        Text("Daily Streak")
+                            .font(.caption2.weight(.semibold))
+                        Text("\(levelManager.streakCount)d")
+                            .font(.caption2.weight(.bold))
+                    }
+                    .foregroundColor(EmberColors.ink)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(EmberColors.ember))
+                    .accessibilityLabel("Daily Streak: Day \(levelManager.streakCount)")
                 }
                 
-                // Sparks balance chip (ember orange)
                 HStack(spacing: 3) {
                     Image(systemName: "sparkle")
                         .font(.system(size: 9, weight: .bold))
+                    Text("Sparks")
+                        .font(.caption2.weight(.semibold))
                     Text("\(sparksManager.balance)")
                         .font(.caption2.weight(.bold))
                 }
@@ -232,15 +239,20 @@ struct HomeView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(Capsule().fill(EmberColors.ember))
-                .accessibilityLabel("\(sparksManager.balance) Sparks")
+                .accessibilityLabel("Sparks: \(sparksManager.balance)")
                 
                 if let boost = levelManager.boardMultiplierLabel {
-                    Text(boost)
-                        .font(.caption2.weight(.bold))
-                        .foregroundColor(EmberColors.ink)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(EmberColors.gold))
+                    HStack(spacing: 3) {
+                        Text("XP Boost")
+                            .font(.caption2.weight(.semibold))
+                        Text(boost)
+                            .font(.caption2.weight(.bold))
+                    }
+                    .foregroundColor(EmberColors.ink)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(EmberColors.gold))
+                    .accessibilityLabel("XP Boost: \(boost)")
                 }
             }
             
