@@ -160,7 +160,7 @@ private struct ParticleView: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [EmberColors.ember, EmberColors.gold, EmberColors.emberAccent].randomElement()!,
+                    colors: [[EmberColors.ember, EmberColors.gold, EmberColors.emberAccent].randomElement()!],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )

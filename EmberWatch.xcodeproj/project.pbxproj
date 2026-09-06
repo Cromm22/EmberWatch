@@ -151,6 +151,7 @@
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
 				9C4ED466CE9E4BB68CB3503E /* EmberSpeechBubble.swift */,
 				WPC0000000000000000000001 /* WeightProjectionChart.swift */,
+				LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
