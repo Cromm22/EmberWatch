@@ -319,6 +319,15 @@ struct HomeView: View {
                         Spacer()
                     }
                     
+                    if let starting = weightManager.displayedStarting {
+                        HStack {
+                            Text("Started at \(WeightManager.format(starting)) \(weightManager.unit.label)")
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream.opacity(0.6))
+                            Spacer()
+                        }
+                    }
+                    
                     if let goal = weightManager.displayedGoal {
                         HStack {
                             Text("Goal \(WeightManager.format(goal)) \(weightManager.unit.label)")
@@ -606,10 +615,12 @@ struct WeightSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var weightManager: WeightManager
     @EnvironmentObject var levelManager: LevelManager
+    @State private var startingInput: String = ""
     @State private var currentInput: String = ""
     @State private var goalInput: String = ""
     @State private var unit: WeightUnit = .lb
     /// Tracks unsaved field values in pounds so unit toggles convert correctly.
+    @State private var draftStartingLb: Double?
     @State private var draftCurrentLb: Double?
     @State private var draftGoalLb: Double?
     
@@ -631,6 +642,23 @@ struct WeightSettingsView: View {
                             syncDraftFromInputs(using: oldUnit)
                             refreshInputs(from: newUnit)
                         }
+                        
+                        VStack(spacing: 8) {
+                            Text("Starting weight")
+                                .font(.headline)
+                                .foregroundColor(EmberColors.cream)
+                            TextField("Optional", text: $startingInput)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundColor(EmberColors.ember.opacity(0.85))
+                                .multilineTextAlignment(.center)
+                                .padding()
+                                .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
+                            Text(unit.label)
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream.opacity(0.7))
+                        }
+                        .padding(.horizontal)
                         
                         VStack(spacing: 8) {
                             Text("Current weight")
@@ -688,11 +716,7 @@ struct WeightSettingsView: View {
                             .padding(.horizontal)
                         }
                         
-                        Text("Switching lb / kg converts displayed values. Saving current weight adds a weigh-in.")
-                            .font(.caption)
-                            .foregroundColor(EmberColors.cream.opacity(0.55))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                        Spacer()
                     }
                     .padding(.top, 12)
                     .padding(.bottom, 24)
@@ -715,6 +739,7 @@ struct WeightSettingsView: View {
             }
             .onAppear {
                 unit = weightManager.unit
+                draftStartingLb = weightManager.startingWeightLb
                 draftCurrentLb = weightManager.currentWeightLb
                 draftGoalLb = weightManager.goalWeightLb
                 refreshInputs(from: unit)
@@ -730,9 +755,17 @@ struct WeightSettingsView: View {
     }
     
     private func syncDraftFromInputs(using inputUnit: WeightUnit) {
+        let startingTrimmed = startingInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if startingTrimmed.isEmpty {
+            draftStartingLb = nil
+        } else if let s = parse(startingTrimmed) {
+            draftStartingLb = inputUnit.toPounds(s)
+        }
+        
         if let c = parse(currentInput) {
             draftCurrentLb = inputUnit.toPounds(c)
         }
+        
         let goalTrimmed = goalInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if goalTrimmed.isEmpty {
             draftGoalLb = nil
@@ -742,27 +775,39 @@ struct WeightSettingsView: View {
     }
     
     private func refreshInputs(from displayUnit: WeightUnit) {
+        if let lb = draftStartingLb {
+            startingInput = WeightManager.format(displayUnit.fromPounds(lb))
+        } else if startingInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            startingInput = ""
+        }
+        
         if let lb = draftCurrentLb {
             currentInput = WeightManager.format(displayUnit.fromPounds(lb))
         }
+        
         if let lb = draftGoalLb {
             goalInput = WeightManager.format(displayUnit.fromPounds(lb))
-        } else {
-            // Keep empty if cleared
-            if goalInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                goalInput = ""
-            }
+        } else if goalInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            goalInput = ""
         }
     }
     
     private func save() {
         syncDraftFromInputs(using: unit)
         weightManager.unit = unit
+        
+        if let lb = draftStartingLb {
+            weightManager.setStartingWeight(unit.fromPounds(lb))
+        } else {
+            weightManager.clearStarting()
+        }
+        
         if let lb = draftCurrentLb {
             if let poundsLost = weightManager.logCurrentWeight(unit.fromPounds(lb)) {
                 _ = levelManager.awardWeightLoss(poundsLost: poundsLost)
             }
         }
+        
         if let lb = draftGoalLb {
             weightManager.setGoalWeight(unit.fromPounds(lb))
         } else {
