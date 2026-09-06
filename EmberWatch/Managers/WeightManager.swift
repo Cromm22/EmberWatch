@@ -41,6 +41,11 @@ struct WeighIn: Codable, Identifiable, Equatable {
 
 @MainActor
 class WeightManager: ObservableObject {
+    /// Starting body weight in pounds. Set once, not overwritten by weigh-ins.
+    @Published var startingWeightLb: Double? {
+        didSet { persistStarting() }
+    }
+    
     /// Current body weight in pounds. `nil` until the user logs one.
     @Published var currentWeightLb: Double? {
         didSet { persistCurrent() }
@@ -63,10 +68,12 @@ class WeightManager: ObservableObject {
     }
     
     private enum Keys {
+        static let starting = "startingWeightLb"
         static let current = "bodyWeightLb"
         static let goal = "goalWeightLb"
         static let unit = "weightUnit"
         static let history = "weighInHistory"
+        static let hasStarting = "startingWeightLbSet"
         static let hasCurrent = "bodyWeightLbSet"
         static let hasGoal = "goalWeightLbSet"
     }
@@ -79,6 +86,12 @@ class WeightManager: ObservableObject {
             self.unit = u
         } else {
             self.unit = .lb
+        }
+        
+        if defaults.bool(forKey: Keys.hasStarting) {
+            self.startingWeightLb = defaults.double(forKey: Keys.starting)
+        } else {
+            self.startingWeightLb = nil
         }
         
         if defaults.bool(forKey: Keys.hasCurrent) {
@@ -102,6 +115,11 @@ class WeightManager: ObservableObject {
     }
     
     // MARK: - Display helpers (always convert from stored lb)
+    
+    var displayedStarting: Double? {
+        guard let lb = startingWeightLb else { return nil }
+        return unit.fromPounds(lb)
+    }
     
     var displayedCurrent: Double? {
         guard let lb = currentWeightLb else { return nil }
@@ -162,12 +180,24 @@ class WeightManager: ObservableObject {
         return lost
     }
     
+    func setStartingWeight(_ valueInUnit: Double?) {
+        if let valueInUnit {
+            startingWeightLb = unit.toPounds(valueInUnit)
+        } else {
+            startingWeightLb = nil
+        }
+    }
+    
     func setGoalWeight(_ valueInUnit: Double?) {
         if let valueInUnit {
             goalWeightLb = unit.toPounds(valueInUnit)
         } else {
             goalWeightLb = nil
         }
+    }
+    
+    func clearStarting() {
+        startingWeightLb = nil
     }
     
     func clearCurrent() {
@@ -179,6 +209,17 @@ class WeightManager: ObservableObject {
     }
     
     // MARK: - Persistence
+    
+    private func persistStarting() {
+        let defaults = UserDefaults.standard
+        if let lb = startingWeightLb {
+            defaults.set(lb, forKey: Keys.starting)
+            defaults.set(true, forKey: Keys.hasStarting)
+        } else {
+            defaults.removeObject(forKey: Keys.starting)
+            defaults.set(false, forKey: Keys.hasStarting)
+        }
+    }
     
     private func persistCurrent() {
         let defaults = UserDefaults.standard
