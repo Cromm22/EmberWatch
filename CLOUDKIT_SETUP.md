@@ -4,15 +4,15 @@
 
 EmberWatch now uses CloudKit to sync friend invites and challenges between devices. This was previously disabled on Personal Team builds due to entitlement restrictions.
 
-## What Changed
+## Team & CloudKit Configuration
 
 ### Team Configuration
-- **Old Team:** `RQWCD638WP` (Apple Personal Team - chrusht@gmail.com)
-- **New Team:** `4UNUWW2348` (Paid Apple Developer Team)
+- **Team ID:** `RQWCD638WP` (Apple Developer Team for chrusht@gmail.com)
+- **Signing Certificate:** Apple Development: chrusht@gmail.com (`4UNUWW2348` is the person ID from the certificate, not the Team ID)
 - **Bundle ID:** `com.ember.watch`
 - **CloudKit Container:** `iCloud.com.ember.watch`
 
-### CloudKit Features Now Enabled
+### CloudKit Features Enabled
 1. **Friend Codes** - 8-character invite codes that sync to CloudKit
 2. **Friends List** - Real-time friend discovery and weekly XP leaderboard
 3. **Profile Sync** - Name, avatar, and XP automatically sync when changed
@@ -30,8 +30,9 @@ EmberWatch now uses CloudKit to sync friend invites and challenges between devic
 2. **Verify Signing:**
    - Select `EmberWatch` project in navigator
    - Go to **Signing & Capabilities** tab
-   - Confirm **Team:** shows `Apple Development: chrusht@gmail.com (4UNUWW2348)`
+   - Confirm **Team:** is set to the correct account (Team ID: `RQWCD638WP`)
    - Confirm **Bundle Identifier:** `com.ember.watch`
+   - Note: The signing certificate will show as `Apple Development: chrusht@gmail.com (4UNUWW2348)` where `4UNUWW2348` is the certificate person ID, not the Team ID
 
 3. **Verify CloudKit Entitlements:**
    - Still in **Signing & Capabilities**
