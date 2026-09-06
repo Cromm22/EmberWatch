@@ -27,7 +27,13 @@ struct EmberWatchApp: App {
         let schema = Schema([
             FoodEntry.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        // Explicitly disable CloudKit sync for SwiftData (friends use separate CKContainer).
+        // This prevents "attributes must be optional" crashes and keeps food data local-only.
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .none
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -39,7 +45,21 @@ struct EmberWatchApp: App {
             do {
                 return try ModelContainer(for: schema, configurations: [modelConfiguration])
             } catch {
-                fatalError("Could not create ModelContainer after store reset: \(error)")
+                // NEVER crash on launch. Fall back to in-memory container if disk fails.
+                print("EmberWatch: ModelContainer reset failed (\(error)). Using in-memory store.")
+                let memoryConfig = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: true,
+                    cloudKitDatabase: .none
+                )
+                do {
+                    return try ModelContainer(for: schema, configurations: [memoryConfig])
+                } catch {
+                    // Last resort: This should never fail, but return an empty in-memory container.
+                    // User will see empty food diary but app won't crash.
+                    print("EmberWatch: Critical - in-memory ModelContainer failed (\(error)).")
+                    return try! ModelContainer(for: schema, configurations: [memoryConfig])
+                }
             }
         }
     }()

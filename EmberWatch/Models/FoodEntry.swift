@@ -3,13 +3,15 @@ import SwiftData
 
 @Model
 class FoodEntry {
-    var id: UUID
-    var name: String
-    var calories: Double
-    var protein: Double
-    var carbs: Double
-    var fat: Double
-    var timestamp: Date
+    // CloudKit integration requires all attributes be optional OR have default values.
+    // All properties now have defaults to prevent ModelContainer CloudKit config crashes.
+    var id: UUID = UUID()
+    var name: String = ""
+    var calories: Double = 0
+    var protein: Double = 0
+    var carbs: Double = 0
+    var fat: Double = 0
+    var timestamp: Date = Date()
     /// Defaults enable SwiftData lightweight migration from stores without mealType.
     var mealType: String = "Snack"
     /// Number of servings logged (multiplier applied to per-serving nutrition).
