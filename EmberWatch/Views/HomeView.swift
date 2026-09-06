@@ -10,10 +10,12 @@ struct HomeView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var weightManager: WeightManager
+    @EnvironmentObject var emberTalkManager: EmberTalkManager
     @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
+    @AppStorage("emberWatch.lastGreetingDate") private var lastGreetingDateString: String = ""
     
     // XP animation states
     @State private var xpBarScale: CGFloat = 1.0
@@ -55,6 +57,15 @@ struct HomeView: View {
                     .padding(.bottom, 16)
                 }
                 
+                if let emberPhrase = emberTalkManager.currentPhrase {
+                    VStack {
+                        EmberSpeechBubble(text: emberPhrase)
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+                    .zIndex(25)
+                }
+                
                 if let banner = levelManager.streakBanner
                     ?? levelManager.weightLossBanner
                     ?? levelManager.levelUpBanner
@@ -85,6 +96,7 @@ struct HomeView: View {
                     .zIndex(20)
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: emberTalkManager.currentPhrase)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.streakBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.weightLossBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.levelUpBanner)
@@ -120,6 +132,7 @@ struct HomeView: View {
                 _ = levelManager.checkDailyOpenReward()
                 _ = sparksManager.earnDailyLogin()
                 startWaveAnimation()
+                checkAndShowDailyGreeting()
             }
             .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
                 syncXPFromHealth()
@@ -177,6 +190,19 @@ struct HomeView: View {
     private func startWaveAnimation() {
         withAnimation(.linear(duration: 2.0).repeatForever(autoreverses: false)) {
             wavePhase = 1.0
+        }
+    }
+    
+    private func checkAndShowDailyGreeting() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let todayString = ISO8601DateFormatter().string(from: today)
+        
+        if lastGreetingDateString != todayString {
+            lastGreetingDateString = todayString
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                emberTalkManager.showGreeting()
+            }
         }
     }
     
@@ -504,6 +530,7 @@ struct HomeView: View {
                             } else if index == waterManager.glassesLogged {
                                 if waterManager.logGlass() {
                                     _ = levelManager.awardWaterServing()
+                                    emberTalkManager.showWaterPhrase()
                                 }
                             }
                         }

@@ -59,6 +59,7 @@ private enum QuickAddMetricField {
 struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var emberTalkManager: EmberTalkManager
     @State private var flamePulse = false
     
     /// Only one Quick Add drawer open at a time.
@@ -516,6 +517,8 @@ struct WorkoutsView: View {
         healthKitManager.addLocalWorkout(workout)
         // LevelManager workout XP path (deduped by id).
         _ = levelManager.awardWorkout(id: workout.id.uuidString)
+        
+        emberTalkManager.showWorkoutPhrase()
         
         withAnimation(.easeInOut(duration: 0.28)) {
             expandedQuickAddID = nil

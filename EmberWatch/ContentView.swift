@@ -11,6 +11,7 @@ struct ContentView: View {
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var feedbackManager: FeedbackManager
     @EnvironmentObject var friendsManager: FriendsManager
+    @EnvironmentObject var emberTalkManager: EmberTalkManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var showingFeedback = false
@@ -64,6 +65,7 @@ struct ContentView: View {
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
                     .environmentObject(sparksManager)
+                    .environmentObject(emberTalkManager)
                 
                 FoodDiaryView()
                     .tabItem {
@@ -73,6 +75,7 @@ struct ContentView: View {
                     .environmentObject(foodDataManager)
                     .environmentObject(healthKitManager)
                     .environmentObject(calorieGoalManager)
+                    .environmentObject(emberTalkManager)
                 
                 WorkoutsView()
                     .tabItem {
@@ -81,6 +84,7 @@ struct ContentView: View {
                     .tag(2)
                     .environmentObject(healthKitManager)
                     .environmentObject(levelManager)
+                    .environmentObject(emberTalkManager)
                 
                 BoardView()
                     .tabItem {

@@ -3,6 +3,7 @@ import SwiftUI
 struct FoodSearchView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var foodDataManager: FoodDataManager
+    @EnvironmentObject var emberTalkManager: EmberTalkManager
     
     @StateObject private var lookupService = FoodLookupService()
     @StateObject private var searchHistory = SearchHistoryManager()
@@ -52,6 +53,7 @@ struct FoodSearchView: View {
                     product: product,
                     onConfirm: { entry in
                         foodDataManager.addFoodEntry(entry)
+                        emberTalkManager.showFoodPhrase()
                         selectedProduct = nil
                         isPresented = false
                     }

@@ -13,6 +13,7 @@ struct EmberWatchApp: App {
     @StateObject private var feedbackManager = FeedbackManager()
     @StateObject private var weightManager = WeightManager()
     @StateObject private var friendsManager = FriendsManager()
+    @StateObject private var emberTalkManager = EmberTalkManager()
     
     init() {
         let sparks = SparksManager()
@@ -70,6 +71,7 @@ struct EmberWatchApp: App {
                 .environmentObject(feedbackManager)
                 .environmentObject(weightManager)
                 .environmentObject(friendsManager)
+                .environmentObject(emberTalkManager)
                 .modelContainer(sharedModelContainer)
                 .onAppear {
                     foodDataManager.setModelContext(sharedModelContainer.mainContext)
