@@ -62,7 +62,7 @@ class FoodLookupService: ObservableObject {
     private var searchGeneration = 0
     private var activeSearchTask: Task<Result<[FoodProduct], Error>, Never>?
     
-    nonisolated private static let maxResults = 20
+    nonisolated private static let maxResults = 40
     /// Hard ceiling for an entire text search (network + rank). UI never waits longer.
     nonisolated private static let searchDeadlineNanoseconds: UInt64 = 7_000_000_000
     nonisolated private static let session: URLSession = {
@@ -605,7 +605,7 @@ class FoodLookupService: ObservableObject {
             URLQueryItem(name: "search_simple", value: "1"),
             URLQueryItem(name: "action", value: "process"),
             URLQueryItem(name: "json", value: "1"),
-            URLQueryItem(name: "page_size", value: "15"),
+            URLQueryItem(name: "page_size", value: "30"),
             URLQueryItem(name: "fields", value: "code,product_name,brands,brands_tags,serving_size,serving_quantity,nutriments,countries_tags")
         ]
         guard let url = components.url else { return [] }
@@ -620,7 +620,7 @@ class FoodLookupService: ObservableObject {
                 continue
             }
             out.append(item)
-            if out.count >= 15 { break }
+            if out.count >= 30 { break }
         }
         return out
     }
@@ -630,7 +630,7 @@ class FoodLookupService: ObservableObject {
         var components = URLComponents(string: "https://api.nal.usda.gov/fdc/v1/foods/search")!
         components.queryItems = [
             URLQueryItem(name: "query", value: query),
-            URLQueryItem(name: "pageSize", value: "15"),
+            URLQueryItem(name: "pageSize", value: "30"),
             URLQueryItem(name: "api_key", value: apiKey)
         ]
         guard let url = components.url else { return [] }
@@ -664,7 +664,7 @@ class FoodLookupService: ObservableObject {
             URLQueryItem(name: "method", value: "foods.search.v3"),
             URLQueryItem(name: "search_expression", value: query),
             URLQueryItem(name: "format", value: "json"),
-            URLQueryItem(name: "max_results", value: "20")
+            URLQueryItem(name: "max_results", value: "40")
         ]
         guard let url = components.url else { return [] }
         
@@ -679,7 +679,7 @@ class FoodLookupService: ObservableObject {
         for item in response.foods?.food ?? [] {
             if let product = makeFatSecretProduct(item) {
                 out.append(product)
-                if out.count >= 15 { break }
+                if out.count >= 30 { break }
             }
         }
         
