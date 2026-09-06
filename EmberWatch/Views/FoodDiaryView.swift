@@ -310,7 +310,7 @@ struct FoodDiaryView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "doc.on.doc")
                                 .font(.caption2)
-                            Text("Copy")
+                            Text("Copy Yesterday")
                                 .font(.caption)
                                 .fontWeight(.semibold)
                         }
