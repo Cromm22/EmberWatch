@@ -180,7 +180,110 @@ final class FriendsManager: ObservableObject {
         await publishMyProfile(name: name, avatarId: avatarId, weeklyXP: weeklyXP)
     }
     
+    /// Update my email/phone for contact lookup
+    func updateMyContactInfo(email: String?, phone: String?) async {
+        guard isCloudKitAvailable, let publicDB else { return }
+        
+        // Find existing profile
+        let predicate = NSPredicate(format: "friendCode == %@", myFriendCode)
+        let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        
+        do {
+            let (matchResults, _) = try await publicDB.records(matching: query)
+            
+            if let (_, existingResult) = matchResults.first,
+               let record = try? existingResult.get() {
+                if let email = email, !email.isEmpty {
+                    record["email"] = email.lowercased() as CKRecordValue
+                }
+                if let phone = phone, !phone.isEmpty {
+                    // Normalize phone: remove non-digits
+                    let normalized = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+                    record["phone"] = normalized as CKRecordValue
+                }
+                _ = try await publicDB.save(record)
+            }
+        } catch {
+            print("FriendsManager: Failed to update contact info: \(error)")
+        }
+    }
+    
     // MARK: - Add Friend
+    
+    /// Look up friend by email or phone and add if found
+    func addFriend(email: String? = nil, phone: String? = nil) async throws -> Friend {
+        guard isCloudKitAvailable, let publicDB else {
+            throw FriendError.icloudUnavailable
+        }
+        
+        var predicate: NSPredicate?
+        
+        if let email = email, !email.isEmpty {
+            let normalized = email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            predicate = NSPredicate(format: "email == %@", normalized)
+        } else if let phone = phone, !phone.isEmpty {
+            let normalized = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+            predicate = NSPredicate(format: "phone == %@", normalized)
+        } else {
+            throw FriendError.invalidCode
+        }
+        
+        guard let predicate else {
+            throw FriendError.invalidCode
+        }
+        
+        let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        
+        do {
+            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
+            
+            guard let (recordID, result) = matchResults.first else {
+                throw FriendError.notFound
+            }
+            
+            let record = try result.get()
+            guard let friendCode = record["friendCode"] as? String else {
+                throw FriendError.notFound
+            }
+            
+            guard friendCode != myFriendCode else {
+                throw FriendError.cannotAddSelf
+            }
+            
+            guard !friendIds.contains(friendCode) else {
+                throw FriendError.alreadyFriends
+            }
+            
+            // Add friendship
+            friendIds.insert(friendCode)
+            
+            // Cache friend locally
+            let friend = Friend(
+                id: friendCode,
+                name: record["displayName"] as? String ?? "Unknown",
+                avatarId: record["avatarId"] as? String ?? "classic",
+                weeklyXP: record["weeklyXP"] as? Int ?? 0,
+                lastUpdated: Date()
+            )
+            
+            if !friends.contains(where: { $0.id == friend.id }) {
+                friends.append(friend)
+                saveCachedFriends()
+            }
+            
+            // Create bidirectional friendship record in CloudKit
+            await createFriendship(friendRecordID: recordID)
+            
+            return friend
+        } catch let error as FriendError {
+            throw error
+        } catch {
+            if (error as? CKError)?.code == .networkFailure || (error as? CKError)?.code == .networkUnavailable {
+                throw FriendError.networkError
+            }
+            throw FriendError.notFound
+        }
+    }
     
     /// Look up friend by code and add if found
     func addFriend(code: String) async throws {
