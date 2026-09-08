@@ -199,28 +199,26 @@ final class FriendsManager: ObservableObject {
     func updateMyContactInfo(email: String?, phone: String?) async {
         guard isCloudKitAvailable, let publicDB else { return }
         
-        // Find existing profile
-        let predicate = NSPredicate(format: "friendCode == %@", myFriendCode)
-        let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
-        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
+        // Fetch existing profile by record ID
+        let recordID = CKRecord.ID(recordName: myFriendCode)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query)
+            let record = try await publicDB.record(for: recordID)
             
-            if let (_, existingResult) = matchResults.first,
-               let record = try? existingResult.get() {
-                if let email = email, !email.isEmpty {
-                    record["email"] = email.lowercased() as CKRecordValue
-                }
-                if let phone = phone, !phone.isEmpty {
-                    // Normalize phone: remove non-digits
-                    let normalized = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-                    record["phone"] = normalized as CKRecordValue
-                }
-                _ = try await publicDB.save(record)
+            if let email = email, !email.isEmpty {
+                record["email"] = email.lowercased() as CKRecordValue
             }
+            if let phone = phone, !phone.isEmpty {
+                // Normalize phone: remove non-digits
+                let normalized = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+                record["phone"] = normalized as CKRecordValue
+            }
+            _ = try await publicDB.save(record)
         } catch {
             print("FriendsManager: Failed to update contact info: \(error)")
+            if let ckError = error as? CKError {
+                print("FriendsManager: CKError code: \(ckError.code.rawValue), description: \(ckError.localizedDescription)")
+            }
         }
     }
     
@@ -233,13 +231,16 @@ final class FriendsManager: ObservableObject {
         }
         
         var predicate: NSPredicate?
+        var searchType = ""
         
         if let email = email, !email.isEmpty {
             let normalized = email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
             predicate = NSPredicate(format: "email == %@", normalized)
+            searchType = "email"
         } else if let phone = phone, !phone.isEmpty {
             let normalized = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
             predicate = NSPredicate(format: "phone == %@", normalized)
+            searchType = "phone"
         } else {
             throw FriendError.invalidCode
         }
@@ -249,17 +250,18 @@ final class FriendsManager: ObservableObject {
         }
         
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
-        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
         
         do {
             let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
             
             guard let (recordID, result) = matchResults.first else {
+                print("FriendsManager: No profile found for \(searchType)")
                 throw FriendError.notFound
             }
             
             let record = try result.get()
             guard let friendCode = record["friendCode"] as? String else {
+                print("FriendsManager: Profile found but missing friendCode")
                 throw FriendError.notFound
             }
             
@@ -294,10 +296,23 @@ final class FriendsManager: ObservableObject {
             return friend
         } catch let error as FriendError {
             throw error
-        } catch {
-            if (error as? CKError)?.code == .networkFailure || (error as? CKError)?.code == .networkUnavailable {
+        } catch let ckError as CKError {
+            // Provide better error diagnostics
+            print("FriendsManager: CloudKit error searching by \(searchType): code=\(ckError.code.rawValue), \(ckError.localizedDescription)")
+            
+            switch ckError.code {
+            case .networkFailure, .networkUnavailable:
                 throw FriendError.networkError
+            case .notAuthenticated, .permissionFailure:
+                throw FriendError.icloudUnavailable
+            default:
+                // Note: If email/phone fields are not marked QUERYABLE in CloudKit schema,
+                // queries may fail or return empty results. This requires CloudKit Dashboard configuration.
+                print("FriendsManager: Unexpected CKError (check CloudKit schema if \(searchType) is QUERYABLE): \(ckError)")
+                throw FriendError.notFound
             }
+        } catch {
+            print("FriendsManager: Unexpected error searching by \(searchType): \(error)")
             throw FriendError.notFound
         }
     }
@@ -322,19 +337,17 @@ final class FriendsManager: ObservableObject {
             throw FriendError.alreadyFriends
         }
         
-        // Look up friend's profile in CloudKit
-        let predicate = NSPredicate(format: "friendCode == %@", trimmed)
-        let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
-        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
+        // Fetch friend's profile by record ID (friendCode is the recordName)
+        let recordID = CKRecord.ID(recordName: trimmed)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
+            let record = try await publicDB.record(for: recordID)
             
-            guard let (recordID, result) = matchResults.first else {
+            // Verify it's a UserProfile record
+            guard record.recordType == RecordType.profile else {
+                print("FriendsManager: Record \(trimmed) exists but is not a UserProfile")
                 throw FriendError.notFound
             }
-            
-            let record = try result.get()
             
             // Create friendship
             friendIds.insert(trimmed)
@@ -359,10 +372,25 @@ final class FriendsManager: ObservableObject {
             showToast("Added \(friend.name)!")
         } catch let error as FriendError {
             throw error
-        } catch {
-            if (error as? CKError)?.code == .networkFailure || (error as? CKError)?.code == .networkUnavailable {
+        } catch let ckError as CKError {
+            // Provide better error diagnostics
+            print("FriendsManager: CloudKit error adding friend \(trimmed): code=\(ckError.code.rawValue), \(ckError.localizedDescription)")
+            
+            switch ckError.code {
+            case .unknownItem:
+                // Profile doesn't exist - this is the expected "not found" case
+                throw FriendError.notFound
+            case .networkFailure, .networkUnavailable:
                 throw FriendError.networkError
+            case .notAuthenticated, .permissionFailure:
+                throw FriendError.icloudUnavailable
+            default:
+                // Log unexpected errors but still show user-friendly message
+                print("FriendsManager: Unexpected CKError: \(ckError)")
+                throw FriendError.notFound
             }
+        } catch {
+            print("FriendsManager: Unexpected error adding friend: \(error)")
             throw FriendError.notFound
         }
     }
@@ -373,20 +401,22 @@ final class FriendsManager: ObservableObject {
     func fetchFriends() async {
         guard isCloudKitAvailable, let publicDB, !friendIds.isEmpty else { return }
         
-        let predicate = NSPredicate(format: "friendCode IN %@", Array(friendIds))
-        let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
-        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
+        // Fetch friends by record IDs (more efficient and reliable than querying)
+        let recordIDs = friendIds.map { CKRecord.ID(recordName: $0) }
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
+            // Batch fetch all friend records
+            let records = try await publicDB.records(for: recordIDs)
             
             var updated: [Friend] = []
-            for (_, result) in matchResults {
-                guard let record = try? result.get() else { continue }
-                guard let code = record["friendCode"] as? String else { continue }
+            for (recordID, result) in records {
+                guard let record = try? result.get() else {
+                    print("FriendsManager: Failed to fetch friend \(recordID.recordName)")
+                    continue
+                }
                 
                 let friend = Friend(
-                    id: code,
+                    id: recordID.recordName,
                     name: record["displayName"] as? String ?? "Unknown",
                     avatarId: record["avatarId"] as? String ?? "classic",
                     weeklyXP: record["weeklyXP"] as? Int ?? 0,
@@ -399,6 +429,9 @@ final class FriendsManager: ObservableObject {
             saveCachedFriends()
         } catch {
             print("FriendsManager: Failed to fetch friends: \(error)")
+            if let ckError = error as? CKError {
+                print("FriendsManager: CKError code: \(ckError.code.rawValue), description: \(ckError.localizedDescription)")
+            }
         }
     }
     
@@ -412,22 +445,18 @@ final class FriendsManager: ObservableObject {
         let avatar = avatarId ?? UserDefaults.standard.string(forKey: "selectedAvatarId") ?? "classic"
         let xp = weeklyXP ?? 0 // Could pull from LevelManager if needed
         
-        // Try to find existing profile
-        let predicate = NSPredicate(format: "friendCode == %@", myFriendCode)
-        let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
-        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
+        // Use friendCode as recordName for deterministic lookup
+        let recordID = CKRecord.ID(recordName: myFriendCode)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query)
-            
+            // Try to fetch existing profile by record ID
             let record: CKRecord
-            if let (existingID, existingResult) = matchResults.first,
-               let existingRecord = try? existingResult.get() {
-                record = existingRecord
-                myRecordID = existingID
-            } else {
-                // Create new profile
-                record = CKRecord(recordType: RecordType.profile)
+            do {
+                record = try await publicDB.record(for: recordID)
+                myRecordID = recordID
+            } catch let error as CKError where error.code == .unknownItem {
+                // Create new profile with friendCode as recordName
+                record = CKRecord(recordType: RecordType.profile, recordID: recordID)
                 record["friendCode"] = myFriendCode as CKRecordValue
             }
             
@@ -442,6 +471,9 @@ final class FriendsManager: ObservableObject {
             print("FriendsManager: Published profile for \(myFriendCode)")
         } catch {
             print("FriendsManager: Failed to publish profile: \(error)")
+            if let ckError = error as? CKError {
+                print("FriendsManager: CKError code: \(ckError.code.rawValue), description: \(ckError.localizedDescription)")
+            }
         }
     }
     
