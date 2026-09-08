@@ -414,7 +414,7 @@ struct HomeView: View {
                     Spacer()
                 }
                 
-                Text(calorieGoalManager.ignoreFoodFromRemaining ? "remaining (food ignored)" : "remaining")
+                Text("remaining")
                     .font(.subheadline)
                     .foregroundColor(EmberColors.cream.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -595,7 +595,7 @@ struct HomeView: View {
                 
                 SummaryItem(
                     icon: "fork.knife",
-                    label: calorieGoalManager.ignoreFoodFromRemaining ? "Eaten*" : "Eaten",
+                    label: "Eaten",
                     value: "-\(Int(foodDataManager.totalCaloriesConsumed))",
                     color: Color.blue
                 )
