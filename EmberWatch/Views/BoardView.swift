@@ -19,6 +19,11 @@ struct BoardView: View {
     @State private var addFriendError: String?
     @State private var isAddingFriend = false
     
+    private var isAddFriendButtonEnabled: Bool {
+        let trimmed = addFriendCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && !isAddingFriend && friendsManager.isCloudKitAvailable
+    }
+    
     private var allEntries: [BoardEntry] {
         var entries: [BoardEntry] = []
         
@@ -234,6 +239,7 @@ struct BoardView: View {
                         .font(.system(size: 24, weight: .bold, design: .monospaced))
                         .foregroundColor(EmberColors.cream)
                         .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
                         .multilineTextAlignment(.center)
                         .padding()
                         .background(
@@ -241,6 +247,13 @@ struct BoardView: View {
                                 .fill(EmberColors.lightPlum)
                         )
                         .disabled(isAddingFriend)
+                        .onChange(of: addFriendCode) { _, newValue in
+                            // Normalize on change: trim and uppercase for better UX
+                            let normalized = newValue.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                            if normalized != newValue && !normalized.isEmpty {
+                                addFriendCode = normalized
+                            }
+                        }
                     
                     if let error = addFriendError {
                         Text(error)
@@ -266,9 +279,9 @@ struct BoardView: View {
                     }
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(EmberColors.ember)
+                            .fill(isAddFriendButtonEnabled ? EmberColors.ember : EmberColors.ember.opacity(0.5))
                     )
-                    .disabled(addFriendCode.isEmpty || isAddingFriend || !friendsManager.isCloudKitAvailable)
+                    .disabled(!isAddFriendButtonEnabled)
                     
                     Spacer()
                 }
