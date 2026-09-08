@@ -249,7 +249,7 @@ final class FriendsManager: ObservableObject {
         }
         
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
-        query.sortDescriptors = [NSSortDescriptor(key: "createdModificationDate", ascending: false)]
+        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
         
         do {
             let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
