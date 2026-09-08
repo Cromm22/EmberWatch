@@ -9,6 +9,7 @@ struct FoodServingSheet: View {
     @State private var enrichedProduct: FoodProduct?
     @State private var loadingState: LoadingState = .loading
     @State private var selectedMultiplier: Double = 1.0
+    @State private var selectedGrams: Double = 0
     @State private var selectedMealType: MealType = MealType.suggested()
     
     private enum LoadingState {
@@ -54,6 +55,7 @@ struct FoodServingSheet: View {
         }
         .presentationBackground(EmberColors.dusk)
         .onAppear {
+            selectedGrams = currentProduct.servingSizeGrams ?? 100
             if product.hasValidMacros {
                 loadingState = .ready
                 Task.detached(priority: .background) {
@@ -63,6 +65,11 @@ struct FoodServingSheet: View {
                 Task {
                     await enrichFoodDetail()
                 }
+            }
+        }
+        .onChange(of: enrichedProduct) { oldValue, newValue in
+            if let grams = newValue?.servingSizeGrams {
+                selectedGrams = grams
             }
         }
     }
@@ -177,22 +184,28 @@ struct FoodServingSheet: View {
                 
                 Spacer()
                 
-                Text("\(String(format: "%.1f", selectedMultiplier))× serving")
-                    .font(.subheadline)
-                    .foregroundColor(EmberColors.ember)
+                if let servingGrams = currentProduct.servingSizeGrams, servingGrams > 0 {
+                    Text("\(Int(selectedGrams))g")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.ember)
+                } else {
+                    Text("\(String(format: "%.1f", selectedMultiplier))× serving")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.ember)
+                }
             }
             
             HStack(spacing: 12) {
                 NutritionValueCard(
                     label: "Calories",
-                    value: Int(currentProduct.caloriesPerServing * selectedMultiplier),
+                    value: Int(calculatedCalories),
                     unit: "cal",
                     color: EmberColors.ember
                 )
                 
                 NutritionValueCard(
                     label: "Protein",
-                    value: Int(currentProduct.proteinPerServing * selectedMultiplier),
+                    value: Int(calculatedProtein),
                     unit: "g",
                     color: .orange
                 )
@@ -201,14 +214,14 @@ struct FoodServingSheet: View {
             HStack(spacing: 12) {
                 NutritionValueCard(
                     label: "Carbs",
-                    value: Int(currentProduct.carbsPerServing * selectedMultiplier),
+                    value: Int(calculatedCarbs),
                     unit: "g",
                     color: .blue
                 )
                 
                 NutritionValueCard(
                     label: "Fat",
-                    value: Int(currentProduct.fatPerServing * selectedMultiplier),
+                    value: Int(calculatedFat),
                     unit: "g",
                     color: .yellow
                 )
@@ -221,6 +234,34 @@ struct FoodServingSheet: View {
         )
     }
     
+    private var calculatedCalories: Double {
+        if let servingGrams = currentProduct.servingSizeGrams, servingGrams > 0 {
+            return (currentProduct.caloriesPer100g * selectedGrams) / 100.0
+        }
+        return currentProduct.caloriesPerServing * selectedMultiplier
+    }
+    
+    private var calculatedProtein: Double {
+        if let servingGrams = currentProduct.servingSizeGrams, servingGrams > 0 {
+            return (currentProduct.proteinPer100g * selectedGrams) / 100.0
+        }
+        return currentProduct.proteinPerServing * selectedMultiplier
+    }
+    
+    private var calculatedCarbs: Double {
+        if let servingGrams = currentProduct.servingSizeGrams, servingGrams > 0 {
+            return (currentProduct.carbsPer100g * selectedGrams) / 100.0
+        }
+        return currentProduct.carbsPerServing * selectedMultiplier
+    }
+    
+    private var calculatedFat: Double {
+        if let servingGrams = currentProduct.servingSizeGrams, servingGrams > 0 {
+            return (currentProduct.fatPer100g * selectedGrams) / 100.0
+        }
+        return currentProduct.fatPerServing * selectedMultiplier
+    }
+    
     private var servingSizeCard: some View {
         VStack(spacing: 16) {
             Text("Serving Size")
@@ -228,23 +269,73 @@ struct FoodServingSheet: View {
                 .foregroundColor(EmberColors.cream)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
-            HStack(spacing: 12) {
-                ForEach(multipliers, id: \.self) { multiplier in
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedMultiplier = multiplier
+            if let servingGrams = currentProduct.servingSizeGrams, servingGrams > 0 {
+                let gramPresets = [servingGrams * 0.5, servingGrams, servingGrams * 1.5, servingGrams * 2.0, servingGrams * 3.0]
+                HStack(spacing: 12) {
+                    ForEach(gramPresets, id: \.self) { grams in
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedGrams = grams
+                                selectedMultiplier = grams / servingGrams
+                            }
+                        }) {
+                            Text("\(Int(grams))g")
+                                .font(.headline)
+                                .foregroundColor(abs(selectedGrams - grams) < 1.0 ? EmberColors.cream : EmberColors.cream.opacity(0.7))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(abs(selectedGrams - grams) < 1.0 ? EmberColors.ember : EmberColors.dusk)
+                                )
                         }
-                    }) {
-                        Text(formatMultiplier(multiplier))
-                            .font(.headline)
-                            .foregroundColor(selectedMultiplier == multiplier ? EmberColors.cream : EmberColors.cream.opacity(0.7))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(selectedMultiplier == multiplier ? EmberColors.ember : EmberColors.dusk)
-                            )
+                    }
+                }
+                
+                HStack {
+                    Text("Adjust")
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    Spacer()
+                    Button {
+                        selectedGrams = max(1, selectedGrams - 10)
+                        selectedMultiplier = selectedGrams / servingGrams
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(EmberColors.ember)
+                    }
+                    Text("\(Int(selectedGrams))g")
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                        .frame(minWidth: 60)
+                    Button {
+                        selectedGrams = min(1000, selectedGrams + 10)
+                        selectedMultiplier = selectedGrams / servingGrams
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(EmberColors.ember)
+                    }
+                }
+            } else {
+                let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
+                HStack(spacing: 12) {
+                    ForEach(multipliers, id: \.self) { multiplier in
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedMultiplier = multiplier
+                            }
+                        }) {
+                            Text(formatMultiplier(multiplier))
+                                .font(.headline)
+                                .foregroundColor(selectedMultiplier == multiplier ? EmberColors.cream : EmberColors.cream.opacity(0.7))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(selectedMultiplier == multiplier ? EmberColors.ember : EmberColors.dusk)
+                                )
+                        }
                     }
                 }
             }
@@ -291,16 +382,17 @@ struct FoodServingSheet: View {
     private func confirmServing() {
         let entry = FoodEntry(
             name: currentProduct.name,
-            calories: currentProduct.caloriesPerServing * selectedMultiplier,
-            protein: currentProduct.proteinPerServing * selectedMultiplier,
-            carbs: currentProduct.carbsPerServing * selectedMultiplier,
-            fat: currentProduct.fatPerServing * selectedMultiplier,
+            calories: calculatedCalories,
+            protein: calculatedProtein,
+            carbs: calculatedCarbs,
+            fat: calculatedFat,
             mealType: selectedMealType.rawValue,
             servings: selectedMultiplier,
             caloriesPerServing: currentProduct.caloriesPerServing,
             proteinPerServing: currentProduct.proteinPerServing,
             carbsPerServing: currentProduct.carbsPerServing,
-            fatPerServing: currentProduct.fatPerServing
+            fatPerServing: currentProduct.fatPerServing,
+            servingSizeGrams: currentProduct.servingSizeGrams ?? 0
         )
         
         onConfirm(entry)
