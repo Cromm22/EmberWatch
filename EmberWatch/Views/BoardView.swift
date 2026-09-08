@@ -266,7 +266,6 @@ struct BoardView: View {
                         level: entry.level,
                         xp: entry.xp,
                         isCurrentUser: entry.isCurrentUser,
-                        canChallenge: !entry.isCurrentUser && levelManager.canChallenge(friendId: entry.id),
                         onChallenge: {
                             let xp = levelManager.awardChallenge(friendId: entry.id)
                             if xp > 0 {
@@ -296,7 +295,6 @@ struct LeaderboardRow: View {
     let level: Int
     let xp: Int
     let isCurrentUser: Bool
-    var canChallenge: Bool = false
     var onChallenge: (() -> Void)? = nil
     
     /// Soft teal that sits against dusk/plum without reading as medal bronze.
@@ -337,19 +335,18 @@ struct LeaderboardRow: View {
                     HStack(spacing: 3) {
                         Image(systemName: "bolt.fill")
                             .font(.system(size: 8, weight: .bold))
-                        Text(canChallenge ? "Challenge" : "Sent")
+                        Text("Challenge")
                             .font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundColor(canChallenge ? EmberColors.ink : EmberColors.cream.opacity(0.45))
+                    .foregroundColor(EmberColors.ink)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(
                         Capsule()
-                            .fill(canChallenge ? EmberColors.ember : EmberColors.dusk)
+                            .fill(EmberColors.ember)
                     )
                 }
                 .buttonStyle(.plain)
-                .disabled(!canChallenge)
             }
         }
         .padding(.horizontal, 14)
