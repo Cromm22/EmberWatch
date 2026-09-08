@@ -44,6 +44,7 @@
 		WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = WPC0000000000000000000001 /* WeightProjectionChart.swift */; };
 		LUCELF774E9036E13409391 /* LevelUpCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */; };
 		ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDFR1END0000000000000001 /* AddFriendView.swift */; };
+		PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -87,6 +88,7 @@
 		WPC0000000000000000000001 /* WeightProjectionChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightProjectionChart.swift; sourceTree = "<group>"; };
 		LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelUpCelebrationView.swift; sourceTree = "<group>"; };
 		ADDFR1END0000000000000001 /* AddFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendView.swift; sourceTree = "<group>"; };
+		PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -142,6 +144,7 @@
 				F00D5E4V1NG5H33T00000001 /* FoodServingSheet.swift */,
 				BD9F37E2885F4A5DA562B21E /* BoardView.swift */,
 				ADDFR1END0000000000000001 /* AddFriendView.swift */,
+				PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */,
 				B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */,
 				3A0000060000000000000001 /* HomeView.swift */,
 				E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */,
@@ -307,6 +310,7 @@
 				ETO0000000000000000000002 /* EmberTalkOverlay.swift in Sources */,
 				WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */,
 				ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */,
+				PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

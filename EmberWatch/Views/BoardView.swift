@@ -15,6 +15,7 @@ struct BoardView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     
     @State private var showAddFriend = false
+    @State private var showProfileSettings = false
     
     private var allEntries: [BoardEntry] {
         var entries: [BoardEntry] = []
@@ -134,6 +135,17 @@ struct BoardView: View {
                 
                 HStack(spacing: 8) {
                     Button {
+                        showProfileSettings = true
+                    } label: {
+                        Image(systemName: "person.crop.circle")
+                            .font(.title3)
+                            .foregroundColor(EmberColors.ember)
+                            .padding(10)
+                            .background(Circle().fill(EmberColors.dusk))
+                    }
+                    .accessibilityLabel("Edit profile")
+                    
+                    Button {
                         UIPasteboard.general.string = friendsManager.myFriendCode
                         friendsManager.toast = "Code copied!"
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -183,6 +195,10 @@ struct BoardView: View {
         )
         .sheet(isPresented: $showAddFriend) {
             AddFriendView()
+                .environmentObject(friendsManager)
+        }
+        .sheet(isPresented: $showProfileSettings) {
+            ProfileSettingsView(isPresented: $showProfileSettings)
                 .environmentObject(friendsManager)
         }
         .overlay(alignment: .top) {
