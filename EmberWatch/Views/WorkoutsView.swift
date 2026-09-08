@@ -71,6 +71,9 @@ struct WorkoutsView: View {
     @AppStorage("emberwatch.rowingDistanceUnit") private var rowingUnitRaw: String = WorkoutDistanceUnit.miles.rawValue
     @FocusState private var focusedQuickField: QuickAddField?
     
+    /// Workout to edit
+    @State private var workoutToEdit: WorkoutData?
+    
     private enum QuickAddField: Hashable {
         case distance, time, calories
     }
@@ -179,6 +182,15 @@ struct WorkoutsView: View {
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
                 syncXP()
+            }
+            .sheet(isPresented: Binding(
+                get: { workoutToEdit != nil },
+                set: { if !$0 { workoutToEdit = nil } }
+            )) {
+                if let workout = workoutToEdit {
+                    EditWorkoutView(workout: workout, isPresentedWorkout: $workoutToEdit)
+                        .environmentObject(healthKitManager)
+                }
             }
         }
         .navigationViewStyle(.stack)
@@ -587,7 +599,21 @@ struct WorkoutsView: View {
                 .padding(.horizontal, 4)
             
             ForEach(healthKitManager.workouts) { workout in
-                WorkoutDetailRow(workout: workout)
+                WorkoutDetailRow(workout: workout) {
+                    workoutToEdit = workout
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        healthKitManager.deleteWorkout(workout) { success, error in
+                            if !success {
+                                print("Failed to delete workout: \(error?.localizedDescription ?? "unknown error")")
+                            }
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .tint(Color(red: 0.86, green: 0.22, blue: 0.27))
+                }
             }
         }
     }
@@ -634,8 +660,22 @@ private extension String {
 
 struct WorkoutDetailRow: View {
     let workout: WorkoutData
+    var onTap: (() -> Void)? = nil
     
     var body: some View {
+        Button(action: {
+            if workout.isLocal {
+                onTap?()
+            }
+        }) {
+            content
+        }
+        .buttonStyle(.plain)
+        .disabled(!workout.isLocal)
+        .accessibilityHint(workout.isLocal ? "Tap to edit. Swipe left to delete." : "Swipe left to delete.")
+    }
+    
+    private var content: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
                 Image(systemName: workout.iconName)
@@ -665,6 +705,12 @@ struct WorkoutDetailRow: View {
                 }
                 
                 Spacer()
+                
+                if workout.isLocal {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundColor(EmberColors.cream.opacity(0.35))
+                }
             }
             .padding()
             
@@ -698,6 +744,240 @@ struct WorkoutDetailRow: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(EmberColors.lightPlum)
         )
+    }
+}
+
+// MARK: - Edit Workout View
+
+struct EditWorkoutView: View {
+    let workout: WorkoutData
+    @Binding var isPresentedWorkout: WorkoutData?
+    @EnvironmentObject var healthKitManager: HealthKitManager
+    
+    @State private var timeMinutes: String = ""
+    @State private var calories: String = ""
+    @State private var distance: String = ""
+    @State private var distanceUnit: WorkoutDistanceUnit = .miles
+    
+    private var showsDistanceField: Bool {
+        workout.distanceMiles != nil
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        VStack(spacing: 12) {
+                            Image(systemName: workout.iconName)
+                                .font(.system(size: 40))
+                                .foregroundColor(EmberColors.ember)
+                            
+                            Text(workout.displayName)
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(EmberColors.cream)
+                                .multilineTextAlignment(.center)
+                            
+                            Text(workout.formattedStartTime)
+                                .font(.subheadline)
+                                .foregroundColor(EmberColors.cream.opacity(0.7))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(EmberColors.lightPlum)
+                        )
+                        
+                        VStack(spacing: 16) {
+                            Text("Workout Details")
+                                .font(.headline)
+                                .foregroundColor(EmberColors.cream)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            editField(
+                                title: "Time",
+                                unit: "min",
+                                placeholder: "30",
+                                text: $timeMinutes
+                            )
+                            
+                            editField(
+                                title: "Calories burned",
+                                unit: "cal",
+                                placeholder: "0",
+                                text: $calories
+                            )
+                            
+                            if showsDistanceField {
+                                if workout.distanceUnit == .laps {
+                                    editField(
+                                        title: "Laps",
+                                        unit: "laps",
+                                        placeholder: "0",
+                                        text: $distance
+                                    )
+                                } else {
+                                    editFieldWithUnitToggle(
+                                        title: "Distance",
+                                        placeholder: "0",
+                                        text: $distance,
+                                        unit: $distanceUnit
+                                    )
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(EmberColors.lightPlum)
+                        )
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Edit Workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresentedWorkout = nil
+                    }
+                    .foregroundColor(EmberColors.cream)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveWorkout()
+                    }
+                    .foregroundColor(EmberColors.ember)
+                    .fontWeight(.semibold)
+                    .disabled(!isValid)
+                }
+            }
+            .onAppear {
+                loadWorkoutData()
+            }
+        }
+    }
+    
+    private func editField(
+        title: String,
+        unit: String,
+        placeholder: String,
+        text: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+            
+            HStack(spacing: 8) {
+                TextField(placeholder, text: text)
+                    .keyboardType(.decimalPad)
+                    .foregroundColor(EmberColors.cream)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(EmberColors.dusk)
+                    )
+                
+                Text(unit)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(EmberColors.cream.opacity(0.55))
+                    .frame(minWidth: 40, alignment: .leading)
+            }
+        }
+    }
+    
+    private func editFieldWithUnitToggle(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        unit: Binding<WorkoutDistanceUnit>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+            
+            HStack(spacing: 8) {
+                TextField(placeholder, text: text)
+                    .keyboardType(.decimalPad)
+                    .foregroundColor(EmberColors.cream)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(EmberColors.dusk)
+                    )
+                
+                Picker("Unit", selection: unit) {
+                    Text("mi").tag(WorkoutDistanceUnit.miles)
+                    Text("km").tag(WorkoutDistanceUnit.kilometers)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 100)
+            }
+        }
+    }
+    
+    private var isValid: Bool {
+        guard let mins = Int(timeMinutes), mins > 0 else { return false }
+        guard let cals = Double(calories), cals >= 0 else { return false }
+        if showsDistanceField {
+            let distTrimmed = distance.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !distTrimmed.isEmpty {
+                guard let _ = Double(distTrimmed) else { return false }
+            }
+        }
+        return true
+    }
+    
+    private func loadWorkoutData() {
+        timeMinutes = "\(Int(workout.duration / 60))"
+        calories = "\(Int(workout.caloriesBurned))"
+        if let dist = workout.distanceMiles, dist > 0 {
+            if workout.distanceUnit == .laps {
+                distance = "\(Int(dist))"
+            } else {
+                distance = String(format: "%.2f", dist)
+            }
+        }
+        distanceUnit = workout.distanceUnit
+    }
+    
+    private func saveWorkout() {
+        guard let mins = Int(timeMinutes), mins > 0 else { return }
+        guard let cals = Double(calories), cals >= 0 else { return }
+        
+        let distTrimmed = distance.trimmingCharacters(in: .whitespacesAndNewlines)
+        let distValue: Double? = distTrimmed.isEmpty ? nil : Double(distTrimmed)
+        
+        let updatedWorkout = WorkoutData(
+            id: workout.id,
+            workoutType: workout.workoutType,
+            duration: TimeInterval(mins * 60),
+            caloriesBurned: cals,
+            startDate: workout.startDate,
+            customName: workout.customName,
+            distanceMiles: distValue,
+            distanceUnit: workout.distanceUnit == .laps ? .laps : distanceUnit,
+            isLocal: workout.isLocal
+        )
+        
+        healthKitManager.updateLocalWorkout(updatedWorkout)
+        isPresentedWorkout = nil
     }
 }
 

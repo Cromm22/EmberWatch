@@ -90,6 +90,67 @@ class HealthKitManager: ObservableObject {
         // Intentionally do NOT touch totalCaloriesBurned — Active Energy stays source of truth.
     }
     
+    /// Update a local workout's fields (only affects Quick Add / manual entries).
+    func updateLocalWorkout(_ workout: WorkoutData) {
+        guard workout.isLocal else { return }
+        if let index = localWorkouts.firstIndex(where: { $0.id == workout.id }) {
+            localWorkouts[index] = workout
+            var merged = localWorkouts
+            let localIDs = Set(localWorkouts.map(\.id))
+            merged.append(contentsOf: workouts.filter { !localIDs.contains($0.id) && !$0.isLocal })
+            workouts = merged
+            workoutCaloriesBurned = workouts.reduce(0) { $0 + $1.caloriesBurned }
+        }
+    }
+    
+    /// Delete a workout from today's list.
+    /// - For local workouts: removes from in-memory store
+    /// - For HealthKit workouts: deletes the HK sample (requires write permission)
+    func deleteWorkout(_ workout: WorkoutData, completion: ((Bool, Error?) -> Void)? = nil) {
+        if workout.isLocal {
+            localWorkouts.removeAll { $0.id == workout.id }
+            var merged = localWorkouts
+            let localIDs = Set(localWorkouts.map(\.id))
+            merged.append(contentsOf: workouts.filter { !localIDs.contains($0.id) && !$0.isLocal })
+            workouts = merged
+            workoutCaloriesBurned = workouts.reduce(0) { $0 + $1.caloriesBurned }
+            completion?(true, nil)
+        } else {
+            // HealthKit workout — delete the HK sample
+            let predicate = HKQuery.predicateForObject(with: workout.id)
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: 1,
+                sortDescriptors: nil
+            ) { [weak self] _, samples, error in
+                guard let self = self else { return }
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion?(false, error)
+                    }
+                    return
+                }
+                guard let sample = samples?.first else {
+                    DispatchQueue.main.async {
+                        completion?(false, NSError(domain: "HealthKitManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Workout not found in HealthKit"]))
+                    }
+                    return
+                }
+                self.healthStore.delete(sample) { success, error in
+                    DispatchQueue.main.async {
+                        if success {
+                            self.workouts.removeAll { $0.id == workout.id }
+                            self.workoutCaloriesBurned = self.workouts.reduce(0) { $0 + $1.caloriesBurned }
+                        }
+                        completion?(success, error)
+                    }
+                }
+            }
+            healthStore.execute(query)
+        }
+    }
+    
     private func pruneLocalWorkoutsToToday() {
         let start = Calendar.current.startOfDay(for: Date())
         localWorkouts = localWorkouts.filter { $0.startDate >= start }
