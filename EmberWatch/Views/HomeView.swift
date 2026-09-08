@@ -414,7 +414,7 @@ struct HomeView: View {
                     Spacer()
                 }
                 
-                Text(calorieGoalManager.ignoreFoodFromRemaining ? "remaining (food ignored)" : "remaining")
+                Text("remaining")
                     .font(.subheadline)
                     .foregroundColor(EmberColors.cream.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -595,7 +595,7 @@ struct HomeView: View {
                 
                 SummaryItem(
                     icon: "fork.knife",
-                    label: calorieGoalManager.ignoreFoodFromRemaining ? "Eaten*" : "Eaten",
+                    label: "Eaten",
                     value: "-\(Int(foodDataManager.totalCaloriesConsumed))",
                     color: Color.blue
                 )
@@ -664,7 +664,6 @@ struct GoalSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @State private var goalInput: String = ""
-    @State private var ignoreFood: Bool = false
     
     var body: some View {
         NavigationView {
@@ -691,32 +690,6 @@ struct GoalSettingsView: View {
                     }
                     .padding(.horizontal)
                     
-                    Toggle(isOn: $ignoreFood) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Ignore calories eaten")
-                                .font(.headline)
-                                .foregroundColor(EmberColors.cream)
-                            Text("Don’t subtract food from remaining. Food still logs in the diary.")
-                                .font(.caption)
-                                .foregroundColor(EmberColors.cream.opacity(0.65))
-                        }
-                    }
-                    .tint(EmberColors.ember)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(EmberColors.lightPlum)
-                    )
-                    .padding(.horizontal)
-                    
-                    Text(ignoreFood
-                         ? "Remaining = goal + exercise (food ignored)."
-                         : "Remaining = goal + exercise − food.")
-                        .font(.subheadline)
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
                     Spacer()
                 }
                 .padding(.top, 12)
@@ -739,7 +712,6 @@ struct GoalSettingsView: View {
                         if let goal = Double(goalInput) {
                             calorieGoalManager.dailyCalorieGoal = goal
                         }
-                        calorieGoalManager.ignoreFoodFromRemaining = ignoreFood
                         isPresented = false
                     }
                     .foregroundColor(EmberColors.ember)
@@ -747,7 +719,6 @@ struct GoalSettingsView: View {
             }
             .onAppear {
                 goalInput = String(Int(calorieGoalManager.dailyCalorieGoal))
-                ignoreFood = calorieGoalManager.ignoreFoodFromRemaining
             }
         }
     }

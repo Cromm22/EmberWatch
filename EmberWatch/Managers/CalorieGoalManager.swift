@@ -19,13 +19,13 @@ class CalorieGoalManager: ObservableObject {
     init() {
         let goal = UserDefaults.standard.double(forKey: "dailyCalorieGoal")
         self.dailyCalorieGoal = goal == 0 ? 2000 : goal
-        self.ignoreFoodFromRemaining = UserDefaults.standard.bool(forKey: "ignoreFoodFromRemaining")
+        // Force false to neutralize legacy behavior now that toggle is removed
+        self.ignoreFoodFromRemaining = false
+        UserDefaults.standard.set(false, forKey: "ignoreFoodFromRemaining")
     }
     
     func calculateRemainingCalories(burned: Double, consumed: Double) -> Double {
-        if ignoreFoodFromRemaining {
-            return dailyCalorieGoal + burned
-        }
+        // Always subtract food (toggle removed, legacy behavior neutralized)
         return dailyCalorieGoal + burned - consumed
     }
 }
