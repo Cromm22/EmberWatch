@@ -60,7 +60,8 @@ struct ContentView: View {
                 await friendsManager.updateMyProfile(
                     name: avatarManager.emberName,
                     avatarId: avatarManager.selectedAvatarId,
-                    weeklyXP: levelManager.totalXP
+                    totalXP: levelManager.totalXP,
+                    level: levelManager.level
                 )
             }
         }
