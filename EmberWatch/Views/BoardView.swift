@@ -15,14 +15,6 @@ struct BoardView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     
     @State private var showAddFriend = false
-    @State private var addFriendCode = ""
-    @State private var addFriendError: String?
-    @State private var isAddingFriend = false
-    
-    private var isAddFriendButtonEnabled: Bool {
-        let trimmed = addFriendCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmed.isEmpty && !isAddingFriend && friendsManager.isCloudKitAvailable
-    }
     
     private var allEntries: [BoardEntry] {
         var entries: [BoardEntry] = []
@@ -190,7 +182,8 @@ struct BoardView: View {
                 .fill(EmberColors.lightPlum)
         )
         .sheet(isPresented: $showAddFriend) {
-            addFriendSheet
+            AddFriendView()
+                .environmentObject(friendsManager)
         }
         .overlay(alignment: .top) {
             if let toast = friendsManager.toast {
@@ -202,126 +195,6 @@ struct BoardView: View {
                     .background(Capsule().fill(EmberColors.gold))
                     .offset(y: -40)
                     .transition(.opacity)
-            }
-        }
-    }
-    
-    private var addFriendSheet: some View {
-        NavigationView {
-            ZStack {
-                EmberColors.dusk.ignoresSafeArea()
-                
-                VStack(spacing: 24) {
-                    if !friendsManager.isCloudKitAvailable {
-                        HStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.icloud.fill")
-                                .foregroundColor(EmberColors.ember)
-                            Text(friendsManager.cloudKitError ?? "iCloud unavailable")
-                                .font(.subheadline)
-                                .foregroundColor(EmberColors.cream)
-                            Spacer()
-                        }
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(EmberColors.lightPlum)
-                        )
-                        .padding(.top)
-                    }
-                    
-                    Text("Enter your friend's code to add them")
-                        .font(.subheadline)
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, friendsManager.isCloudKitAvailable ? 16 : 0)
-                    
-                    TextField("Friend Code", text: $addFriendCode)
-                        .font(.system(size: 24, weight: .bold, design: .monospaced))
-                        .foregroundColor(EmberColors.cream)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                        .multilineTextAlignment(.center)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(EmberColors.lightPlum)
-                        )
-                        .disabled(isAddingFriend)
-                        .onChange(of: addFriendCode) { _, newValue in
-                            // Normalize on change: trim and uppercase for better UX
-                            let normalized = newValue.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-                            if normalized != newValue && !normalized.isEmpty {
-                                addFriendCode = normalized
-                            }
-                        }
-                    
-                    if let error = addFriendError {
-                        Text(error)
-                            .font(.subheadline)
-                            .foregroundColor(.red)
-                    }
-                    
-                    Button {
-                        addFriend()
-                    } label: {
-                        if isAddingFriend {
-                            ProgressView()
-                                .tint(EmberColors.cream)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                        } else {
-                            Text("Add Friend")
-                                .font(.headline)
-                                .foregroundColor(EmberColors.cream)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                        }
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(isAddFriendButtonEnabled ? EmberColors.ember : EmberColors.ember.opacity(0.5))
-                    )
-                    .disabled(!isAddFriendButtonEnabled)
-                    
-                    Spacer()
-                }
-                .padding()
-            }
-            .navigationTitle("Add Friend")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showAddFriend = false
-                        addFriendCode = ""
-                        addFriendError = nil
-                    }
-                    .foregroundColor(EmberColors.ember)
-                }
-            }
-            .toolbarColorScheme(.light, for: .navigationBar)
-            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-        }
-    }
-    
-    private func addFriend() {
-        addFriendError = nil
-        isAddingFriend = true
-        
-        Task {
-            do {
-                try await friendsManager.addFriend(code: addFriendCode)
-                await MainActor.run {
-                    isAddingFriend = false
-                    showAddFriend = false
-                    addFriendCode = ""
-                }
-            } catch {
-                await MainActor.run {
-                    isAddingFriend = false
-                    addFriendError = error.localizedDescription
-                }
             }
         }
     }
