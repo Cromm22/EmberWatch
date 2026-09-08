@@ -311,8 +311,8 @@ struct FoodDiaryView: View {
                             Image(systemName: "doc.on.doc")
                                 .font(.caption2)
                             Text("Copy Yesterday")
-                                .font(.caption)
-                                .fontWeight(.semibold)
+                                .font(.caption2)
+                                .fontWeight(.medium)
                         }
                         .foregroundColor(EmberColors.ember)
                         .padding(.horizontal, 8)
