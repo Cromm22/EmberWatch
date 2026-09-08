@@ -196,16 +196,31 @@ struct HomeView: View {
         }
     }
     
+    private func emberSizeForLevel(_ level: Int) -> CGFloat {
+        let minSize: CGFloat = 170
+        let maxSize: CGFloat = 270
+        let maxLevel = CGFloat(LevelManager.maxLevel)
+        
+        let clampedLevel = min(CGFloat(level), maxLevel)
+        let progress = (clampedLevel - 1) / (maxLevel - 1)
+        
+        return minSize + (maxSize - minSize) * progress
+    }
+    
     private var emberAvatarCard: some View {
-        VStack(spacing: 12) {
+        let emberSize = emberSizeForLevel(levelManager.level)
+        let frameHeight = emberSize * 1.15
+        
+        return VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
                 EmberFlameAvatar(
                     level: levelManager.level,
-                    size: 220,
+                    size: emberSize,
                     style: avatarManager.selectedStyle,
                     extraGlow: sparksManager.hasGlow
                 )
-                .frame(width: 220, height: 250)
+                .frame(width: emberSize, height: frameHeight)
+                .animation(.spring(response: 0.6, dampingFraction: 0.7), value: levelManager.level)
                 .onTapGesture {
                     showingAvatarPicker = true
                 }
@@ -530,7 +545,10 @@ struct HomeView: View {
                             } else if index == waterManager.glassesLogged {
                                 if waterManager.logGlass() {
                                     _ = levelManager.awardWaterServing()
-                                    emberTalkManager.showWaterPhrase()
+                                    // Show center celebration only on even-numbered glasses (2, 4, 6, ...)
+                                    if waterManager.glassesLogged % 2 == 0 {
+                                        emberTalkManager.showWaterPhrase()
+                                    }
                                 }
                             }
                         }
