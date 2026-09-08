@@ -1,4 +1,5 @@
 import SwiftUI
+import CloudKit
 
 struct BoardEntry: Identifiable {
     let id: String
@@ -16,6 +17,7 @@ struct BoardView: View {
     
     @State private var showAddFriend = false
     @State private var showProfileSettings = false
+    @State private var receivedChallenges: [(challengeId: CKRecord.ID, fromCode: String, fromName: String, date: Date)] = []
     
     private var allEntries: [BoardEntry] {
         var entries: [BoardEntry] = []
@@ -26,7 +28,7 @@ struct BoardView: View {
         
         // Real friends
         for friend in friendsManager.friends {
-            entries.append(BoardEntry(id: friend.id, name: friend.name, level: 1, xp: friend.weeklyXP, isCurrentUser: false))
+            entries.append(BoardEntry(id: friend.id, name: friend.name, level: friend.level, xp: friend.totalXP, isCurrentUser: false))
         }
         
         return entries
@@ -67,20 +69,8 @@ struct BoardView: View {
                             )
                         }
                         
-                        if let boost = levelManager.boardMultiplierLabel {
-                            HStack(spacing: 8) {
-                                Image(systemName: "bolt.fill")
-                                    .foregroundColor(EmberColors.gold)
-                                Text("Board rank #\(userRank) · \(boost) on all XP gains")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(EmberColors.cream)
-                                Spacer()
-                            }
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(EmberColors.lightPlum)
-                            )
+                        if !receivedChallenges.isEmpty {
+                            challengesCard
                         }
                         
                         myFriendCodeCard
@@ -93,6 +83,7 @@ struct BoardView: View {
                 }
                 .refreshable {
                     await friendsManager.fetchFriends()
+                    receivedChallenges = await friendsManager.fetchReceivedChallenges()
                 }
             }
             .navigationTitle("Board")
@@ -102,6 +93,9 @@ struct BoardView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
                 syncBoardRankAndSparks()
+                Task {
+                    receivedChallenges = await friendsManager.fetchReceivedChallenges()
+                }
             }
             .onChange(of: levelManager.level) { _, _ in
                 syncBoardRankAndSparks()
@@ -228,6 +222,85 @@ struct BoardView: View {
         }
     }
     
+    private var challengesCard: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Challenges")
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream)
+                Spacer()
+            }
+            
+            ForEach(receivedChallenges, id: \.challengeId) { challenge in
+                HStack(spacing: 12) {
+                    Image(systemName: "bolt.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(EmberColors.ember)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(challenge.fromName) challenged you!")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(EmberColors.cream)
+                        Text(timeAgo(challenge.date))
+                            .font(.caption)
+                            .foregroundColor(EmberColors.cream.opacity(0.6))
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        Task {
+                            let accepted = await friendsManager.acceptChallenge(challenge.challengeId)
+                            if accepted {
+                                let xp = levelManager.awardChallenge(friendId: challenge.fromCode)
+                                if xp > 0 {
+                                    _ = sparksManager.earnChallenge(friendId: challenge.fromCode)
+                                }
+                                receivedChallenges = await friendsManager.fetchReceivedChallenges()
+                            }
+                        }
+                    } label: {
+                        Text("Accept")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(EmberColors.ink)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(EmberColors.ember)
+                            )
+                    }
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(EmberColors.dusk.opacity(0.5))
+                )
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+    
+    private func timeAgo(_ date: Date) -> String {
+        let seconds = Date().timeIntervalSince(date)
+        if seconds < 60 {
+            return "Just now"
+        } else if seconds < 3600 {
+            let minutes = Int(seconds / 60)
+            return "\(minutes)m ago"
+        } else if seconds < 86400 {
+            let hours = Int(seconds / 3600)
+            return "\(hours)h ago"
+        } else {
+            let days = Int(seconds / 86400)
+            return "\(days)d ago"
+        }
+    }
+    
     private var weeklyBoardCard: some View {
         VStack(spacing: 0) {
             Text("This Week")
@@ -268,9 +341,14 @@ struct BoardView: View {
                         isCurrentUser: entry.isCurrentUser,
                         canChallenge: !entry.isCurrentUser && levelManager.canChallenge(friendId: entry.id),
                         onChallenge: {
-                            let xp = levelManager.awardChallenge(friendId: entry.id)
-                            if xp > 0 {
-                                _ = sparksManager.earnChallenge(friendId: entry.id)
+                            Task {
+                                let sent = await friendsManager.sendChallenge(to: entry.id)
+                                if sent {
+                                    let xp = levelManager.awardChallenge(friendId: entry.id)
+                                    if xp > 0 {
+                                        _ = sparksManager.earnChallenge(friendId: entry.id)
+                                    }
+                                }
                             }
                         }
                     )

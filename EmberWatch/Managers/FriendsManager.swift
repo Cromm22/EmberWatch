@@ -21,6 +21,8 @@ struct Friend: Identifiable, Codable {
     var name: String
     var avatarId: String
     var weeklyXP: Int
+    var totalXP: Int
+    var level: Int
     var lastUpdated: Date
     
     var isCurrentUser: Bool = false
@@ -181,10 +183,10 @@ final class FriendsManager: ObservableObject {
         }
     }
     
-    /// Update my profile when name/avatar/XP changes
-    func updateMyProfile(name: String, avatarId: String, weeklyXP: Int) async {
+    /// Update my profile when name/avatar/XP/level changes
+    func updateMyProfile(name: String, avatarId: String, totalXP: Int, level: Int) async {
         guard isCloudKitAvailable, publicDB != nil else { return }
-        await publishMyProfile(name: name, avatarId: avatarId, weeklyXP: weeklyXP)
+        await publishMyProfile(name: name, avatarId: avatarId, totalXP: totalXP, level: level)
     }
     
     /// Update my email/phone for contact lookup (enables Contacts-based friend discovery).
@@ -250,7 +252,7 @@ final class FriendsManager: ObservableObject {
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
+            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP"])
             
             guard let (recordID, result) = matchResults.first else {
                 throw FriendError.notFound
@@ -278,6 +280,8 @@ final class FriendsManager: ObservableObject {
                 name: record["displayName"] as? String ?? "Unknown",
                 avatarId: record["avatarId"] as? String ?? "classic",
                 weeklyXP: record["weeklyXP"] as? Int ?? 0,
+                totalXP: record["totalXP"] as? Int ?? 0,
+                level: record["level"] as? Int ?? 1,
                 lastUpdated: Date()
             )
             
@@ -325,7 +329,7 @@ final class FriendsManager: ObservableObject {
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
+            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP"])
             
             guard let (recordID, result) = matchResults.first else {
                 throw FriendError.notFound
@@ -342,6 +346,8 @@ final class FriendsManager: ObservableObject {
                 name: record["displayName"] as? String ?? "Unknown",
                 avatarId: record["avatarId"] as? String ?? "classic",
                 weeklyXP: record["weeklyXP"] as? Int ?? 0,
+                totalXP: record["totalXP"] as? Int ?? 0,
+                level: record["level"] as? Int ?? 1,
                 lastUpdated: Date()
             )
             
@@ -374,7 +380,7 @@ final class FriendsManager: ObservableObject {
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
+            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP"])
             
             var updated: [Friend] = []
             for (_, result) in matchResults {
@@ -386,6 +392,8 @@ final class FriendsManager: ObservableObject {
                     name: record["displayName"] as? String ?? "Unknown",
                     avatarId: record["avatarId"] as? String ?? "classic",
                     weeklyXP: record["weeklyXP"] as? Int ?? 0,
+                    totalXP: record["totalXP"] as? Int ?? 0,
+                    level: record["level"] as? Int ?? 1,
                     lastUpdated: Date()
                 )
                 updated.append(friend)
@@ -400,13 +408,14 @@ final class FriendsManager: ObservableObject {
     
     // MARK: - Private CloudKit
     
-    private func publishMyProfile(name: String? = nil, avatarId: String? = nil, weeklyXP: Int? = nil) async {
+    private func publishMyProfile(name: String? = nil, avatarId: String? = nil, totalXP: Int? = nil, level: Int? = nil) async {
         guard let publicDB else { return }
         
         // Get current values from UserDefaults if not provided
         let displayName = name ?? UserDefaults.standard.string(forKey: "emberName") ?? "Unknown"
         let avatar = avatarId ?? UserDefaults.standard.string(forKey: "selectedAvatarId") ?? "classic"
-        let xp = weeklyXP ?? 0 // Could pull from LevelManager if needed
+        let xp = totalXP ?? 0
+        let lvl = level ?? 1
         
         // Try to find existing profile
         let predicate = NSPredicate(format: "friendCode == %@", myFriendCode)
@@ -428,13 +437,15 @@ final class FriendsManager: ObservableObject {
             
             record["displayName"] = displayName as CKRecordValue
             record["avatarId"] = avatar as CKRecordValue
-            record["weeklyXP"] = xp as CKRecordValue
+            record["totalXP"] = xp as CKRecordValue
+            record["level"] = lvl as CKRecordValue
+            record["weeklyXP"] = 0 as CKRecordValue  // Keep for backward compat, but unused
             record["updatedAt"] = Date() as CKRecordValue
             
             let savedRecord = try await publicDB.save(record)
             myRecordID = savedRecord.recordID
             
-            print("FriendsManager: Published profile for \(myFriendCode)")
+            print("FriendsManager: Published profile for \(myFriendCode) - Lv\(lvl), \(xp) XP")
         } catch {
             print("FriendsManager: Failed to publish profile: \(error)")
         }
@@ -470,6 +481,97 @@ final class FriendsManager: ObservableObject {
             return
         }
         self.friends = cached
+    }
+    
+    // MARK: - Challenges
+    
+    /// Send a challenge to a friend (creates CloudKit Challenge record)
+    func sendChallenge(to friendId: String) async -> Bool {
+        guard isCloudKitAvailable, let publicDB, let myID = myRecordID else {
+            return false
+        }
+        
+        // Find friend's record
+        let predicate = NSPredicate(format: "friendCode == %@", friendId)
+        let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        
+        do {
+            let (matchResults, _) = try await publicDB.records(matching: query)
+            guard let (friendRecordID, _) = matchResults.first else {
+                print("FriendsManager: Friend record not found for challenge")
+                return false
+            }
+            
+            // Create challenge record
+            let challenge = CKRecord(recordType: RecordType.challenge)
+            challenge["challenger"] = CKRecord.Reference(recordID: myID, action: .none)
+            challenge["challenged"] = CKRecord.Reference(recordID: friendRecordID, action: .none)
+            challenge["challengerCode"] = myFriendCode as CKRecordValue
+            challenge["challengedCode"] = friendId as CKRecordValue
+            challenge["createdAt"] = Date() as CKRecordValue
+            challenge["status"] = "pending" as CKRecordValue
+            
+            _ = try await publicDB.save(challenge)
+            print("FriendsManager: Challenge sent to \(friendId)")
+            return true
+        } catch {
+            print("FriendsManager: Failed to send challenge: \(error)")
+            return false
+        }
+    }
+    
+    /// Fetch pending challenges sent to me
+    func fetchReceivedChallenges() async -> [(challengeId: CKRecord.ID, fromCode: String, fromName: String, date: Date)] {
+        guard isCloudKitAvailable, let publicDB, let myID = myRecordID else {
+            return []
+        }
+        
+        let challengedRef = CKRecord.Reference(recordID: myID, action: .none)
+        let predicate = NSPredicate(format: "challenged == %@ AND status == %@", challengedRef, "pending")
+        let query = CKQuery(recordType: RecordType.challenge, predicate: predicate)
+        
+        do {
+            let (matchResults, _) = try await publicDB.records(matching: query)
+            var challenges: [(CKRecord.ID, String, String, Date)] = []
+            
+            for (recordID, result) in matchResults {
+                guard let record = try? result.get() else { continue }
+                guard let fromCode = record["challengerCode"] as? String else { continue }
+                let date = record["createdAt"] as? Date ?? Date()
+                
+                // Look up challenger's name
+                let namePredicate = NSPredicate(format: "friendCode == %@", fromCode)
+                let nameQuery = CKQuery(recordType: RecordType.profile, predicate: namePredicate)
+                let (nameResults, _) = try await publicDB.records(matching: nameQuery, desiredKeys: ["displayName"])
+                
+                let name = (try? nameResults.first?.1.get()["displayName"] as? String) ?? "Unknown"
+                challenges.append((recordID, fromCode, name, date))
+            }
+            
+            return challenges
+        } catch {
+            print("FriendsManager: Failed to fetch challenges: \(error)")
+            return []
+        }
+    }
+    
+    /// Accept a challenge (marks it completed)
+    func acceptChallenge(_ challengeId: CKRecord.ID) async -> Bool {
+        guard isCloudKitAvailable, let publicDB else {
+            return false
+        }
+        
+        do {
+            let record = try await publicDB.record(for: challengeId)
+            record["status"] = "completed" as CKRecordValue
+            record["completedAt"] = Date() as CKRecordValue
+            _ = try await publicDB.save(record)
+            print("FriendsManager: Challenge accepted")
+            return true
+        } catch {
+            print("FriendsManager: Failed to accept challenge: \(error)")
+            return false
+        }
     }
     
     // MARK: - Helpers
