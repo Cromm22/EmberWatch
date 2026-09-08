@@ -663,16 +663,20 @@ struct WorkoutDetailRow: View {
     var onTap: (() -> Void)? = nil
     
     var body: some View {
-        Button(action: {
+        Group {
             if workout.isLocal {
-                onTap?()
+                Button(action: {
+                    onTap?()
+                }) {
+                    content
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Tap to edit. Swipe left to delete.")
+            } else {
+                content
+                    .accessibilityHint("Swipe left to delete.")
             }
-        }) {
-            content
         }
-        .buttonStyle(.plain)
-        .disabled(!workout.isLocal)
-        .accessibilityHint(workout.isLocal ? "Tap to edit. Swipe left to delete." : "Swipe left to delete.")
     }
     
     private var content: some View {
