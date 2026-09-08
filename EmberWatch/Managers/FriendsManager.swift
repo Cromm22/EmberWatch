@@ -147,6 +147,13 @@ final class FriendsManager: ObservableObject {
             case .available:
                 isCloudKitAvailable = true
                 cloudKitError = nil
+                
+                // TODO: When profile settings UI exists, call updateMyContactInfo here
+                // to publish user's email/phone for Contacts-based friend discovery.
+                // For now, Contacts matching stays no-op until email/phone are set via
+                // a future profile settings screen.
+                // Example: await updateMyContactInfo(email: userEmail, phone: userPhone)
+                
             case .noAccount:
                 isCloudKitAvailable = false
                 cloudKitError = "Sign in to iCloud in Settings to add friends"
@@ -180,7 +187,15 @@ final class FriendsManager: ObservableObject {
         await publishMyProfile(name: name, avatarId: avatarId, weeklyXP: weeklyXP)
     }
     
-    /// Update my email/phone for contact lookup
+    /// Update my email/phone for contact lookup (enables Contacts-based friend discovery).
+    ///
+    /// Call this when the user sets their email/phone in profile settings (future feature).
+    /// Without email/phone on UserProfile, Contacts-based Add Friend will show "not found"
+    /// for all contacts. Invite code flow works independently without these fields.
+    ///
+    /// - Parameters:
+    ///   - email: User's email address (will be lowercased and indexed)
+    ///   - phone: User's phone number (digits-only, will be normalized and indexed)
     func updateMyContactInfo(email: String?, phone: String?) async {
         guard isCloudKitAvailable, let publicDB else { return }
         

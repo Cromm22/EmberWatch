@@ -152,8 +152,11 @@ Noted in PR description for future work:
 ## ⚠️ Important Notes
 
 1. **Contacts path requires CloudKit schema update** (see above)
-2. **Users must populate email/phone** for discoverability (future: profile settings)
-3. **Invite code path works today** without any schema changes
+2. **Contacts matching is no-op until email/phone exist on UserProfile**
+   - `FriendsManager.updateMyContactInfo()` exists but needs profile settings UI
+   - Clear TODO comment in `setupCloudKit()` marks where to call it
+   - Future PR needs profile settings screen to let users set email/phone
+3. **Invite code path works today** without any schema changes or profile data
 4. **Both paths are disabled** when iCloud is unavailable (expected behavior)
 5. **Testing requires two devices** with different iCloud accounts
 
