@@ -202,6 +202,7 @@ final class FriendsManager: ObservableObject {
         // Find existing profile
         let predicate = NSPredicate(format: "friendCode == %@", myFriendCode)
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
         
         do {
             let (matchResults, _) = try await publicDB.records(matching: query)
@@ -248,6 +249,7 @@ final class FriendsManager: ObservableObject {
         }
         
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "createdModificationDate", ascending: false)]
         
         do {
             let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
@@ -323,6 +325,7 @@ final class FriendsManager: ObservableObject {
         // Look up friend's profile in CloudKit
         let predicate = NSPredicate(format: "friendCode == %@", trimmed)
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
         
         do {
             let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
@@ -372,6 +375,7 @@ final class FriendsManager: ObservableObject {
         
         let predicate = NSPredicate(format: "friendCode IN %@", Array(friendIds))
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
         
         do {
             let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "weeklyXP"])
@@ -411,6 +415,7 @@ final class FriendsManager: ObservableObject {
         // Try to find existing profile
         let predicate = NSPredicate(format: "friendCode == %@", myFriendCode)
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "friendCode", ascending: true)]
         
         do {
             let (matchResults, _) = try await publicDB.records(matching: query)
