@@ -21,6 +21,7 @@ class FoodEntry {
     var proteinPerServing: Double = 0
     var carbsPerServing: Double = 0
     var fatPerServing: Double = 0
+    var servingSizeGrams: Double = 0
     
     init(
         id: UUID = UUID(),
@@ -35,7 +36,8 @@ class FoodEntry {
         caloriesPerServing: Double? = nil,
         proteinPerServing: Double? = nil,
         carbsPerServing: Double? = nil,
-        fatPerServing: Double? = nil
+        fatPerServing: Double? = nil,
+        servingSizeGrams: Double = 0
     ) {
         self.id = id
         self.name = name
@@ -51,6 +53,7 @@ class FoodEntry {
         self.proteinPerServing = proteinPerServing ?? (protein / safeServings)
         self.carbsPerServing = carbsPerServing ?? (carbs / safeServings)
         self.fatPerServing = fatPerServing ?? (fat / safeServings)
+        self.servingSizeGrams = servingSizeGrams
     }
     
     /// Canonical meal type; derives from timestamp when unset/unknown (legacy rows).
@@ -100,6 +103,11 @@ class FoodEntry {
         return fat / max(servings, 0.01)
     }
     
+    var effectiveGrams: Double {
+        guard servingSizeGrams > 0 else { return 0 }
+        return servingSizeGrams * servings
+    }
+    
     /// Recalculate totals from per-serving nutrition × new servings count.
     func applyServings(_ newServings: Double) {
         let s = max(newServings, 0.01)
@@ -117,6 +125,12 @@ class FoodEntry {
         protein = proPS * s
         carbs = carbPS * s
         fat = fatPS * s
+    }
+    
+    func applyGrams(_ newGrams: Double) {
+        guard servingSizeGrams > 0 else { return }
+        let newServings = newGrams / servingSizeGrams
+        applyServings(newServings)
     }
 }
 

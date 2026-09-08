@@ -399,7 +399,11 @@ struct FoodEntryRow: View {
                     
                     HStack(spacing: 12) {
                         Label("\(Int(entry.calories)) cal", systemImage: "flame.fill")
-                        if entry.servings != 1.0 {
+                        if entry.servingSizeGrams > 0 {
+                            Text("\(Int(entry.effectiveGrams))g")
+                                .font(.caption)
+                                .foregroundColor(EmberColors.ember)
+                        } else if entry.servings != 1.0 {
                             Text(formatServings(entry.servings))
                                 .font(.caption)
                                 .foregroundColor(EmberColors.ember)
@@ -488,7 +492,11 @@ struct RecentFoodRow: View {
                     Text("\(Int(entry.calories)) cal")
                         .font(.caption)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
-                    if entry.servings != 1.0 {
+                    if entry.servingSizeGrams > 0 {
+                        Text("\(Int(entry.effectiveGrams))g")
+                            .font(.caption2)
+                            .foregroundColor(EmberColors.ember.opacity(0.85))
+                    } else if entry.servings != 1.0 {
                         Text(formatRecentServings(entry.servings))
                             .font(.caption2)
                             .foregroundColor(EmberColors.ember.opacity(0.85))
@@ -523,6 +531,7 @@ struct EditServingsView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
     
     @State private var selectedMultiplier: Double = 1.0
+    @State private var selectedGrams: Double = 0
     
     private let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
     
@@ -569,9 +578,15 @@ struct EditServingsView: View {
                                 
                                 Spacer()
                                 
-                                Text("\(formatMultiplier(selectedMultiplier)) serving")
-                                    .font(.subheadline)
-                                    .foregroundColor(EmberColors.ember)
+                                if entry.servingSizeGrams > 0 {
+                                    Text("\(Int(selectedGrams))g")
+                                        .font(.subheadline)
+                                        .foregroundColor(EmberColors.ember)
+                                } else {
+                                    Text("\(formatMultiplier(selectedMultiplier)) serving")
+                                        .font(.subheadline)
+                                        .foregroundColor(EmberColors.ember)
+                                }
                             }
                             
                             HStack(spacing: 12) {
@@ -613,53 +628,102 @@ struct EditServingsView: View {
                         )
                         
                         VStack(spacing: 16) {
-                            Text("Servings")
+                            Text(entry.servingSizeGrams > 0 ? "Serving Size" : "Servings")
                                 .font(.headline)
                                 .foregroundColor(EmberColors.cream)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
-                            HStack(spacing: 12) {
-                                ForEach(multipliers, id: \.self) { multiplier in
-                                    Button(action: {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            selectedMultiplier = multiplier
+                            if entry.servingSizeGrams > 0 {
+                                let gramPresets = [entry.servingSizeGrams * 0.5, entry.servingSizeGrams, entry.servingSizeGrams * 1.5, entry.servingSizeGrams * 2.0, entry.servingSizeGrams * 3.0]
+                                HStack(spacing: 12) {
+                                    ForEach(gramPresets, id: \.self) { grams in
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                selectedGrams = grams
+                                                selectedMultiplier = grams / entry.servingSizeGrams
+                                            }
+                                        }) {
+                                            Text("\(Int(grams))g")
+                                                .font(.headline)
+                                                .foregroundColor(abs(selectedGrams - grams) < 1.0 ? EmberColors.cream : EmberColors.cream.opacity(0.7))
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 12)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .fill(abs(selectedGrams - grams) < 1.0 ? EmberColors.ember : EmberColors.dusk)
+                                                )
                                         }
-                                    }) {
-                                        Text(formatMultiplier(multiplier))
-                                            .font(.headline)
-                                            .foregroundColor(selectedMultiplier == multiplier ? EmberColors.cream : EmberColors.cream.opacity(0.7))
-                                            .frame(maxWidth: .infinity)
-                                            .padding(.vertical, 12)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 12)
-                                                    .fill(selectedMultiplier == multiplier ? EmberColors.ember : EmberColors.dusk)
-                                            )
                                     }
                                 }
-                            }
-                            
-                            // Fine-tune stepper for values outside presets
-                            HStack {
-                                Text("Adjust")
-                                    .foregroundColor(EmberColors.cream.opacity(0.7))
-                                Spacer()
-                                Button {
-                                    selectedMultiplier = max(0.25, (selectedMultiplier * 4).rounded() / 4 - 0.25)
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(EmberColors.ember)
+                                
+                                HStack {
+                                    Text("Adjust")
+                                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                                    Spacer()
+                                    Button {
+                                        selectedGrams = max(1, selectedGrams - 10)
+                                        selectedMultiplier = selectedGrams / entry.servingSizeGrams
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(EmberColors.ember)
+                                    }
+                                    Text("\(Int(selectedGrams))g")
+                                        .font(.headline)
+                                        .foregroundColor(EmberColors.cream)
+                                        .frame(minWidth: 60)
+                                    Button {
+                                        selectedGrams = min(1000, selectedGrams + 10)
+                                        selectedMultiplier = selectedGrams / entry.servingSizeGrams
+                                    } label: {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(EmberColors.ember)
+                                    }
                                 }
-                                Text(String(format: "%.2g×", selectedMultiplier))
-                                    .font(.headline)
-                                    .foregroundColor(EmberColors.cream)
-                                    .frame(minWidth: 48)
-                                Button {
-                                    selectedMultiplier = min(10, (selectedMultiplier * 4).rounded() / 4 + 0.25)
-                                } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title2)
-                                        .foregroundColor(EmberColors.ember)
+                            } else {
+                                HStack(spacing: 12) {
+                                    ForEach(multipliers, id: \.self) { multiplier in
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                selectedMultiplier = multiplier
+                                            }
+                                        }) {
+                                            Text(formatMultiplier(multiplier))
+                                                .font(.headline)
+                                                .foregroundColor(selectedMultiplier == multiplier ? EmberColors.cream : EmberColors.cream.opacity(0.7))
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 12)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .fill(selectedMultiplier == multiplier ? EmberColors.ember : EmberColors.dusk)
+                                                )
+                                        }
+                                    }
+                                }
+                                
+                                HStack {
+                                    Text("Adjust")
+                                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                                    Spacer()
+                                    Button {
+                                        selectedMultiplier = max(0.25, (selectedMultiplier * 4).rounded() / 4 - 0.25)
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(EmberColors.ember)
+                                    }
+                                    Text(String(format: "%.2g×", selectedMultiplier))
+                                        .font(.headline)
+                                        .foregroundColor(EmberColors.cream)
+                                        .frame(minWidth: 48)
+                                    Button {
+                                        selectedMultiplier = min(10, (selectedMultiplier * 4).rounded() / 4 + 0.25)
+                                    } label: {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(EmberColors.ember)
+                                    }
                                 }
                             }
                         }
@@ -697,6 +761,7 @@ struct EditServingsView: View {
             }
             .onAppear {
                 selectedMultiplier = entry.servings > 0 ? entry.servings : 1.0
+                selectedGrams = entry.effectiveGrams > 0 ? entry.effectiveGrams : (entry.servingSizeGrams > 0 ? entry.servingSizeGrams : 100)
             }
         }
     }
@@ -820,7 +885,8 @@ struct AddFoodView: View {
             caloriesPerServing: caloriesValue,
             proteinPerServing: proteinValue,
             carbsPerServing: carbsValue,
-            fatPerServing: fatValue
+            fatPerServing: fatValue,
+            servingSizeGrams: 0
         )
         
         foodDataManager.addFoodEntry(entry)

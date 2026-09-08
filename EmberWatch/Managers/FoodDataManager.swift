@@ -179,7 +179,8 @@ class FoodDataManager: ObservableObject {
                     caloriesPerServing: source.effectiveCaloriesPerServing,
                     proteinPerServing: source.effectiveProteinPerServing,
                     carbsPerServing: source.effectiveCarbsPerServing,
-                    fatPerServing: source.effectiveFatPerServing
+                    fatPerServing: source.effectiveFatPerServing,
+                    servingSizeGrams: source.servingSizeGrams
                 )
                 modelContext.insert(copy)
             }
