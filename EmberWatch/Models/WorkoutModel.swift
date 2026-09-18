@@ -37,6 +37,8 @@ struct WorkoutData: Identifiable {
     let distanceUnit: WorkoutDistanceUnit
     /// True for EmberWatch Quick Add / manual entries (not from HealthKit).
     let isLocal: Bool
+    /// HealthKit source name (e.g. "Chris’s Apple Watch") when not local.
+    let sourceName: String?
     
     init(
         id: UUID = UUID(),
@@ -47,7 +49,8 @@ struct WorkoutData: Identifiable {
         customName: String? = nil,
         distanceMiles: Double? = nil,
         distanceUnit: WorkoutDistanceUnit = .miles,
-        isLocal: Bool = false
+        isLocal: Bool = false,
+        sourceName: String? = nil
     ) {
         self.id = id
         self.workoutType = workoutType
@@ -58,6 +61,7 @@ struct WorkoutData: Identifiable {
         self.distanceMiles = distanceMiles
         self.distanceUnit = distanceUnit
         self.isLocal = isLocal
+        self.sourceName = sourceName
     }
     
     var displayName: String {

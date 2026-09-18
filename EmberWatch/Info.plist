@@ -34,7 +34,7 @@
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Ember needs access to your workout data and active energy burned to display your daily activity.</string>
+	<string>Ember reads your Apple Watch workouts, active energy (Move), and exercise minutes from Apple Health so they show up on the Workout tab and in your remaining calories.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Ember needs permission to update your health data.</string>
 	<key>EMBER_FEEDBACK_WEBHOOK_URL</key>
