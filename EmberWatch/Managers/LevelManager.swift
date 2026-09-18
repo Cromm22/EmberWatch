@@ -69,7 +69,7 @@ final class LevelManager: ObservableObject {
     /// XP gain notification for animations (amount, timestamp)
     @Published var xpGainEvent: XPGainEvent? = nil
     
-    /// Level-up event for full-screen celebration (new level)
+    /// Level-up event for the bottom celebration toast (new level)
     @Published var levelUpEvent: Int? = nil
     
     /// Optional Sparks hook (set from EmberWatchApp). Flat Sparks — no board XP multiplier.
