@@ -61,35 +61,25 @@ struct HomeView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 16)
                 }
-                
+            }
+            .overlay(alignment: .bottom) {
                 if let banner = levelManager.streakBanner
                     ?? levelManager.weightLossBanner
                     ?? levelManager.levelUpBanner
                     ?? sparksManager.toast {
-                    VStack {
-                        Text(banner)
-                            .font(.headline)
-                            .foregroundColor(EmberColors.ink)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(
-                                Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: banner.contains("Sparks")
-                                                ? [EmberColors.ember, EmberColors.emberAccent]
-                                                : [EmberColors.gold, EmberColors.ember],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                            )
-                            .shadow(color: EmberColors.ember.opacity(0.45), radius: 12, y: 4)
-                            .padding(.top, 8)
-                        Spacer()
+                    CelebrationToastAnchor {
+                        CelebrationToastCard(
+                            accent: banner.contains("Sparks") ? EmberColors.ember : EmberColors.gold,
+                            secondaryAccent: EmberColors.ember
+                        ) {
+                            Text(banner)
+                                .font(.headline)
+                                .foregroundColor(EmberColors.ink)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.streakBanner)
@@ -598,7 +588,7 @@ struct HomeView: View {
                             } else if index == waterManager.glassesLogged {
                                 if waterManager.logGlass() {
                                     _ = levelManager.awardWaterServing()
-                                    // Show center celebration only on even-numbered glasses (2, 4, 6, ...)
+                                    // Show Ember talk toast only on even-numbered glasses (2, 4, 6, ...)
                                     if waterManager.glassesLogged % 2 == 0 {
                                         emberTalkManager.showWaterPhrase()
                                     }

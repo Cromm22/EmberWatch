@@ -32,16 +32,17 @@ struct ContentView: View {
                     mainTabs
                 }
             }
-            
-            // Level-up celebration overlay
+        }
+        .overlay(alignment: .bottom) {
             if showLevelUpCelebration {
                 LevelUpCelebrationView(newLevel: celebrationLevel) {
                     showLevelUpCelebration = false
                 }
-                .transition(.opacity)
-                .zIndex(1000)
+                .safeAreaPadding(.bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.82), value: showLevelUpCelebration)
         .onChange(of: levelManager.levelUpEvent) { _, newLevel in
             if let level = newLevel {
                 celebrationLevel = level
@@ -151,7 +152,7 @@ struct ContentView: View {
             
             EmberTalkOverlay()
                 .environmentObject(emberTalkManager)
-                .zIndex(100)
+                .frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showingFeedback) {
             FeedbackSheetView(isPresented: $showingFeedback)

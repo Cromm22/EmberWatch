@@ -131,29 +131,25 @@ struct WorkoutsView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 16)
                 }
-                
+            }
+            .overlay(alignment: .bottom) {
                 if let banner = levelManager.levelUpBanner {
-                    VStack {
-                        Text(banner)
-                            .font(.headline)
-                            .foregroundColor(EmberColors.ink)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(
-                                Capsule().fill(
-                                    LinearGradient(
-                                        colors: [EmberColors.gold, EmberColors.ember],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                            )
-                            .padding(.top, 8)
-                        Spacer()
+                    CelebrationToastAnchor {
+                        CelebrationToastCard(
+                            accent: EmberColors.gold,
+                            secondaryAccent: EmberColors.ember
+                        ) {
+                            Text(banner)
+                                .font(.headline)
+                                .foregroundColor(EmberColors.ink)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
-                    .zIndex(20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.levelUpBanner)
             .navigationTitle("Workouts")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.light, for: .navigationBar)

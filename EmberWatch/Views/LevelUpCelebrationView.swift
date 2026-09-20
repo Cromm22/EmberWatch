@@ -1,83 +1,87 @@
 import SwiftUI
 import AVFoundation
 
-/// Full-screen level-up celebration overlay with ember icon, gradient animation, and particle effects.
+/// Compact bottom toast for level-up celebrations. Keeps the ember icon, level copy, and fanfare.
 struct LevelUpCelebrationView: View {
     let newLevel: Int
     let onDismiss: () -> Void
     
-    @State private var scale: CGFloat = 0.3
+    @State private var scale: CGFloat = 0.85
     @State private var opacity: Double = 0
     @State private var emberRotation: Double = 0
     @State private var gradientPhase: Double = 0
     @State private var particlesVisible = false
-    @State private var levelTextScale: CGFloat = 0.5
+    @State private var levelTextScale: CGFloat = 0.7
     @State private var levelTextOpacity: Double = 0
+    @State private var isDismissing = false
     
-    private let particles = (0..<20).map { _ in
+    private let particles = (0..<8).map { index in
         ParticleData(
-            angle: Double.random(in: 0...(2 * .pi)),
-            distance: CGFloat.random(in: 80...150),
-            size: CGFloat.random(in: 6...14),
-            delay: Double.random(in: 0...0.3)
+            angle: Double(index) * .pi * 2 / 8 + Double.random(in: -0.2...0.2),
+            distance: CGFloat.random(in: 18...28),
+            size: CGFloat.random(in: 4...7),
+            delay: Double.random(in: 0...0.15)
         )
     }
     
     var body: some View {
-        ZStack {
-            // Semi-transparent background
-            Color.black.opacity(0.7)
-                .ignoresSafeArea()
-                .opacity(opacity)
-            
-            ZStack {
-                // Particle splash effects
-                ForEach(particles.indices, id: \.self) { index in
-                    ParticleView(particle: particles[index], visible: particlesVisible)
-                }
-                
-                // Ember icon outline with gradient animation
-                ZStack {
-                    EmberFlameOutlineShape(blaze: newLevel >= 5)
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(colors: [
-                                    EmberColors.ember,
-                                    EmberColors.gold,
-                                    Color(hex: "#ff0055"),
-                                    EmberColors.emberAccent,
-                                    EmberColors.ember
-                                ]),
-                                center: .center,
-                                startAngle: .degrees(gradientPhase),
-                                endAngle: .degrees(gradientPhase + 360)
-                            ),
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
-                        )
-                        .frame(width: 180, height: 216)
-                        .shadow(color: EmberColors.ember.opacity(0.6), radius: 20, y: 0)
-                        .shadow(color: EmberColors.gold.opacity(0.4), radius: 30, y: 0)
+        CelebrationToastAnchor(sitsOutsideTabView: true) {
+            CelebrationToastCard(
+                accent: EmberColors.ember,
+                secondaryAccent: EmberColors.gold
+            ) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        ForEach(particles.indices, id: \.self) { index in
+                            ParticleView(particle: particles[index], visible: particlesVisible)
+                        }
+                        
+                        EmberFlameOutlineShape(blaze: newLevel >= 5)
+                            .stroke(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [
+                                        EmberColors.ink,
+                                        EmberColors.gold,
+                                        EmberColors.ink,
+                                        EmberColors.emberAccent,
+                                        EmberColors.ink
+                                    ]),
+                                    center: .center,
+                                    startAngle: .degrees(gradientPhase),
+                                    endAngle: .degrees(gradientPhase + 360)
+                                ),
+                                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+                            )
+                            .frame(width: 32, height: 38)
+                            .shadow(color: EmberColors.gold.opacity(0.5), radius: 6, y: 0)
+                            .rotationEffect(.degrees(emberRotation))
+                    }
+                    .frame(width: 44, height: 44)
                     
-                    // Level number centered inside ember
-                    VStack(spacing: 4) {
+                    VStack(alignment: .leading, spacing: 1) {
                         Text("LEVEL")
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(EmberColors.cream)
-                            .tracking(2)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(EmberColors.ink.opacity(0.85))
+                            .tracking(1.4)
                         
                         Text("\(newLevel)")
-                            .font(.system(size: 72, weight: .black, design: .rounded))
-                            .foregroundColor(EmberColors.ember)
-                            .shadow(color: Color.black.opacity(0.3), radius: 4, y: 2)
-                            .shadow(color: EmberColors.ember.opacity(0.8), radius: 12, y: 0)
+                            .font(.system(size: 26, weight: .black, design: .rounded))
+                            .foregroundColor(EmberColors.ink)
+                            .shadow(color: Color.black.opacity(0.2), radius: 2, y: 1)
                     }
                     .scaleEffect(levelTextScale)
                     .opacity(levelTextOpacity)
+                    
+                    Spacer(minLength: 0)
                 }
-                .scaleEffect(scale)
-                .rotationEffect(.degrees(emberRotation))
             }
+            .scaleEffect(scale)
             .opacity(opacity)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Level \(newLevel)")
+            .onTapGesture {
+                dismiss()
+            }
         }
         .onAppear {
             playLevelUpSound()
@@ -86,55 +90,50 @@ struct LevelUpCelebrationView: View {
     }
     
     private func animateEntrance() {
-        // Initial fade in and scale
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
             opacity = 1.0
             scale = 1.0
         }
         
-        // Ember icon gentle rotation
-        withAnimation(.easeInOut(duration: 0.4).delay(0.2)) {
+        withAnimation(.easeInOut(duration: 0.35).delay(0.12)) {
             emberRotation = 360
         }
         
-        // Gradient rotation animation
         withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) {
             gradientPhase = 360
         }
         
-        // Level text pop in
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.3)) {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.65).delay(0.15)) {
             levelTextScale = 1.0
             levelTextOpacity = 1.0
         }
         
-        // Particle burst
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            withAnimation(.easeOut(duration: 1.2)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            withAnimation(.easeOut(duration: 0.8)) {
                 particlesVisible = true
             }
         }
         
-        // Auto-dismiss after 2.5 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             dismiss()
         }
     }
     
     private func dismiss() {
-        withAnimation(.easeInOut(duration: 0.4)) {
+        guard !isDismissing else { return }
+        isDismissing = true
+        withAnimation(.easeInOut(duration: 0.28)) {
             opacity = 0
-            scale = 1.1
+            scale = 0.96
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
             onDismiss()
         }
     }
     
     private func playLevelUpSound() {
-        // Generate and play a simple celebratory tone
-        let systemSoundID: SystemSoundID = 1057 // Fanfare sound
+        let systemSoundID: SystemSoundID = 1057
         AudioServicesPlaySystemSound(systemSoundID)
     }
 }
@@ -160,7 +159,7 @@ private struct ParticleView: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [[EmberColors.ember, EmberColors.gold, EmberColors.emberAccent].randomElement()!],
+                    colors: [[EmberColors.ink, EmberColors.gold, EmberColors.emberAccent].randomElement()!],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -175,10 +174,10 @@ private struct ParticleView: View {
             .onChange(of: visible) { _, newValue in
                 if newValue {
                     DispatchQueue.main.asyncAfter(deadline: .now() + particle.delay) {
-                        withAnimation(.easeOut(duration: 1.0)) {
+                        withAnimation(.easeOut(duration: 0.7)) {
                             offset = particle.distance
                             opacity = 0
-                            scale = 1.2
+                            scale = 1.15
                         }
                     }
                 }

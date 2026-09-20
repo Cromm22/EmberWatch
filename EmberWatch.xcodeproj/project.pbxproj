@@ -43,6 +43,7 @@
 		ETO0000000000000000000002 /* EmberTalkOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = ETO0000000000000000000001 /* EmberTalkOverlay.swift */; };
 		WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = WPC0000000000000000000001 /* WeightProjectionChart.swift */; };
 		LUCELF774E9036E13409391 /* LevelUpCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */; };
+		CTST00000000000000000002 /* CelebrationToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = CTST00000000000000000001 /* CelebrationToast.swift */; };
 		ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDFR1END0000000000000001 /* AddFriendView.swift */; };
 		PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */; };
 /* End PBXBuildFile section */
@@ -87,6 +88,7 @@
 		ETO0000000000000000000001 /* EmberTalkOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberTalkOverlay.swift; sourceTree = "<group>"; };
 		WPC0000000000000000000001 /* WeightProjectionChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightProjectionChart.swift; sourceTree = "<group>"; };
 		LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelUpCelebrationView.swift; sourceTree = "<group>"; };
+		CTST00000000000000000001 /* CelebrationToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CelebrationToast.swift; sourceTree = "<group>"; };
 		ADDFR1END0000000000000001 /* AddFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendView.swift; sourceTree = "<group>"; };
 		PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -156,6 +158,7 @@
 				D9E0F1A2B3C4D5E60718293A /* FeedbackSheetView.swift */,
 				3A00002E0000000000000001 /* WorkoutsView.swift */,
 				ETO0000000000000000000001 /* EmberTalkOverlay.swift */,
+				CTST00000000000000000001 /* CelebrationToast.swift */,
 				WPC0000000000000000000001 /* WeightProjectionChart.swift */,
 				LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */,
 			);
@@ -308,6 +311,7 @@
 				42F967E4917D41CD9BAD3073 /* EmberTalkManager.swift in Sources */,
 				LUCELF774E9036E13409391 /* LevelUpCelebrationView.swift in Sources */,
 				ETO0000000000000000000002 /* EmberTalkOverlay.swift in Sources */,
+				CTST00000000000000000002 /* CelebrationToast.swift in Sources */,
 				WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */,
 				ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */,
 				PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */,
