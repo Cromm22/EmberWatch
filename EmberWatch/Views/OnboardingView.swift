@@ -4,11 +4,12 @@ struct OnboardingView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var friendsManager: FriendsManager
+    @EnvironmentObject var healthKitManager: HealthKitManager
     
     @State private var step = 0
     @State private var nameDraft = ""
     
-    private let totalSteps = 5 // avatar, name, xp1, xp2, xp3
+    private let totalSteps = 6 // avatar, name, xp1, xp2, xp3, health
     
     var body: some View {
         ZStack {
@@ -57,6 +58,7 @@ struct OnboardingView: View {
                             .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
                     }
                     .tag(4)
+                    healthStep.tag(5)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.25), value: step)
@@ -105,6 +107,7 @@ struct OnboardingView: View {
             avatarManager.emberName = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if step >= totalSteps - 1 {
+            healthKitManager.ensureAuthorization()
             avatarManager.completeOnboarding()
             // Update CloudKit profile with onboarding data
             Task {
@@ -226,6 +229,60 @@ struct OnboardingView: View {
                 .foregroundColor(EmberColors.cream.opacity(0.75))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 28)
+            
+            Spacer()
+        }
+    }
+    
+    private var healthStep: some View {
+        VStack(spacing: 24) {
+            Spacer(minLength: 40)
+            
+            Image(systemName: "applewatch")
+                .font(.system(size: 56))
+                .foregroundColor(EmberColors.ember)
+                .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
+            
+            Text("Connect Apple Watch")
+                .font(.title.bold())
+                .foregroundColor(EmberColors.cream)
+                .multilineTextAlignment(.center)
+            
+            Text("Ember reads workouts and Move calories from Apple Health. After a reinstall you’ll be asked again — allow Workouts, Active Energy, and Exercise Minutes so Watch activity shows up.")
+                .font(.body)
+                .foregroundColor(EmberColors.cream.opacity(0.75))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 28)
+            
+            if healthKitManager.authorizationStatus == .authorized {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("Apple Health connected")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(EmberColors.cream)
+                }
+                .padding(.top, 8)
+            } else {
+                Button {
+                    healthKitManager.requestAuthorization()
+                } label: {
+                    HStack {
+                        Image(systemName: "heart.circle.fill")
+                        Text("Allow Health Access")
+                    }
+                    .font(.headline)
+                    .foregroundColor(EmberColors.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(EmberColors.ember)
+                    )
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 8)
+            }
             
             Spacer()
         }

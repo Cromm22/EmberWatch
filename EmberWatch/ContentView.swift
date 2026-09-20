@@ -27,6 +27,7 @@ struct ContentView: View {
                         .environmentObject(avatarManager)
                         .environmentObject(levelManager)
                         .environmentObject(friendsManager)
+                        .environmentObject(healthKitManager)
                 } else {
                     mainTabs
                 }
@@ -51,8 +52,14 @@ struct ContentView: View {
                 }
             }
         }
+        .onChange(of: avatarManager.hasCompletedOnboarding) { _, completed in
+            if completed {
+                healthKitManager.ensureAuthorization()
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, avatarManager.hasCompletedOnboarding else { return }
+            healthKitManager.ensureAuthorization()
             _ = levelManager.checkDailyOpenReward()
             _ = sparksManager.earnDailyLogin()
             // Update CloudKit profile with latest data
@@ -67,6 +74,7 @@ struct ContentView: View {
         }
         .onAppear {
             guard avatarManager.hasCompletedOnboarding else { return }
+            healthKitManager.ensureAuthorization()
             _ = levelManager.checkDailyOpenReward()
             _ = sparksManager.earnDailyLogin()
         }

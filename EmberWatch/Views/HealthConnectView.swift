@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HealthConnectView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @Environment(\.dismiss) private var dismiss
+    var showsDismissButton: Bool = false
     
     var body: some View {
         NavigationView {
@@ -13,7 +15,7 @@ struct HealthConnectView: View {
                     Spacer()
                     
                     VStack(spacing: 16) {
-                        Image(systemName: "heart.circle.fill")
+                        Image(systemName: "applewatch")
                             .font(.system(size: 80))
                             .foregroundColor(EmberColors.ember)
                             .shadow(color: EmberColors.ember.opacity(0.5), radius: 15)
@@ -23,7 +25,7 @@ struct HealthConnectView: View {
                             .fontWeight(.bold)
                             .foregroundColor(EmberColors.cream)
                         
-                        Text("Connect to sync your workouts and active energy")
+                        Text("Sync Apple Watch workouts, Move calories (Active Energy), and Exercise Minutes")
                             .font(.body)
                             .foregroundColor(EmberColors.muted)
                             .multilineTextAlignment(.center)
@@ -42,7 +44,7 @@ struct HealthConnectView: View {
                         }) {
                             HStack {
                                 Image(systemName: healthKitManager.authorizationStatus == .denied ? "gear" : "lock.shield")
-                                Text(healthKitManager.authorizationStatus == .denied ? "Open Health Settings" : "Request Health Access")
+                                Text(healthKitManager.authorizationStatus == .denied ? "Open Health Settings" : "Allow Health Access")
                             }
                             .font(.headline)
                             .foregroundColor(EmberColors.ink)
@@ -60,7 +62,7 @@ struct HealthConnectView: View {
                         .padding(.horizontal, 32)
 
                         if healthKitManager.authorizationStatus == .denied {
-                            Text("Settings → Health → Data Access & Devices → EmberWatch → enable Workouts and Active Energy")
+                            Text("Settings → Health → Data Access & Devices → EmberWatch → enable Workouts, Active Energy, and Exercise Minutes")
                                 .font(.caption)
                                 .foregroundColor(EmberColors.muted)
                                 .multilineTextAlignment(.center)
@@ -72,7 +74,7 @@ struct HealthConnectView: View {
                         }) {
                             HStack {
                                 Image(systemName: "arrow.clockwise")
-                                Text("Refresh Workouts")
+                                Text("Refresh Watch Data")
                             }
                             .font(.headline)
                             .foregroundColor(EmberColors.darkPlum)
@@ -97,6 +99,19 @@ struct HealthConnectView: View {
             .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                if showsDismissButton {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") { dismiss() }
+                            .foregroundColor(EmberColors.ember)
+                    }
+                }
+            }
+            .onAppear {
+                if healthKitManager.authorizationStatus == .authorized {
+                    healthKitManager.fetchTodayWorkouts(markAccessFromResult: true)
+                }
+            }
         }
     }
     
@@ -120,7 +135,7 @@ struct HealthConnectView: View {
                     Text("Workouts")
                         .font(.caption)
                         .foregroundColor(EmberColors.muted)
-                    Text(healthKitManager.authorizationStatus == .authorized ? "Connected" : "Not Connected")
+                    Text(connectedLabel)
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream)
                 }
@@ -131,8 +146,33 @@ struct HealthConnectView: View {
                     Text("Active Energy")
                         .font(.caption)
                         .foregroundColor(EmberColors.muted)
-                    Text(healthKitManager.authorizationStatus == .authorized ? "Connected" : "Not Connected")
+                    Text(connectedLabel)
                         .font(.subheadline)
+                        .foregroundColor(EmberColors.cream)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Exercise")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.muted)
+                    Text(connectedLabel)
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream)
+                }
+            }
+            
+            if healthKitManager.authorizationStatus == .authorized {
+                Divider()
+                    .background(EmberColors.plum)
+                HStack {
+                    Text("Today")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.muted)
+                    Spacer()
+                    Text("\(Int(healthKitManager.totalCaloriesBurned)) cal · \(Int(healthKitManager.exerciseMinutes)) min · \(healthKitManager.workouts.count) workouts")
+                        .font(.caption)
                         .foregroundColor(EmberColors.cream)
                 }
             }
@@ -140,9 +180,13 @@ struct HealthConnectView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(EmberColors.dusk)
+                .fill(EmberColors.lightPlum)
         )
         .padding(.horizontal, 32)
+    }
+    
+    private var connectedLabel: String {
+        healthKitManager.authorizationStatus == .authorized ? "Connected" : "Not Connected"
     }
     
     private var statusBadge: some View {

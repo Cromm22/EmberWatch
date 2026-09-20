@@ -73,6 +73,7 @@ struct WorkoutsView: View {
     
     /// Workout to edit
     @State private var workoutToEdit: WorkoutData?
+    @State private var showingHealthConnect = false
     
     private enum QuickAddField: Hashable {
         case distance, time, calories
@@ -159,6 +160,17 @@ struct WorkoutsView: View {
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingHealthConnect = true
+                    } label: {
+                        Image(systemName: healthKitManager.authorizationStatus == .authorized
+                              ? "heart.circle.fill"
+                              : "heart.circle")
+                            .foregroundColor(EmberColors.ember)
+                    }
+                    .accessibilityLabel("Apple Health")
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") {
@@ -191,6 +203,10 @@ struct WorkoutsView: View {
                     EditWorkoutView(workout: workout, isPresentedWorkout: $workoutToEdit)
                         .environmentObject(healthKitManager)
                 }
+            }
+            .sheet(isPresented: $showingHealthConnect) {
+                HealthConnectView(showsDismissButton: true)
+                    .environmentObject(healthKitManager)
             }
         }
         .navigationViewStyle(.stack)
@@ -575,6 +591,12 @@ struct WorkoutsView: View {
                     .font(.subheadline)
                     .foregroundColor(EmberColors.cream.opacity(0.7))
                 
+                if healthKitManager.exerciseMinutes > 0 {
+                    Text("\(Int(healthKitManager.exerciseMinutes)) min exercise")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.cream.opacity(0.6))
+                }
+                
                 if !healthKitManager.workouts.isEmpty {
                     Text("\(healthKitManager.workouts.count) workout\(healthKitManager.workouts.count == 1 ? "" : "s")")
                         .font(.caption)
@@ -620,19 +642,86 @@ struct WorkoutsView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "figure.walk")
+            Image(systemName: emptyStateSymbol)
                 .font(.system(size: 60))
                 .foregroundColor(EmberColors.cream.opacity(0.5))
             
-            Text("No workouts today")
+            Text(emptyStateTitle)
                 .font(.title3)
                 .foregroundColor(EmberColors.cream.opacity(0.7))
+                .multilineTextAlignment(.center)
             
-            Text("Your workouts will appear here")
+            Text(emptyStateSubtitle)
                 .font(.subheadline)
                 .foregroundColor(EmberColors.cream.opacity(0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            
+            if healthKitManager.authorizationStatus != .authorized {
+                Button {
+                    if healthKitManager.authorizationStatus == .denied {
+                        healthKitManager.openHealthSettings()
+                    } else {
+                        healthKitManager.requestAuthorization()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: healthKitManager.authorizationStatus == .denied ? "gear" : "heart.circle.fill")
+                        Text(healthKitManager.authorizationStatus == .denied ? "Open Health Settings" : "Allow Health Access")
+                    }
+                    .font(.headline)
+                    .foregroundColor(EmberColors.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(EmberColors.ember)
+                    )
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 4)
+                
+                Button("Apple Health details") {
+                    showingHealthConnect = true
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(EmberColors.ember)
+            } else {
+                Button("Not seeing Apple Watch data?") {
+                    showingHealthConnect = true
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(EmberColors.ember)
+            }
         }
         .padding(.top, 40)
+    }
+    
+    private var emptyStateSymbol: String {
+        switch healthKitManager.authorizationStatus {
+        case .authorized: return "figure.walk"
+        case .denied: return "heart.slash"
+        case .notDetermined: return "applewatch"
+        }
+    }
+    
+    private var emptyStateTitle: String {
+        switch healthKitManager.authorizationStatus {
+        case .authorized: return "No workouts today"
+        case .denied: return "Health access is off"
+        case .notDetermined: return "Connect Apple Watch"
+        }
+    }
+    
+    private var emptyStateSubtitle: String {
+        switch healthKitManager.authorizationStatus {
+        case .authorized:
+            return "Apple Watch workouts appear here after they sync to Health."
+        case .denied:
+            return "Settings → Health → Data Access & Devices → EmberWatch → turn on Workouts, Active Energy, and Exercise Minutes."
+        case .notDetermined:
+            return "Allow Health access so Ember can read Apple Watch workouts and Move calories."
+        }
     }
 }
 
@@ -704,6 +793,11 @@ struct WorkoutDetailRow: View {
                             Text("· Quick Add")
                                 .font(.caption)
                                 .foregroundColor(EmberColors.ember.opacity(0.85))
+                        } else if let sourceName = workout.sourceName, !sourceName.isEmpty {
+                            Text("· \(sourceName)")
+                                .font(.caption)
+                                .foregroundColor(EmberColors.cream.opacity(0.6))
+                                .lineLimit(1)
                         }
                     }
                 }
@@ -977,7 +1071,8 @@ struct EditWorkoutView: View {
             customName: workout.customName,
             distanceMiles: distValue,
             distanceUnit: workout.distanceUnit == .laps ? .laps : distanceUnit,
-            isLocal: workout.isLocal
+            isLocal: workout.isLocal,
+            sourceName: workout.sourceName
         )
         
         healthKitManager.updateLocalWorkout(updatedWorkout)

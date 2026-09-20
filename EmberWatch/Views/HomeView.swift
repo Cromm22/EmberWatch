@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var showingAvatarPicker = false
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
+    @State private var showingHealthConnect = false
     @AppStorage("emberWatch.lastGreetingDate") private var lastGreetingDateString: String = ""
     
     // XP animation states
@@ -41,6 +42,10 @@ struct HomeView: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         emberAvatarCard
+                        
+                        if healthKitManager.authorizationStatus != .authorized {
+                            healthConnectBanner
+                        }
                         
                         remainingCaloriesCard
                         
@@ -114,6 +119,10 @@ struct HomeView: View {
                 WeightSettingsView(isPresented: $showingWeightSettings)
                     .environmentObject(weightManager)
                     .environmentObject(levelManager)
+            }
+            .sheet(isPresented: $showingHealthConnect) {
+                HealthConnectView(showsDismissButton: true)
+                    .environmentObject(healthKitManager)
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
@@ -205,6 +214,50 @@ struct HomeView: View {
         let progress = (clampedLevel - 1) / (maxLevel - 1)
         
         return minSize + (maxSize - minSize) * progress
+    }
+    
+    private var healthConnectBanner: some View {
+        Button {
+            if healthKitManager.authorizationStatus == .denied {
+                showingHealthConnect = true
+            } else {
+                healthKitManager.requestAuthorization()
+            }
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: "applewatch")
+                    .font(.title2)
+                    .foregroundColor(EmberColors.ember)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(healthKitManager.authorizationStatus == .denied
+                         ? "Health access is off"
+                         : "Connect Apple Watch")
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                    Text(healthKitManager.authorizationStatus == .denied
+                         ? "Enable Workouts and Active Energy in Health so Move calories count."
+                         : "Allow Health access to sync Watch workouts and Move calories.")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.cream.opacity(0.65))
+                        .multilineTextAlignment(.leading)
+                }
+                
+                Spacer(minLength: 8)
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(EmberColors.cream.opacity(0.4))
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(EmberColors.lightPlum)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Connect Apple Health to include Watch workouts")
     }
     
     private var emberAvatarCard: some View {
