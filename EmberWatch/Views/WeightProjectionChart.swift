@@ -1,6 +1,58 @@
 import SwiftUI
 import Charts
 
+/// Builds a calendar-month X-axis for the weight projection chart.
+/// Tick dates stay in-domain (from today through the projected goal date) and
+/// are thinned on long spans so labels stay readable.
+enum WeightProjectionMonthAxis {
+    static func date(byAddingMonths months: Double, to date: Date, calendar: Calendar = .current) -> Date {
+        let wholeMonths = Int(months.rounded(.towardZero))
+        let fractionalMonth = months - Double(wholeMonths)
+        let afterMonths = calendar.date(byAdding: .month, value: wholeMonths, to: date) ?? date
+        let extraDays = Int((fractionalMonth * 30.4375).rounded())
+        return calendar.date(byAdding: .day, value: extraDays, to: afterMonths) ?? afterMonths
+    }
+    
+    /// Months between consecutive labeled ticks. Targets about 4–6 readable labels.
+    static func stride(forMonthsToGoal monthsToGoal: Double) -> Int {
+        let span = max(1, Int(ceil(monthsToGoal)))
+        let targetGaps = 4
+        return max(1, Int((Double(span) / Double(targetGaps)).rounded()))
+    }
+    
+    static func tickDates(from start: Date, monthsToGoal: Double, calendar: Calendar = .current) -> [Date] {
+        let safeMonths = max(monthsToGoal, 0.25)
+        let goal = date(byAddingMonths: safeMonths, to: start, calendar: calendar)
+        let step = stride(forMonthsToGoal: safeMonths)
+        var dates: [Date] = [start]
+        var offset = step
+        // Keep the last interior tick far enough from the goal so labels do not collide.
+        let lastOpenOffset = safeMonths - Double(step) * 0.4
+        while Double(offset) < lastOpenOffset {
+            dates.append(date(byAddingMonths: Double(offset), to: start, calendar: calendar))
+            offset += step
+        }
+        if shouldAppendGoal(goal, after: dates.last ?? start, calendar: calendar) {
+            dates.append(goal)
+        }
+        return dates
+    }
+    
+    /// Abbreviated month (Jan, Feb, …). Adds a two-digit year when the tick is
+    /// not in the starting calendar year so Sep / Sep 27 stay distinct.
+    static func label(for date: Date, start: Date, calendar: Calendar = .current) -> String {
+        let monthOnly = Date.FormatStyle().month(.abbreviated)
+        if calendar.component(.year, from: date) != calendar.component(.year, from: start) {
+            return date.formatted(monthOnly.year(.twoDigits))
+        }
+        return date.formatted(monthOnly)
+    }
+    
+    private static func shouldAppendGoal(_ goal: Date, after last: Date, calendar: Calendar) -> Bool {
+        !calendar.isDate(last, equalTo: goal, toGranularity: .month)
+    }
+}
+
 struct WeightProjectionChart: View {
     let startingWeightLb: Double
     let goalWeightLb: Double
@@ -11,25 +63,36 @@ struct WeightProjectionChart: View {
     
     private struct DataPoint: Identifiable {
         let id = UUID()
-        let monthsFromNow: Double
+        let date: Date
         let weightLb: Double
         let isCurrent: Bool
     }
     
+    private var startDate: Date {
+        Calendar.current.startOfDay(for: Date())
+    }
+    
+    private var monthsToGoal: Double {
+        abs(goalWeightLb - startingWeightLb) / lbsPerMonth
+    }
+    
+    private var goalDate: Date {
+        let projected = WeightProjectionMonthAxis.date(byAddingMonths: monthsToGoal, to: startDate)
+        if projected <= startDate {
+            return Calendar.current.date(byAdding: .day, value: 1, to: startDate) ?? startDate.addingTimeInterval(86_400)
+        }
+        return projected
+    }
+    
+    private var xAxisTickDates: [Date] {
+        WeightProjectionMonthAxis.tickDates(from: startDate, monthsToGoal: monthsToGoal)
+    }
+    
     private var projectionPoints: [DataPoint] {
-        var points: [DataPoint] = []
-        
-        let weightDifference = goalWeightLb - startingWeightLb
-        let isGaining = weightDifference > 0
-        let monthsToGoal = abs(weightDifference) / lbsPerMonth
-        
-        // Starting point
-        points.append(DataPoint(monthsFromNow: 0, weightLb: startingWeightLb, isCurrent: false))
-        
-        // Goal point
-        points.append(DataPoint(monthsFromNow: monthsToGoal, weightLb: goalWeightLb, isCurrent: false))
-        
-        return points
+        [
+            DataPoint(date: startDate, weightLb: startingWeightLb, isCurrent: false),
+            DataPoint(date: goalDate, weightLb: goalWeightLb, isCurrent: false)
+        ]
     }
     
     private var currentWeightPoint: DataPoint? {
@@ -42,22 +105,10 @@ struct WeightProjectionChart: View {
         let isGaining = weightDifference > 0
         let currentProgress = isGaining ? (current - startingWeightLb) : (startingWeightLb - current)
         let progressRatio = currentProgress / abs(weightDifference)
-        let totalMonths = abs(weightDifference) / lbsPerMonth
-        let currentMonth = progressRatio * totalMonths
+        let currentMonth = progressRatio * monthsToGoal
+        let currentDate = WeightProjectionMonthAxis.date(byAddingMonths: max(0, currentMonth), to: startDate)
         
-        return DataPoint(monthsFromNow: max(0, currentMonth), weightLb: current, isCurrent: true)
-    }
-    
-    private var allPoints: [DataPoint] {
-        var points = projectionPoints
-        if let current = currentWeightPoint {
-            points.append(current)
-        }
-        return points.sorted { $0.monthsFromNow < $1.monthsFromNow }
-    }
-    
-    private var monthsToGoal: Double {
-        abs(goalWeightLb - startingWeightLb) / lbsPerMonth
+        return DataPoint(date: currentDate, weightLb: current, isCurrent: true)
     }
     
     private var weightRange: ClosedRange<Double> {
@@ -88,7 +139,7 @@ struct WeightProjectionChart: View {
             Chart {
                 ForEach(projectionPoints) { point in
                     LineMark(
-                        x: .value("Month", point.monthsFromNow),
+                        x: .value("Month", point.date),
                         y: .value("Weight", unit.fromPounds(point.weightLb))
                     )
                     .foregroundStyle(EmberColors.ember)
@@ -97,7 +148,7 @@ struct WeightProjectionChart: View {
                 
                 ForEach(projectionPoints) { point in
                     PointMark(
-                        x: .value("Month", point.monthsFromNow),
+                        x: .value("Month", point.date),
                         y: .value("Weight", unit.fromPounds(point.weightLb))
                     )
                     .foregroundStyle(EmberColors.ember)
@@ -106,7 +157,7 @@ struct WeightProjectionChart: View {
                 
                 if let current = currentWeightPoint {
                     PointMark(
-                        x: .value("Month", current.monthsFromNow),
+                        x: .value("Month", current.date),
                         y: .value("Weight", unit.fromPounds(current.weightLb))
                     )
                     .foregroundStyle(EmberColors.gold)
@@ -122,18 +173,20 @@ struct WeightProjectionChart: View {
                 }
             }
             .frame(height: 200)
-            .chartXScale(domain: 0...monthsToGoal)
+            .chartXScale(domain: startDate...goalDate)
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 5)) { value in
+                AxisMarks(values: xAxisTickDates) { value in
                     AxisValueLabel {
-                        if let months = value.as(Double.self) {
-                            Text(months == 0 ? "Now" : "\(Int(months))m")
+                        if let date = value.as(Date.self) {
+                            Text(WeightProjectionMonthAxis.label(for: date, start: startDate))
                                 .font(.caption2)
                                 .foregroundColor(EmberColors.muted)
                         }
                     }
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
                         .foregroundStyle(EmberColors.muted.opacity(0.2))
+                    AxisTick(stroke: StrokeStyle(lineWidth: 1))
+                        .foregroundStyle(EmberColors.muted.opacity(0.35))
                 }
             }
             .chartYAxis {
