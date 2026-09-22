@@ -47,6 +47,8 @@
 		HSB0000000000000000000002 /* HomeStatBadges.swift in Sources */ = {isa = PBXBuildFile; fileRef = HSB0000000000000000000001 /* HomeStatBadges.swift */; };
 		ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDFR1END0000000000000001 /* AddFriendView.swift */; };
 		PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */; };
+		S5H0PV1EW000000000000002 /* SparksShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = S5H0PV1EW000000000000001 /* SparksShopView.swift */; };
+		S5H0P5T0R300000000000002 /* SparksShopStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = S5H0P5T0R300000000000001 /* SparksShopStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -93,6 +95,8 @@
 		HSB0000000000000000000001 /* HomeStatBadges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeStatBadges.swift; sourceTree = "<group>"; };
 		ADDFR1END0000000000000001 /* AddFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendView.swift; sourceTree = "<group>"; };
 		PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsView.swift; sourceTree = "<group>"; };
+		S5H0PV1EW000000000000001 /* SparksShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksShopView.swift; sourceTree = "<group>"; };
+		S5H0P5T0R300000000000001 /* SparksShopStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksShopStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +159,7 @@
 				E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */,
 				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
 				2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */,
+				S5H0PV1EW000000000000001 /* SparksShopView.swift */,
 				3A0000080000000000000001 /* HealthConnectView.swift */,
 				3A00002C0000000000000001 /* FoodDiaryView.swift */,
 				C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */,
@@ -195,6 +200,7 @@
 				4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */,
 				A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */,
 				S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */,
+				S5H0P5T0R300000000000001 /* SparksShopStore.swift */,
 				F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */,
 				B1C2D3E4F5061728394A5B6C /* WeightManager.swift */,
 				8FFD5926647D460D8448F0BD /* FriendsManager.swift */,
@@ -303,6 +309,8 @@
 				SHMGR0000000000000000002 /* SearchHistoryManager.swift in Sources */,
 				C8D9E0F1A2B3C4D5E6071829 /* FeedbackSheetView.swift in Sources */,
 				6D4F8A2C9E1B3D5A7C0E4F91 /* AvatarPickerView.swift in Sources */,
+				S5H0PV1EW000000000000002 /* SparksShopView.swift in Sources */,
+				S5H0P5T0R300000000000002 /* SparksShopStore.swift in Sources */,
 				3A0000070000000000000001 /* HealthConnectView.swift in Sources */,
 				3A0000090000000000000001 /* HealthKitManager.swift in Sources */,
 				3A00000B0000000000000001 /* WorkoutModel.swift in Sources */,

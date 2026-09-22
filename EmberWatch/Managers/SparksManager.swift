@@ -3,7 +3,8 @@ import SwiftUI
 import UIKit
 
 /// Soft-currency economy (Sparks). Cosmetics / status only — never gates food, water,
-/// HealthKit, macros, or calorie tracking. Earn-only in v1 (no IAP packs).
+/// HealthKit, macros, or calorie tracking. Earn via play; optional StoreKit packs
+/// credit only after a verified App Store transaction.
 @MainActor
 final class SparksManager: ObservableObject {
     // MARK: - Tunable constants (single place)
@@ -26,6 +27,56 @@ final class SparksManager: ObservableObject {
         SparkCosmetic(id: "glow", name: "Ember Glow", detail: "Extra aura bloom on Home", price: 75, icon: "sparkles"),
         SparkCosmetic(id: "nameplate_gold", name: "Gold Nameplate", detail: "Gold companion name tint", price: 50, icon: "tag.fill"),
         SparkCosmetic(id: "nameplate_aurora", name: "Aurora Nameplate", detail: "Aurora gradient name tint", price: 150, icon: "paintpalette.fill")
+    ]
+
+    /// Consumable Sparks packs shown in the shop. StoreKit product IDs must match
+    /// App Store Connect; UI still lists packs when products are not configured.
+    static let sparkPacks: [SparkPack] = [
+        SparkPack(
+            productID: "com.ember.watch.sparks.ember",
+            name: "Ember Spark",
+            detail: "A little extra glow",
+            sparks: 80,
+            placeholderPrice: "$0.99",
+            badge: nil,
+            icon: "sparkle"
+        ),
+        SparkPack(
+            productID: "com.ember.watch.sparks.glow",
+            name: "Glow Pack",
+            detail: "Enough for a new companion",
+            sparks: 250,
+            placeholderPrice: "$2.99",
+            badge: "Popular",
+            icon: "sparkles"
+        ),
+        SparkPack(
+            productID: "com.ember.watch.sparks.flame",
+            name: "Flame Bundle",
+            detail: "Stock up for the gallery",
+            sparks: 700,
+            placeholderPrice: "$4.99",
+            badge: nil,
+            icon: "flame.fill"
+        ),
+        SparkPack(
+            productID: "com.ember.watch.sparks.inferno",
+            name: "Inferno Chest",
+            detail: "Best sparks per dollar",
+            sparks: 1_600,
+            placeholderPrice: "$9.99",
+            badge: "Best Value",
+            icon: "shippingbox.fill"
+        ),
+        SparkPack(
+            productID: "com.ember.watch.sparks.aurora",
+            name: "Aurora Vault",
+            detail: "Unlock the whole collection",
+            sparks: 4_000,
+            placeholderPrice: "$19.99",
+            badge: "Mega",
+            icon: "diamond.fill"
+        )
     ]
 
     // MARK: - Published state
@@ -222,6 +273,13 @@ final class SparksManager: ObservableObject {
         activeNameplateId = id
     }
 
+    /// Credit Sparks after a verified StoreKit purchase. Never call from a
+    /// placeholder / preview tap — only from `SparksShopStore` after Apple confirms.
+    @discardableResult
+    func creditPurchasedSparks(_ amount: Int) -> Int {
+        credit(amount, reason: "iap")
+    }
+
     // MARK: - Internals
 
     @discardableResult
@@ -273,5 +331,17 @@ struct SparkCosmetic: Identifiable, Hashable {
     let name: String
     let detail: String
     let price: Int
+    let icon: String
+}
+
+struct SparkPack: Identifiable, Hashable {
+    var id: String { productID }
+    let productID: String
+    let name: String
+    let detail: String
+    let sparks: Int
+    /// Shown only when StoreKit has not returned a live product.
+    let placeholderPrice: String
+    let badge: String?
     let icon: String
 }
