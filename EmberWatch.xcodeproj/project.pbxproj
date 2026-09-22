@@ -44,6 +44,7 @@
 		WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = WPC0000000000000000000001 /* WeightProjectionChart.swift */; };
 		LUCELF774E9036E13409391 /* LevelUpCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */; };
 		CTST00000000000000000002 /* CelebrationToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = CTST00000000000000000001 /* CelebrationToast.swift */; };
+		HSB0000000000000000000002 /* HomeStatBadges.swift in Sources */ = {isa = PBXBuildFile; fileRef = HSB0000000000000000000001 /* HomeStatBadges.swift */; };
 		ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDFR1END0000000000000001 /* AddFriendView.swift */; };
 		PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */; };
 /* End PBXBuildFile section */
@@ -89,6 +90,7 @@
 		WPC0000000000000000000001 /* WeightProjectionChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightProjectionChart.swift; sourceTree = "<group>"; };
 		LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelUpCelebrationView.swift; sourceTree = "<group>"; };
 		CTST00000000000000000001 /* CelebrationToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CelebrationToast.swift; sourceTree = "<group>"; };
+		HSB0000000000000000000001 /* HomeStatBadges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeStatBadges.swift; sourceTree = "<group>"; };
 		ADDFR1END0000000000000001 /* AddFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendView.swift; sourceTree = "<group>"; };
 		PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -149,6 +151,7 @@
 				PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */,
 				B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */,
 				3A0000060000000000000001 /* HomeView.swift */,
+				HSB0000000000000000000001 /* HomeStatBadges.swift */,
 				E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */,
 				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
 				2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */,
@@ -281,6 +284,7 @@
 				3A0000030000000000000001 /* ContentView.swift in Sources */,
 				3A0000010000000000000001 /* EmberWatchApp.swift in Sources */,
 				3A0000050000000000000001 /* HomeView.swift in Sources */,
+				HSB0000000000000000000002 /* HomeStatBadges.swift in Sources */,
 				F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */,
 				162E05446EEB40B484657D3E /* ShareView.swift in Sources */,
 				84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */,

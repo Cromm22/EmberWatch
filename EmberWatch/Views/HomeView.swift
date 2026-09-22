@@ -91,6 +91,11 @@ struct HomeView: View {
             .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    DailyStreakPill(streak: levelManager.streakCount)
+                }
+            }
             .sheet(isPresented: $showingGoalSettings) {
                 GoalSettingsView(isPresented: $showingGoalSettings)
                     .environmentObject(calorieGoalManager)
@@ -280,54 +285,18 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity)
             
-            VStack(spacing: 6) {
+            VStack(spacing: 10) {
                 Text(avatarManager.displayName)
                     .font(.headline)
                     .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
-                
-                if levelManager.streakCount > 0 {
-                    HStack(spacing: 3) {
-                        Text("🔥")
-                            .font(.caption2)
-                        Text("\(levelManager.streakCount)d")
-                            .font(.caption2.weight(.bold))
-                        Text("Daily Streak")
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .foregroundColor(EmberColors.ink)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(EmberColors.ember))
-                    .accessibilityLabel("Daily Streak: Day \(levelManager.streakCount)")
-                }
-                
-                HStack(spacing: 3) {
-                    Image(systemName: "sparkle")
-                        .font(.system(size: 9, weight: .bold))
-                    Text("\(sparksManager.balance)")
-                        .font(.caption2.weight(.bold))
-                    Text("Sparks")
-                        .font(.caption2.weight(.semibold))
-                }
-                .foregroundColor(EmberColors.ink)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(EmberColors.ember))
-                .accessibilityLabel("Sparks: \(sparksManager.balance)")
-                
-                if let boost = levelManager.boardMultiplierLabel {
-                    HStack(spacing: 3) {
-                        Text(boost)
-                            .font(.caption2.weight(.bold))
-                        Text("Boost")
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .foregroundColor(EmberColors.ink)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(EmberColors.gold))
-                    .accessibilityLabel("XP Boost: \(boost)")
-                }
+
+                HomeStatBadgeRow(
+                    streak: levelManager.streakCount,
+                    sparks: sparksManager.balance,
+                    xpBoost: levelManager.xpBoostPercentLabel,
+                    onSparksTap: { showingAvatarPicker = true }
+                )
+                .padding(.horizontal, 12)
             }
             
             // XP Progress Bar with level label inside
