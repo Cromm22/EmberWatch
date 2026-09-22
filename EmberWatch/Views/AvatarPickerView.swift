@@ -112,7 +112,11 @@ struct AvatarPickerView: View {
                     onDone: { dismiss() }
                 )
 
-                ScrollView {
+                // Header + shop CTA stay pinned. The grid must take remaining
+                // height (not its ideal/content height) or the sheet clips and
+                // cannot scroll — a VStack otherwise sizes ScrollView to its
+                // full content and nothing moves.
+                ScrollView(.vertical, showsIndicators: true) {
                     VStack(spacing: 18) {
                         galleryBalanceBar(
                             balance: sparksManager.balance,
@@ -161,13 +165,19 @@ struct AvatarPickerView: View {
                             .padding(.bottom, 8)
                     }
                     .padding(.top, 8)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 24)
+                    .frame(maxWidth: .infinity)
                 }
-
+                .scrollBounceBehavior(.always, axes: .vertical)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 getMoreSparksCard
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                     .padding(.bottom, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.white.opacity(0.96).ignoresSafeArea(edges: .bottom))
             }
 
             if let toast = sparksManager.toast {
@@ -365,8 +375,6 @@ struct AvatarThumbnail: View {
     var price: Int = 100
     let onTap: () -> Void
 
-    @State private var isPressed = false
-
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 8) {
@@ -384,7 +392,6 @@ struct AvatarThumbnail: View {
                         )
 
                     EmberFlameAvatar(level: level, size: 56, style: style)
-                        .scaleEffect(isPressed ? 0.92 : 1.0)
 
                     if isSelected && !isLocked {
                         VStack {
@@ -431,15 +438,8 @@ struct AvatarThumbnail: View {
                     .frame(height: 28)
             }
         }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isPressed ? 0.95 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+        .buttonStyle(GalleryCardPressStyle())
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -448,6 +448,15 @@ struct AvatarThumbnail: View {
         if isSelected { parts.append("selected") }
         if isLocked { parts.append("locked, \(price) Sparks") }
         return parts.joined(separator: ", ")
+    }
+}
+
+/// Press scale without a competing DragGesture (which steals pans from ScrollView).
+private struct GalleryCardPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
