@@ -159,36 +159,29 @@ struct FoodDiaryView: View {
     }
     
     private var remainingCaloriesCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: remainingCalories >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundColor(remainingCalories >= 0 ? Color.green : Color.orange)
-                
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Calories")
                     .font(.headline)
                     .foregroundColor(EmberColors.cream)
                 
-                Spacer()
+                Text(remainingCalories >= 0 ? "remaining" : "over")
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                    .accessibilityHidden(true)
             }
             
-            HStack(alignment: .center, spacing: 8) {
-                Text("\(Int(remainingCalories))")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundColor(remainingCalories >= 0 ? EmberColors.ember : Color.orange)
-                    .accessibilityLabel("\(Int(remainingCalories)) calories \(remainingCalories >= 0 ? "remaining" : "over")")
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("calories")
-                        .font(.title3)
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                    Text(remainingCalories >= 0 ? "remaining" : "over")
-                        .font(.subheadline)
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                }
+            Spacer(minLength: 8)
+            
+            Text("\(Int(remainingCalories))")
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .foregroundColor(remainingCalories >= 0 ? EmberColors.ember : Color.orange)
+                .accessibilityLabel("\(Int(remainingCalories)) calories \(remainingCalories >= 0 ? "remaining" : "over")")
+            
+            Image(systemName: remainingCalories >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .font(.title2)
+                .foregroundColor(remainingCalories >= 0 ? Color.green : Color.orange)
                 .accessibilityHidden(true)
-                
-                Spacer(minLength: 0)
-            }
         }
         .padding()
         .background(
