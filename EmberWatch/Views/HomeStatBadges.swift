@@ -2,17 +2,20 @@ import SwiftUI
 
 /// Shared Home colors for the compact streak pill and the streak / sparks / XP cards.
 enum HomeStatBadgePalette {
-    static let streakFill = Color(hex: "#FFEDE4")
-    static let streakIcon = Color(hex: "#FF6B2C")
-    static let streakInk = Color(hex: "#5A2A1C")
+    // Richer peach / orange — same hue family, higher chroma than the original pastels.
+    static let streakFill = Color(hex: "#FFD2B3")
+    static let streakIcon = Color(hex: "#FF5314")
+    static let streakInk = Color(hex: "#6B2410")
 
-    static let sparksFill = Color(hex: "#EAF2FF")
-    static let sparksIcon = Color(hex: "#4C82F7")
-    static let sparksInk = Color(hex: "#1A2A4A")
+    // Richer sky blue
+    static let sparksFill = Color(hex: "#BDD5FF")
+    static let sparksIcon = Color(hex: "#2568F5")
+    static let sparksInk = Color(hex: "#122E68")
 
-    static let boostFill = Color(hex: "#FFF6D9")
-    static let boostIcon = Color(hex: "#E6A817")
-    static let boostInk = Color(hex: "#5C3D0A")
+    // Richer gold / amber
+    static let boostFill = Color(hex: "#FFE6A3")
+    static let boostIcon = Color(hex: "#E89800")
+    static let boostInk = Color(hex: "#6B4000")
 }
 
 /// Compact top-right header badge: flame + streak day count (number only).
