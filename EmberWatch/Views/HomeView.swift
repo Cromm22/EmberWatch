@@ -43,6 +43,8 @@ struct HomeView: View {
                     VStack(spacing: 20) {
                         emberAvatarCard
                         
+                        homeStatBadges
+                        
                         if healthKitManager.authorizationStatus != .authorized {
                             healthConnectBanner
                         }
@@ -280,13 +282,9 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity)
             
-            VStack(spacing: 10) {
-                Text(avatarManager.displayName)
-                    .font(.headline)
-                    .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
-                
-                homeStatBadges
-            }
+            Text(avatarManager.displayName)
+                .font(.headline)
+                .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
             
             // XP Progress Bar with level label inside
             ZStack {
@@ -415,7 +413,6 @@ struct HomeView: View {
             )
             .accessibilityLabel("XP Boost: \(levelManager.xpBoostPercentLabel)")
         }
-        .padding(.horizontal, 10)
     }
     
     private var remainingCaloriesCard: some View {
@@ -688,35 +685,36 @@ struct HomeStatBadge: View {
     let palette: Palette
     
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             Image(systemName: icon)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(palette.icon)
-                .frame(width: 18)
+                .symbolRenderingMode(.monochrome)
             
             VStack(alignment: .leading, spacing: 1) {
                 Text(value)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.foreground)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.65)
+                    .minimumScaleFactor(0.75)
                 Text(label)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(palette.foreground)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.65)
+                    .minimumScaleFactor(0.75)
             }
+            .layoutPriority(1)
             
-            Spacer(minLength: 2)
+            Spacer(minLength: 0)
             
             Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(palette.foreground)
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 8)
-        .padding(.vertical, 11)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 8)
+        .padding(.trailing, 6)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(palette.background)
