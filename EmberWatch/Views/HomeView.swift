@@ -280,54 +280,12 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity)
             
-            VStack(spacing: 6) {
+            VStack(spacing: 10) {
                 Text(avatarManager.displayName)
                     .font(.headline)
                     .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
                 
-                if levelManager.streakCount > 0 {
-                    HStack(spacing: 3) {
-                        Text("🔥")
-                            .font(.caption2)
-                        Text("\(levelManager.streakCount)d")
-                            .font(.caption2.weight(.bold))
-                        Text("Daily Streak")
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .foregroundColor(EmberColors.ink)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(EmberColors.ember))
-                    .accessibilityLabel("Daily Streak: Day \(levelManager.streakCount)")
-                }
-                
-                HStack(spacing: 3) {
-                    Image(systemName: "sparkle")
-                        .font(.system(size: 9, weight: .bold))
-                    Text("\(sparksManager.balance)")
-                        .font(.caption2.weight(.bold))
-                    Text("Sparks")
-                        .font(.caption2.weight(.semibold))
-                }
-                .foregroundColor(EmberColors.ink)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(EmberColors.ember))
-                .accessibilityLabel("Sparks: \(sparksManager.balance)")
-                
-                if let boost = levelManager.boardMultiplierLabel {
-                    HStack(spacing: 3) {
-                        Text(boost)
-                            .font(.caption2.weight(.bold))
-                        Text("Boost")
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .foregroundColor(EmberColors.ink)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(EmberColors.gold))
-                    .accessibilityLabel("XP Boost: \(boost)")
-                }
+                homeStatBadges
             }
             
             // XP Progress Bar with level label inside
@@ -429,6 +387,35 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(EmberColors.lightPlum)
         )
+    }
+    
+    private var homeStatBadges: some View {
+        HStack(spacing: 8) {
+            HomeStatBadge(
+                icon: "flame",
+                value: "\(levelManager.streakCount)d",
+                label: "Daily Streak",
+                palette: .streak
+            )
+            .accessibilityLabel("Daily Streak: Day \(levelManager.streakCount)")
+            
+            HomeStatBadge(
+                icon: "sparkle",
+                value: "+\(sparksManager.balance)",
+                label: "Sparks",
+                palette: .sparks
+            )
+            .accessibilityLabel("Sparks: \(sparksManager.balance)")
+            
+            HomeStatBadge(
+                icon: "rocket",
+                value: levelManager.xpBoostPercentLabel,
+                label: "XP Boost",
+                palette: .xpBoost
+            )
+            .accessibilityLabel("XP Boost: \(levelManager.xpBoostPercentLabel)")
+        }
+        .padding(.horizontal, 10)
     }
     
     private var remainingCaloriesCard: some View {
@@ -670,6 +657,82 @@ struct HomeView: View {
                 .fill(EmberColors.lightPlum)
         )
     }
+}
+
+struct HomeStatBadge: View {
+    struct Palette {
+        let background: Color
+        let foreground: Color
+        let icon: Color
+        
+        static let streak = Palette(
+            background: Color(hex: "#FFF1E6"),
+            foreground: Color(hex: "#8B3A1A"),
+            icon: Color(hex: "#F97316")
+        )
+        static let sparks = Palette(
+            background: Color(hex: "#E8F1FF"),
+            foreground: Color(hex: "#1E3A8A"),
+            icon: Color(hex: "#3B82F6")
+        )
+        static let xpBoost = Palette(
+            background: Color(hex: "#FFF6DC"),
+            foreground: Color(hex: "#854D0E"),
+            icon: Color(hex: "#EAB308")
+        )
+    }
+    
+    let icon: String
+    let value: String
+    let label: String
+    let palette: Palette
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(palette.icon)
+                .frame(width: 18)
+            
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(palette.foreground)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(palette.foreground)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+            }
+            
+            Spacer(minLength: 2)
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(palette.foreground)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 8)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(palette.background)
+        )
+        .accessibilityElement(children: .ignore)
+    }
+}
+
+#Preview("Home stat badges") {
+    HStack(spacing: 8) {
+        HomeStatBadge(icon: "flame", value: "6d", label: "Daily Streak", palette: .streak)
+        HomeStatBadge(icon: "sparkle", value: "+340", label: "Sparks", palette: .sparks)
+        HomeStatBadge(icon: "rocket", value: "+30%", label: "XP Boost", palette: .xpBoost)
+    }
+    .padding(16)
+    .background(Color.white)
 }
 
 struct SummaryItem: View {
