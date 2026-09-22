@@ -175,6 +175,7 @@ struct FoodDiaryView: View {
                 Text("\(Int(remainingCalories))")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundColor(remainingCalories >= 0 ? EmberColors.ember : Color.orange)
+                    .accessibilityLabel("\(Int(remainingCalories)) calories \(remainingCalories >= 0 ? "remaining" : "over")")
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("calories")
@@ -184,7 +185,7 @@ struct FoodDiaryView: View {
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
                 }
-                .accessibilityElement(children: .combine)
+                .accessibilityHidden(true)
                 
                 Spacer(minLength: 0)
             }
