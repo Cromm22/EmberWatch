@@ -206,6 +206,12 @@ final class LevelManager: ObservableObject {
         default: return nil
         }
     }
+
+    /// Compact Home card value, e.g. "+30%" or "+0%" when there is no board-rank bonus.
+    var xpBoostPercentLabel: String {
+        let extra = Int(((boardMultiplier - 1.0) * 100).rounded())
+        return extra == 0 ? "+0%" : "+\(extra)%"
+    }
     
     var progressFraction: Double {
         if level >= Self.maxLevel {
