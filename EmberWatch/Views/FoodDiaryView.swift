@@ -171,22 +171,23 @@ struct FoodDiaryView: View {
                 Spacer()
             }
             
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .center, spacing: 8) {
                 Text("\(Int(remainingCalories))")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundColor(remainingCalories >= 0 ? EmberColors.ember : Color.orange)
                 
-                Text("cal")
-                    .font(.title3)
-                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("calories")
+                        .font(.title3)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                    Text(remainingCalories >= 0 ? "remaining" : "over")
+                        .font(.subheadline)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                }
+                .accessibilityElement(children: .combine)
                 
-                Spacer()
+                Spacer(minLength: 0)
             }
-            
-            Text(remainingCalories >= 0 ? "remaining" : "over")
-                .font(.subheadline)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding()
         .background(
