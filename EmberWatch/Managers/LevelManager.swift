@@ -207,6 +207,12 @@ final class LevelManager: ObservableObject {
         }
     }
     
+    /// Compact Home badge form (always present; "+0%" when not on the board).
+    var xpBoostPercentLabel: String {
+        let percent = Int(((boardMultiplier - 1.0) * 100).rounded())
+        return "+\(percent)%"
+    }
+    
     var progressFraction: Double {
         if level >= Self.maxLevel {
             return 1.0
