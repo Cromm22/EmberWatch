@@ -11,11 +11,13 @@ struct HomeView: View {
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var weightManager: WeightManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
+    @Binding var selectedTab: Int
     @State private var showingGoalSettings = false
     @State private var showingAvatarPicker = false
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
     @State private var showingHealthConnect = false
+    @State private var showingFoodSearch = false
     @AppStorage("emberWatch.lastGreetingDate") private var lastGreetingDateString: String = ""
     
     // XP animation states
@@ -48,6 +50,13 @@ struct HomeView: View {
                         }
                         
                         remainingCaloriesCard
+                        
+                        HomeQuickActionRow(
+                            onLogFood: { showingFoodSearch = true },
+                            onLogWorkout: { selectedTab = 2 }, // Workout tab
+                            onProgress: { showingWeightSettings = true },
+                            onGoals: { showingGoalSettings = true }
+                        )
                         
                         weightCard
                         
@@ -118,6 +127,11 @@ struct HomeView: View {
             .sheet(isPresented: $showingHealthConnect) {
                 HealthConnectView(showsDismissButton: true)
                     .environmentObject(healthKitManager)
+            }
+            .sheet(isPresented: $showingFoodSearch) {
+                FoodSearchView(isPresented: $showingFoodSearch)
+                    .environmentObject(foodDataManager)
+                    .environmentObject(emberTalkManager)
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
@@ -446,80 +460,110 @@ struct HomeView: View {
     
 
     private var weightCard: some View {
-        Button(action: { showingWeightSettings = true }) {
-            VStack(spacing: 12) {
-                HStack {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(HomeQuickActionPalette.foodFill)
+                        .frame(width: 34, height: 34)
                     Image(systemName: "scalemass.fill")
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(EmberColors.ember)
-                    
-                    Text("Weight")
-                        .font(.headline)
-                        .foregroundColor(EmberColors.cream)
-                    
-                    Spacer()
                 }
-                
-                if let current = weightManager.displayedCurrent {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(WeightManager.format(current))
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
-                            .foregroundColor(EmberColors.ember)
-                        Text(weightManager.unit.label)
-                            .font(.title3)
-                            .foregroundColor(EmberColors.cream.opacity(0.7))
-                        Spacer()
-                    }
-                    
-                    if let starting = weightManager.displayedStarting {
-                        HStack {
-                            Text("Started at \(WeightManager.format(starting)) \(weightManager.unit.label)")
-                                .font(.subheadline)
-                                .foregroundColor(EmberColors.cream.opacity(0.6))
-                            Spacer()
-                        }
-                    }
-                    
-                    if let goal = weightManager.displayedGoal {
-                        HStack {
-                            Text("Goal \(WeightManager.format(goal)) \(weightManager.unit.label)")
-                                .font(.subheadline)
-                                .foregroundColor(EmberColors.cream.opacity(0.7))
-                            Spacer()
-                            if let caption = weightManager.deltaCaption {
-                                Text(caption)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(EmberColors.gold)
-                            }
-                        }
-                    } else {
-                        Text("Set a goal to track progress")
-                            .font(.subheadline)
-                            .foregroundColor(EmberColors.cream.opacity(0.55))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                } else {
-                    HStack {
-                        Text("Log your weight")
-                            .fontWeight(.semibold)
-                        Image(systemName: "plus.circle.fill")
-                    }
+                .accessibilityHidden(true)
+
+                Text("Weight")
+                    .font(.headline)
                     .foregroundColor(EmberColors.cream)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(EmberColors.ember.opacity(0.85)))
+
+                Spacer(minLength: 8)
+
+                Button(action: { showingWeightSettings = true }) {
+                    HStack(spacing: 6) {
+                        Text("View History")
+                            .font(.system(size: 13, weight: .semibold))
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundColor(EmberColors.cream.opacity(0.78))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color(hex: "#F3F4F6"))
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("View weight history")
+                .accessibilityHint("Opens weight history and settings")
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 12) {
+                    weightLogCopy
+                    Spacer(minLength: 8)
+                    addWeightButton
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    weightLogCopy
+                    addWeightButton
                 }
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(EmberColors.lightPlum)
+
+            HomeWeightTrendChart(
+                entries: weightManager.history,
+                startingWeightLb: weightManager.startingWeightLb,
+                currentWeightLb: weightManager.currentWeightLb,
+                unit: weightManager.unit
             )
-            .contentShape(RoundedRectangle(cornerRadius: 16))
+            .onTapGesture {
+                showingWeightSettings = true
+            }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Opens weight history")
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var weightLogCopy: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Log your weight")
+                .font(.title3.weight(.semibold))
+                .foregroundColor(EmberColors.cream)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            Text("Track your progress over time.")
+                .font(.subheadline)
+                .foregroundColor(EmberColors.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var addWeightButton: some View {
+        Button(action: { showingWeightSettings = true }) {
+            HStack(spacing: 6) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .bold))
+                Text("Add Weight")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(EmberColors.ember)
+            )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Edit weight and goal")
-        .accessibilityHint("Opens weight and goal settings")
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel("Add weight")
+        .accessibilityHint("Opens the log weight form")
     }
     
     private var waterCard: some View {

@@ -86,7 +86,7 @@ struct ContentView: View {
             EmberColors.dusk.ignoresSafeArea()
             
             TabView(selection: $selectedTab) {
-                HomeView()
+                HomeView(selectedTab: $selectedTab)
                     .tabItem {
                         Label("Home", systemImage: "flame.fill")
                     }
