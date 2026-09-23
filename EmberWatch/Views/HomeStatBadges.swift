@@ -147,6 +147,105 @@ struct HomeStatBadgeRow: View {
     }
 }
 
+/// Soft pastel fills for the Home Quick Actions row (Log Food / Workout / Progress / Goals).
+enum HomeQuickActionPalette {
+    static let foodFill = Color(hex: "#FFE4D2")
+    static let foodIcon = Color(hex: "#FF6A2B")
+
+    static let workoutFill = Color(hex: "#D9E6FF")
+    static let workoutIcon = Color(hex: "#3B6FE8")
+
+    static let progressFill = Color(hex: "#E6DEFF")
+    static let progressIcon = Color(hex: "#7B63E0")
+
+    static let goalsFill = Color(hex: "#D8F3E6")
+    static let goalsIcon = Color(hex: "#2FA36A")
+
+    static let label = Color(hex: "#1A1A1A")
+}
+
+/// One colored Quick Action tile on Home (icon above label).
+struct HomeQuickActionButton: View {
+    let icon: String
+    let title: String
+    let fill: Color
+    let iconColor: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(iconColor)
+                    .symbolRenderingMode(.monochrome)
+                    .frame(height: 30)
+
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(HomeQuickActionPalette.label)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(fill)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Four-up Quick Actions row: Log Food, Log Workout, Progress, Goals.
+struct HomeQuickActionRow: View {
+    var onLogFood: () -> Void
+    var onLogWorkout: () -> Void
+    var onProgress: () -> Void
+    var onGoals: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            HomeQuickActionButton(
+                icon: "plus.circle.fill",
+                title: "Log Food",
+                fill: HomeQuickActionPalette.foodFill,
+                iconColor: HomeQuickActionPalette.foodIcon,
+                action: onLogFood
+            )
+
+            HomeQuickActionButton(
+                icon: "figure.run",
+                title: "Log Workout",
+                fill: HomeQuickActionPalette.workoutFill,
+                iconColor: HomeQuickActionPalette.workoutIcon,
+                action: onLogWorkout
+            )
+
+            HomeQuickActionButton(
+                icon: "chart.bar.fill",
+                title: "Progress",
+                fill: HomeQuickActionPalette.progressFill,
+                iconColor: HomeQuickActionPalette.progressIcon,
+                action: onProgress
+            )
+
+            HomeQuickActionButton(
+                icon: "doc.fill",
+                title: "Goals",
+                fill: HomeQuickActionPalette.goalsFill,
+                iconColor: HomeQuickActionPalette.goalsIcon,
+                action: onGoals
+            )
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 #Preview("Streak pill") {
     DailyStreakPill(streak: 6)
         .padding()
@@ -157,4 +256,15 @@ struct HomeStatBadgeRow: View {
     HomeStatBadgeRow(streak: 6, sparks: 340, xpBoost: "+30%")
         .padding()
         .background(Color.white)
+}
+
+#Preview("Quick actions") {
+    HomeQuickActionRow(
+        onLogFood: {},
+        onLogWorkout: {},
+        onProgress: {},
+        onGoals: {}
+    )
+    .padding()
+    .background(Color.white)
 }

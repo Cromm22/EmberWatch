@@ -230,3 +230,106 @@ struct WeightProjectionChart: View {
         .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
     }
 }
+
+/// Compact Home weight trend: peach card, orange line + dots, mock-style callout.
+struct HomeWeightTrendChart: View {
+    let entries: [WeighIn]
+    let startingWeightLb: Double?
+    let currentWeightLb: Double?
+    let unit: WeightUnit
+    var callout: String = "Consistency builds results."
+
+    private enum Palette {
+        static let peach = Color(hex: "#FFF1E8")
+        static let ink = Color(hex: "#8A5A42")
+    }
+
+    private struct TrendPoint: Identifiable {
+        let id: String
+        let date: Date
+        let weightLb: Double
+    }
+
+    private var points: [TrendPoint] {
+        if entries.count >= 2 {
+            return entries
+                .sorted { $0.date < $1.date }
+                .map { TrendPoint(id: $0.id.uuidString, date: $0.date, weightLb: $0.weightLb) }
+        }
+
+        var result: [TrendPoint] = []
+        if let start = startingWeightLb {
+            let startDate = entries.min(by: { $0.date < $1.date })?.date
+                ?? Date().addingTimeInterval(-86_400)
+            result.append(TrendPoint(id: "starting", date: startDate, weightLb: start))
+        }
+        if let current = currentWeightLb {
+            result.append(TrendPoint(id: "current", date: Date(), weightLb: current))
+        } else if let only = entries.first {
+            result.append(TrendPoint(id: only.id.uuidString, date: only.date, weightLb: only.weightLb))
+        }
+        return result
+    }
+
+    private var weightRange: ClosedRange<Double> {
+        let values = points.map(\.weightLb)
+        guard let minV = values.min(), let maxV = values.max() else {
+            return 0...1
+        }
+        let span = max(maxV - minV, 1)
+        let pad = span * 0.28
+        return (minV - pad)...(maxV + pad)
+    }
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            if points.isEmpty {
+                Text(callout)
+                    .font(.subheadline)
+                    .foregroundColor(Palette.ink.opacity(0.75))
+                    .frame(maxWidth: .infinity, minHeight: 92)
+                    .multilineTextAlignment(.center)
+            } else {
+                Chart {
+                    ForEach(points) { point in
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("Weight", unit.fromPounds(point.weightLb))
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(EmberColors.ember)
+                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    }
+
+                    ForEach(points) { point in
+                        PointMark(
+                            x: .value("Date", point.date),
+                            y: .value("Weight", unit.fromPounds(point.weightLb))
+                        )
+                        .foregroundStyle(EmberColors.ember)
+                        .symbolSize(64)
+                    }
+                }
+                .frame(height: 108)
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartLegend(.hidden)
+                .chartYScale(domain: unit.fromPounds(weightRange.lowerBound)...unit.fromPounds(weightRange.upperBound))
+
+                Text(callout)
+                    .font(.caption)
+                    .foregroundColor(Palette.ink.opacity(0.72))
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Palette.peach)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(points.isEmpty ? "Weight trend. \(callout)" : "Weight trend chart. \(callout)")
+    }
+}
