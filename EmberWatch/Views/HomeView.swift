@@ -17,7 +17,6 @@ struct HomeView: View {
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
     @State private var showingHealthConnect = false
-    @State private var showingFoodSearch = false
     @AppStorage("emberWatch.lastGreetingDate") private var lastGreetingDateString: String = ""
     
     // XP animation states
@@ -52,7 +51,7 @@ struct HomeView: View {
                         remainingCaloriesCard
                         
                         HomeQuickActionRow(
-                            onLogFood: { showingFoodSearch = true },
+                            onLogFood: { selectedTab = 1 }, // Food diary tab
                             onLogWorkout: { selectedTab = 2 }, // Workout tab
                             onProgress: { showingWeightSettings = true },
                             onGoals: { showingGoalSettings = true }
@@ -127,11 +126,6 @@ struct HomeView: View {
             .sheet(isPresented: $showingHealthConnect) {
                 HealthConnectView(showsDismissButton: true)
                     .environmentObject(healthKitManager)
-            }
-            .sheet(isPresented: $showingFoodSearch) {
-                FoodSearchView(isPresented: $showingFoodSearch)
-                    .environmentObject(foodDataManager)
-                    .environmentObject(emberTalkManager)
             }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
@@ -502,12 +496,12 @@ struct HomeView: View {
 
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 12) {
-                    weightLogCopy
+                    currentWeightDisplay
                     Spacer(minLength: 8)
                     addWeightButton
                 }
                 VStack(alignment: .leading, spacing: 12) {
-                    weightLogCopy
+                    currentWeightDisplay
                     addWeightButton
                 }
             }
@@ -529,19 +523,81 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var weightLogCopy: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Log your weight")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(EmberColors.cream)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+    /// Most recent logged weight in the user's unit, then starting weight if none logged.
+    private var displayedHomeWeight: Double? {
+        if let current = weightManager.displayedCurrent {
+            return current
+        }
+        if let latest = weightManager.history.first {
+            return weightManager.unit.fromPounds(latest.weightLb)
+        }
+        return weightManager.displayedStarting
+    }
 
-            Text("Track your progress over time.")
+    private var homeWeightIsLogged: Bool {
+        weightManager.displayedCurrent != nil || !weightManager.history.isEmpty
+    }
+
+    private var homeWeightSubtitle: String {
+        let unit = weightManager.unit.label
+        if homeWeightIsLogged, let current = displayedHomeWeight {
+            if let starting = weightManager.displayedStarting {
+                let delta = current - starting
+                let formatted = WeightManager.format(abs(delta))
+                if abs(delta) < 0.05 {
+                    return "Same as starting weight"
+                } else if delta < 0 {
+                    return "\(formatted) \(unit) down from start"
+                } else {
+                    return "\(formatted) \(unit) up from start"
+                }
+            }
+            if let caption = weightManager.deltaCaption {
+                return caption
+            }
+            return "Latest weigh-in"
+        }
+        if weightManager.displayedStarting != nil {
+            return "Starting weight"
+        }
+        return "No weight logged"
+    }
+
+    private var currentWeightDisplay: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                if let weight = displayedHomeWeight {
+                    Text(WeightManager.format(weight))
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(EmberColors.ember)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .monospacedDigit()
+
+                    Text(weightManager.unit.label)
+                        .font(.title3)
+                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                } else {
+                    Text("—")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(EmberColors.ember)
+                }
+            }
+
+            Text(homeWeightSubtitle)
                 .font(.subheadline)
                 .foregroundColor(EmberColors.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(homeWeightAccessibilityLabel)
+    }
+
+    private var homeWeightAccessibilityLabel: String {
+        if let weight = displayedHomeWeight {
+            return "Current weight, \(WeightManager.format(weight)) \(weightManager.unit.label). \(homeWeightSubtitle)"
+        }
+        return "No weight logged"
     }
 
     private var addWeightButton: some View {
