@@ -267,6 +267,13 @@ class WeightManager: ObservableObject {
         return String(format: "%.1f", value)
     }
     
+    /// Weigh-ins whose date falls in `[start, end)`, oldest first.
+    func weighIns(from start: Date, to end: Date) -> [WeighIn] {
+        history
+            .filter { $0.date >= start && $0.date < end }
+            .sorted { $0.date < $1.date }
+    }
+    
     // MARK: - Mutations
     
     /// Logs a weigh-in. Returns pounds lost vs previous current weight when lower;

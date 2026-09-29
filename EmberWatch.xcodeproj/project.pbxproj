@@ -18,6 +18,7 @@
 		8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9F37E2885F4A5DA562B21E /* BoardView.swift */; };
 		764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */; };
 		8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */; };
+		FN4MEFMT0000000000000002 /* FoodNameFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FN4MEFMT0000000000000001 /* FoodNameFormatting.swift */; };
 		17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D178C9F2CD744DFAA82F292E /* WaterManager.swift */; };
 		7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */; };
 		9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */; };
@@ -45,6 +46,7 @@
 		LUCELF774E9036E13409391 /* LevelUpCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */; };
 		CTST00000000000000000002 /* CelebrationToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = CTST00000000000000000001 /* CelebrationToast.swift */; };
 		HSB0000000000000000000002 /* HomeStatBadges.swift in Sources */ = {isa = PBXBuildFile; fileRef = HSB0000000000000000000001 /* HomeStatBadges.swift */; };
+		WPV0000000000000000000002 /* WeeklyProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WPV0000000000000000000001 /* WeeklyProgressView.swift */; };
 		ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADDFR1END0000000000000001 /* AddFriendView.swift */; };
 		PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */; };
 		S5H0PV1EW000000000000002 /* SparksShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = S5H0PV1EW000000000000001 /* SparksShopView.swift */; };
@@ -67,6 +69,7 @@
 		BD9F37E2885F4A5DA562B21E /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
 		E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodLookupService.swift; sourceTree = "<group>"; };
+		FN4MEFMT0000000000000001 /* FoodNameFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodNameFormatting.swift; sourceTree = "<group>"; };
 		D178C9F2CD744DFAA82F292E /* WaterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterManager.swift; sourceTree = "<group>"; };
 		1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberFlameAvatar.swift; sourceTree = "<group>"; };
 		4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarManager.swift; sourceTree = "<group>"; };
@@ -95,6 +98,7 @@
 		LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelUpCelebrationView.swift; sourceTree = "<group>"; };
 		CTST00000000000000000001 /* CelebrationToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CelebrationToast.swift; sourceTree = "<group>"; };
 		HSB0000000000000000000001 /* HomeStatBadges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeStatBadges.swift; sourceTree = "<group>"; };
+		WPV0000000000000000000001 /* WeeklyProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyProgressView.swift; sourceTree = "<group>"; };
 		ADDFR1END0000000000000001 /* AddFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFriendView.swift; sourceTree = "<group>"; };
 		PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsView.swift; sourceTree = "<group>"; };
 		S5H0PV1EW000000000000001 /* SparksShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksShopView.swift; sourceTree = "<group>"; };
@@ -160,6 +164,7 @@
 				B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */,
 				3A0000060000000000000001 /* HomeView.swift */,
 				HSB0000000000000000000001 /* HomeStatBadges.swift */,
+				WPV0000000000000000000001 /* WeeklyProgressView.swift */,
 				E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */,
 				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
 				2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */,
@@ -191,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */,
+				FN4MEFMT0000000000000001 /* FoodNameFormatting.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -297,6 +303,7 @@
 				3A0000010000000000000001 /* EmberWatchApp.swift in Sources */,
 				3A0000050000000000000001 /* HomeView.swift in Sources */,
 				HSB0000000000000000000002 /* HomeStatBadges.swift in Sources */,
+				WPV0000000000000000000002 /* WeeklyProgressView.swift in Sources */,
 				F60718293A4B5C6D7E8F901A /* OnboardingView.swift in Sources */,
 				162E05446EEB40B484657D3E /* ShareView.swift in Sources */,
 				84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */,
@@ -304,6 +311,7 @@
 				8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */,
 				764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */,
 				8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */,
+				FN4MEFMT0000000000000002 /* FoodNameFormatting.swift in Sources */,
 				17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */,
 				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
 				9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */,

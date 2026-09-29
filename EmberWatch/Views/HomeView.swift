@@ -18,6 +18,7 @@ struct HomeView: View {
     @State private var showingAvatarPicker = false
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
+    @State private var showingWeeklyProgress = false
     @State private var showingHealthConnect = false
     @AppStorage("emberWatch.lastGreetingDate") private var lastGreetingDateString: String = ""
     
@@ -55,7 +56,7 @@ struct HomeView: View {
                         HomeQuickActionRow(
                             onLogFood: { selectedTab = 1 }, // Food diary tab
                             onLogWorkout: { selectedTab = 2 }, // Workout tab
-                            onProgress: { showingWeightSettings = true },
+                            onProgress: { showingWeeklyProgress = true },
                             onGoals: { showingGoals = true }
                         )
                         
@@ -131,6 +132,14 @@ struct HomeView: View {
             .sheet(isPresented: $showingWeightSettings) {
                 WeightSettingsView(isPresented: $showingWeightSettings)
                     .environmentObject(weightManager)
+                    .environmentObject(levelManager)
+            }
+            .sheet(isPresented: $showingWeeklyProgress) {
+                WeeklyProgressView(isPresented: $showingWeeklyProgress)
+                    .environmentObject(weightManager)
+                    .environmentObject(foodDataManager)
+                    .environmentObject(calorieGoalManager)
+                    .environmentObject(healthKitManager)
                     .environmentObject(levelManager)
             }
             .sheet(isPresented: $showingHealthConnect) {
