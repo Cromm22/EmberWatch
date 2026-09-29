@@ -1,35 +1,41 @@
 import SwiftUI
 import Charts
 
-/// Builds a calendar-month X-axis for the weight projection chart.
+/// Builds a week-based X-axis for the weight projection chart.
 /// Tick dates stay in-domain (from today through the projected goal date) and
 /// are thinned on long spans so labels stay readable.
-enum WeightProjectionMonthAxis {
-    static func date(byAddingMonths months: Double, to date: Date, calendar: Calendar = .current) -> Date {
-        let wholeMonths = Int(months.rounded(.towardZero))
-        let fractionalMonth = months - Double(wholeMonths)
-        let afterMonths = calendar.date(byAdding: .month, value: wholeMonths, to: date) ?? date
-        let extraDays = Int((fractionalMonth * 30.4375).rounded())
-        return calendar.date(byAdding: .day, value: extraDays, to: afterMonths) ?? afterMonths
+enum WeightProjectionWeekAxis {
+    static let daysPerWeek = 7.0
+    /// Average days per calendar month; keeps the 4 lb/month rate aligned to weeks.
+    static let daysPerMonth = 30.4375
+    
+    static func date(byAddingWeeks weeks: Double, to date: Date, calendar: Calendar = .current) -> Date {
+        let days = Int((weeks * daysPerWeek).rounded())
+        return calendar.date(byAdding: .day, value: days, to: date) ?? date
     }
     
-    /// Months between consecutive labeled ticks. Targets about 4–6 readable labels.
-    static func stride(forMonthsToGoal monthsToGoal: Double) -> Int {
-        let span = max(1, Int(ceil(monthsToGoal)))
+    /// Weeks between consecutive labeled ticks. Targets about 4–6 readable labels.
+    /// Short spans are weekly; longer spans step by 2 or 4 weeks (or a 4-week multiple).
+    static func stride(forWeeksToGoal weeksToGoal: Double) -> Int {
+        let span = max(1, Int(ceil(weeksToGoal)))
         let targetGaps = 4
-        return max(1, Int((Double(span) / Double(targetGaps)).rounded()))
+        let raw = max(1, Int((Double(span) / Double(targetGaps)).rounded()))
+        if raw <= 1 { return 1 }
+        if raw <= 2 { return 2 }
+        if raw <= 6 { return 4 }
+        return ((raw + 3) / 4) * 4
     }
     
-    static func tickDates(from start: Date, monthsToGoal: Double, calendar: Calendar = .current) -> [Date] {
-        let safeMonths = max(monthsToGoal, 0.25)
-        let goal = date(byAddingMonths: safeMonths, to: start, calendar: calendar)
-        let step = stride(forMonthsToGoal: safeMonths)
+    static func tickDates(from start: Date, weeksToGoal: Double, calendar: Calendar = .current) -> [Date] {
+        let safeWeeks = max(weeksToGoal, 1.0 / daysPerWeek)
+        let goal = date(byAddingWeeks: safeWeeks, to: start, calendar: calendar)
+        let step = stride(forWeeksToGoal: safeWeeks)
         var dates: [Date] = [start]
         var offset = step
         // Keep the last interior tick far enough from the goal so labels do not collide.
-        let lastOpenOffset = safeMonths - Double(step) * 0.4
+        let lastOpenOffset = safeWeeks - Double(step) * 0.55
         while Double(offset) < lastOpenOffset {
-            dates.append(date(byAddingMonths: Double(offset), to: start, calendar: calendar))
+            dates.append(date(byAddingWeeks: Double(offset), to: start, calendar: calendar))
             offset += step
         }
         if shouldAppendGoal(goal, after: dates.last ?? start, calendar: calendar) {
@@ -38,18 +44,18 @@ enum WeightProjectionMonthAxis {
         return dates
     }
     
-    /// Abbreviated month (Jan, Feb, …). Adds a two-digit year when the tick is
-    /// not in the starting calendar year so Sep / Sep 27 stay distinct.
+    /// Week index from the start date: Wk 1, Wk 2, …
     static func label(for date: Date, start: Date, calendar: Calendar = .current) -> String {
-        let monthOnly = Date.FormatStyle().month(.abbreviated)
-        if calendar.component(.year, from: date) != calendar.component(.year, from: start) {
-            return date.formatted(monthOnly.year(.twoDigits))
-        }
-        return date.formatted(monthOnly)
+        let startDay = calendar.startOfDay(for: start)
+        let tickDay = calendar.startOfDay(for: date)
+        let days = calendar.dateComponents([.day], from: startDay, to: tickDay).day ?? 0
+        let weeks = Double(max(0, days)) / daysPerWeek
+        let weekNumber = max(1, Int(weeks.rounded()) + 1)
+        return "Wk \(weekNumber)"
     }
     
     private static func shouldAppendGoal(_ goal: Date, after last: Date, calendar: Calendar) -> Bool {
-        !calendar.isDate(last, equalTo: goal, toGranularity: .month)
+        !calendar.isDate(last, equalTo: goal, toGranularity: .weekOfYear)
     }
 }
 
@@ -60,6 +66,10 @@ struct WeightProjectionChart: View {
     let unit: WeightUnit
     
     private let lbsPerMonth: Double = 4.0
+    
+    private var lbsPerWeek: Double {
+        lbsPerMonth * WeightProjectionWeekAxis.daysPerWeek / WeightProjectionWeekAxis.daysPerMonth
+    }
     
     private struct DataPoint: Identifiable {
         let id = UUID()
@@ -72,12 +82,21 @@ struct WeightProjectionChart: View {
         Calendar.current.startOfDay(for: Date())
     }
     
-    private var monthsToGoal: Double {
-        abs(goalWeightLb - startingWeightLb) / lbsPerMonth
+    private var weeksToGoal: Double {
+        abs(goalWeightLb - startingWeightLb) / lbsPerWeek
+    }
+    
+    private var weeksToGoalCaption: String {
+        let weeks = max(1, Int(weeksToGoal.rounded()))
+        return weeks == 1 ? "1 week to goal" : "\(weeks) weeks to goal"
+    }
+    
+    private var projectionRateCaption: String {
+        String(format: "Projection (%.1f lb/wk)", lbsPerWeek)
     }
     
     private var goalDate: Date {
-        let projected = WeightProjectionMonthAxis.date(byAddingMonths: monthsToGoal, to: startDate)
+        let projected = WeightProjectionWeekAxis.date(byAddingWeeks: weeksToGoal, to: startDate)
         if projected <= startDate {
             return Calendar.current.date(byAdding: .day, value: 1, to: startDate) ?? startDate.addingTimeInterval(86_400)
         }
@@ -85,7 +104,7 @@ struct WeightProjectionChart: View {
     }
     
     private var xAxisTickDates: [Date] {
-        WeightProjectionMonthAxis.tickDates(from: startDate, monthsToGoal: monthsToGoal)
+        WeightProjectionWeekAxis.tickDates(from: startDate, weeksToGoal: weeksToGoal)
     }
     
     private var projectionPoints: [DataPoint] {
@@ -105,8 +124,8 @@ struct WeightProjectionChart: View {
         let isGaining = weightDifference > 0
         let currentProgress = isGaining ? (current - startingWeightLb) : (startingWeightLb - current)
         let progressRatio = currentProgress / abs(weightDifference)
-        let currentMonth = progressRatio * monthsToGoal
-        let currentDate = WeightProjectionMonthAxis.date(byAddingMonths: max(0, currentMonth), to: startDate)
+        let currentWeek = progressRatio * weeksToGoal
+        let currentDate = WeightProjectionWeekAxis.date(byAddingWeeks: max(0, currentWeek), to: startDate)
         
         return DataPoint(date: currentDate, weightLb: current, isCurrent: true)
     }
@@ -131,7 +150,7 @@ struct WeightProjectionChart: View {
                 
                 Spacer()
                 
-                Text("\(Int(monthsToGoal.rounded())) months to goal")
+                Text(weeksToGoalCaption)
                     .font(.caption)
                     .foregroundColor(EmberColors.muted)
             }
@@ -139,7 +158,7 @@ struct WeightProjectionChart: View {
             Chart {
                 ForEach(projectionPoints) { point in
                     LineMark(
-                        x: .value("Month", point.date),
+                        x: .value("Week", point.date),
                         y: .value("Weight", unit.fromPounds(point.weightLb))
                     )
                     .foregroundStyle(EmberColors.ember)
@@ -148,7 +167,7 @@ struct WeightProjectionChart: View {
                 
                 ForEach(projectionPoints) { point in
                     PointMark(
-                        x: .value("Month", point.date),
+                        x: .value("Week", point.date),
                         y: .value("Weight", unit.fromPounds(point.weightLb))
                     )
                     .foregroundStyle(EmberColors.ember)
@@ -157,7 +176,7 @@ struct WeightProjectionChart: View {
                 
                 if let current = currentWeightPoint {
                     PointMark(
-                        x: .value("Month", current.date),
+                        x: .value("Week", current.date),
                         y: .value("Weight", unit.fromPounds(current.weightLb))
                     )
                     .foregroundStyle(EmberColors.gold)
@@ -178,7 +197,7 @@ struct WeightProjectionChart: View {
                 AxisMarks(values: xAxisTickDates) { value in
                     AxisValueLabel {
                         if let date = value.as(Date.self) {
-                            Text(WeightProjectionMonthAxis.label(for: date, start: startDate))
+                            Text(WeightProjectionWeekAxis.label(for: date, start: startDate))
                                 .font(.caption2)
                                 .foregroundColor(EmberColors.muted)
                         }
@@ -209,7 +228,7 @@ struct WeightProjectionChart: View {
                     Circle()
                         .fill(EmberColors.ember)
                         .frame(width: 8, height: 8)
-                    Text("Projection (4 lb/mo)")
+                    Text(projectionRateCaption)
                         .font(.caption2)
                         .foregroundColor(EmberColors.muted)
                 }

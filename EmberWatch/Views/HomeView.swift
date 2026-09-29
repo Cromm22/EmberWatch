@@ -506,12 +506,25 @@ struct HomeView: View {
                 }
             }
 
-            HomeWeightTrendChart(
-                entries: weightManager.history,
-                startingWeightLb: weightManager.startingWeightLb,
-                currentWeightLb: weightManager.currentWeightLb,
-                unit: weightManager.unit
-            )
+            Group {
+                if let start = weightManager.startingWeightLb,
+                   let goal = weightManager.goalWeightLb,
+                   abs(start - goal) > 0.5 {
+                    WeightProjectionChart(
+                        startingWeightLb: start,
+                        goalWeightLb: goal,
+                        currentWeightLb: weightManager.currentWeightLb,
+                        unit: weightManager.unit
+                    )
+                } else {
+                    HomeWeightTrendChart(
+                        entries: weightManager.history,
+                        startingWeightLb: weightManager.startingWeightLb,
+                        currentWeightLb: weightManager.currentWeightLb,
+                        unit: weightManager.unit
+                    )
+                }
+            }
             .onTapGesture {
                 showingWeightSettings = true
             }
