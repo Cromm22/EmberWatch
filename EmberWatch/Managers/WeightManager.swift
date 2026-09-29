@@ -26,6 +26,21 @@ enum WeightUnit: String, CaseIterable, Identifiable {
     }
 }
 
+/// How the user specifies a lose-weight timeline: weekly pace or a target date.
+enum WeightGoalTiming: String, CaseIterable, Identifiable {
+    case weeklyPace
+    case targetDate
+    
+    var id: String { rawValue }
+    
+    var label: String {
+        switch self {
+        case .weeklyPace: return "Pace"
+        case .targetDate: return "Date"
+        }
+    }
+}
+
 struct WeighIn: Codable, Identifiable, Equatable {
     var id: UUID
     var date: Date
@@ -67,6 +82,27 @@ class WeightManager: ObservableObject {
         didSet { persistHistory() }
     }
     
+    /// Weekly change toward goal, always stored in pounds per week.
+    /// Default matches the existing 4 lb/month projection (~0.92 lb/week).
+    @Published var weeklyPaceLb: Double {
+        didSet { persistPace() }
+    }
+    
+    /// Optional calendar target for reaching goal weight.
+    @Published var targetDate: Date? {
+        didSet { persistTargetDate() }
+    }
+    
+    /// Whether the user last set a weekly pace or a target date.
+    @Published var timingMode: WeightGoalTiming {
+        didSet {
+            UserDefaults.standard.set(timingMode.rawValue, forKey: Keys.timingMode)
+        }
+    }
+    
+    /// Matches the original hardcoded 4 lb/month projection used by the weight graph.
+    static let defaultWeeklyPaceLb = 4.0 * 7.0 / 30.4375
+    
     private enum Keys {
         static let starting = "startingWeightLb"
         static let current = "bodyWeightLb"
@@ -76,6 +112,10 @@ class WeightManager: ObservableObject {
         static let hasStarting = "startingWeightLbSet"
         static let hasCurrent = "bodyWeightLbSet"
         static let hasGoal = "goalWeightLbSet"
+        static let weeklyPace = "weightGoalWeeklyPaceLb"
+        static let targetDate = "weightGoalTargetDate"
+        static let hasTargetDate = "weightGoalTargetDateSet"
+        static let timingMode = "weightGoalTimingMode"
     }
     
     private let maxHistory = 10
@@ -111,6 +151,22 @@ class WeightManager: ObservableObject {
             self.history = decoded
         } else {
             self.history = []
+        }
+        
+        let storedPace = defaults.double(forKey: Keys.weeklyPace)
+        self.weeklyPaceLb = storedPace > 0 ? storedPace : Self.defaultWeeklyPaceLb
+        
+        if defaults.bool(forKey: Keys.hasTargetDate) {
+            self.targetDate = Date(timeIntervalSince1970: defaults.double(forKey: Keys.targetDate))
+        } else {
+            self.targetDate = nil
+        }
+        
+        if let raw = defaults.string(forKey: Keys.timingMode),
+           let mode = WeightGoalTiming(rawValue: raw) {
+            self.timingMode = mode
+        } else {
+            self.timingMode = .weeklyPace
         }
     }
     
@@ -149,6 +205,59 @@ class WeightManager: ObservableObject {
         } else {
             return "\(formatted) \(unitLabel) under goal"
         }
+    }
+    
+    /// 0...1 progress from starting weight toward goal. Uses current, else starting (0%).
+    var goalProgress: Double {
+        guard let start = startingWeightLb, let goal = goalWeightLb else { return 0 }
+        let current = currentWeightLb ?? start
+        let total = start - goal
+        if abs(total) < 0.05 {
+            return abs(current - goal) < 0.05 ? 1 : 0
+        }
+        return min(1, max(0, (start - current) / total))
+    }
+    
+    var hasWeightGoal: Bool {
+        startingWeightLb != nil && goalWeightLb != nil
+    }
+    
+    var displayedWeeklyPace: Double {
+        unit.fromPounds(weeklyPaceLb)
+    }
+    
+    /// Pace the projection graph should use, honoring date mode when a target is set.
+    func resolvedWeeklyPaceLb(startingWeightLb: Double, goalWeightLb: Double, from startDate: Date = Date()) -> Double {
+        switch timingMode {
+        case .weeklyPace:
+            return max(0.05, weeklyPaceLb)
+        case .targetDate:
+            guard let date = targetDate else { return max(0.05, weeklyPaceLb) }
+            let start = Calendar.current.startOfDay(for: startDate)
+            let end = Calendar.current.startOfDay(for: date)
+            let weeks = end.timeIntervalSince(start) / (7 * 24 * 60 * 60)
+            let delta = abs(goalWeightLb - startingWeightLb)
+            if weeks <= 0.1 { return max(0.05, weeklyPaceLb) }
+            return max(0.05, delta / weeks)
+        }
+    }
+    
+    func projectedGoalDate(startingWeightLb: Double? = nil, goalWeightLb: Double? = nil, from startDate: Date = Date()) -> Date? {
+        if timingMode == .targetDate, let targetDate {
+            return targetDate
+        }
+        let startLb = startingWeightLb ?? self.startingWeightLb
+        let goalLb = goalWeightLb ?? self.goalWeightLb
+        guard let startLb, let goalLb else { return nil }
+        let remaining: Double
+        if let current = currentWeightLb {
+            remaining = abs(current - goalLb)
+        } else {
+            remaining = abs(startLb - goalLb)
+        }
+        let pace = max(0.05, weeklyPaceLb)
+        let weeks = remaining / pace
+        return Calendar.current.date(byAdding: .day, value: Int((weeks * 7).rounded()), to: Calendar.current.startOfDay(for: startDate))
     }
     
     static func format(_ value: Double) -> String {
@@ -215,6 +324,23 @@ class WeightManager: ObservableObject {
         goalWeightLb = nil
     }
     
+    func setWeeklyPace(_ valueInUnit: Double) {
+        weeklyPaceLb = max(0.05, unit.toPounds(valueInUnit))
+        timingMode = .weeklyPace
+    }
+    
+    func setTargetDate(_ date: Date?) {
+        targetDate = date
+        if date != nil {
+            timingMode = .targetDate
+        }
+    }
+    
+    func clearTargetDate() {
+        targetDate = nil
+        timingMode = .weeklyPace
+    }
+    
     // MARK: - Persistence
     
     private func persistStarting() {
@@ -253,6 +379,21 @@ class WeightManager: ObservableObject {
     private func persistHistory() {
         if let data = try? JSONEncoder().encode(history) {
             UserDefaults.standard.set(data, forKey: Keys.history)
+        }
+    }
+    
+    private func persistPace() {
+        UserDefaults.standard.set(weeklyPaceLb, forKey: Keys.weeklyPace)
+    }
+    
+    private func persistTargetDate() {
+        let defaults = UserDefaults.standard
+        if let date = targetDate {
+            defaults.set(date.timeIntervalSince1970, forKey: Keys.targetDate)
+            defaults.set(true, forKey: Keys.hasTargetDate)
+        } else {
+            defaults.removeObject(forKey: Keys.targetDate)
+            defaults.set(false, forKey: Keys.hasTargetDate)
         }
     }
 }

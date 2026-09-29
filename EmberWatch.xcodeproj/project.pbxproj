@@ -51,6 +51,8 @@
 		PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */; };
 		S5H0PV1EW000000000000002 /* SparksShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = S5H0PV1EW000000000000001 /* SparksShopView.swift */; };
 		S5H0P5T0R300000000000002 /* SparksShopStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = S5H0P5T0R300000000000001 /* SparksShopStore.swift */; };
+		G0AL5V13W000000000000002 /* GoalsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G0AL5V13W000000000000001 /* GoalsView.swift */; };
+		WKG0ALMGR000000000000002 /* WorkoutGoalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = WKG0ALMGR000000000000001 /* WorkoutGoalManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -101,6 +103,8 @@
 		PR0F1L3S3TT1NG5V13W001 /* ProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsView.swift; sourceTree = "<group>"; };
 		S5H0PV1EW000000000000001 /* SparksShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksShopView.swift; sourceTree = "<group>"; };
 		S5H0P5T0R300000000000001 /* SparksShopStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksShopStore.swift; sourceTree = "<group>"; };
+		G0AL5V13W000000000000001 /* GoalsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsView.swift; sourceTree = "<group>"; };
+		WKG0ALMGR000000000000001 /* WorkoutGoalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutGoalManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +177,7 @@
 				ETO0000000000000000000001 /* EmberTalkOverlay.swift */,
 				CTST00000000000000000001 /* CelebrationToast.swift */,
 				WPC0000000000000000000001 /* WeightProjectionChart.swift */,
+				G0AL5V13W000000000000001 /* GoalsView.swift */,
 				LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */,
 			);
 			path = Views;
@@ -209,6 +214,7 @@
 				S5H0P5T0R300000000000001 /* SparksShopStore.swift */,
 				F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */,
 				B1C2D3E4F5061728394A5B6C /* WeightManager.swift */,
+				WKG0ALMGR000000000000001 /* WorkoutGoalManager.swift */,
 				8FFD5926647D460D8448F0BD /* FriendsManager.swift */,
 				SHMGR0000000000000000001 /* SearchHistoryManager.swift */,
 				9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */,
@@ -333,6 +339,8 @@
 				ETO0000000000000000000002 /* EmberTalkOverlay.swift in Sources */,
 				CTST00000000000000000002 /* CelebrationToast.swift in Sources */,
 				WPC0000000000000000000002 /* WeightProjectionChart.swift in Sources */,
+				G0AL5V13W000000000000002 /* GoalsView.swift in Sources */,
+				WKG0ALMGR000000000000002 /* WorkoutGoalManager.swift in Sources */,
 				ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */,
 				PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */,
 			);

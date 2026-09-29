@@ -64,11 +64,19 @@ struct WeightProjectionChart: View {
     let goalWeightLb: Double
     let currentWeightLb: Double?
     let unit: WeightUnit
+    /// Optional override (e.g. a live edit preview). When nil, uses WeightManager pace/date.
+    var weeklyPaceLb: Double? = nil
     
-    private let lbsPerMonth: Double = 4.0
+    @EnvironmentObject var weightManager: WeightManager
     
     private var lbsPerWeek: Double {
-        lbsPerMonth * WeightProjectionWeekAxis.daysPerWeek / WeightProjectionWeekAxis.daysPerMonth
+        if let weeklyPaceLb {
+            return max(0.05, weeklyPaceLb)
+        }
+        return weightManager.resolvedWeeklyPaceLb(
+            startingWeightLb: startingWeightLb,
+            goalWeightLb: goalWeightLb
+        )
     }
     
     private struct DataPoint: Identifiable {

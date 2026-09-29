@@ -11,8 +11,10 @@ struct HomeView: View {
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var weightManager: WeightManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
+    @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
     @Binding var selectedTab: Int
     @State private var showingGoalSettings = false
+    @State private var showingGoals = false
     @State private var showingAvatarPicker = false
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
@@ -55,7 +57,7 @@ struct HomeView: View {
                             onLogFood: { selectedTab = 1 }, // Food diary tab
                             onLogWorkout: { selectedTab = 2 }, // Workout tab
                             onProgress: { showingWeeklyProgress = true },
-                            onGoals: { showingGoalSettings = true }
+                            onGoals: { showingGoals = true }
                         )
                         
                         weightCard
@@ -108,6 +110,14 @@ struct HomeView: View {
             .sheet(isPresented: $showingGoalSettings) {
                 GoalSettingsView(isPresented: $showingGoalSettings)
                     .environmentObject(calorieGoalManager)
+            }
+            .sheet(isPresented: $showingGoals) {
+                GoalsView(isPresented: $showingGoals)
+                    .environmentObject(calorieGoalManager)
+                    .environmentObject(weightManager)
+                    .environmentObject(healthKitManager)
+                    .environmentObject(foodDataManager)
+                    .environmentObject(workoutGoalManager)
             }
             .sheet(isPresented: $showingAvatarPicker) {
                 AvatarPickerView()
