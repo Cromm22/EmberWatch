@@ -1,7 +1,7 @@
 import Foundation
 
 struct FoodProduct: Identifiable, Equatable, Sendable {
-    let id = UUID()
+    let id: UUID
     let barcode: String
     let name: String
     let servingSize: String
@@ -18,6 +18,33 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
         case usda = "USDA"
         case fatSecret = "FatSecret"
         case curated = "Curated"
+    }
+    
+    /// Central entry point for every search / lookup product so ALL CAPS names
+    /// (and brands) are title-cased before they reach results, recents, or logs.
+    init(
+        barcode: String,
+        name: String,
+        servingSize: String,
+        caloriesPer100g: Double,
+        proteinPer100g: Double,
+        carbsPer100g: Double,
+        fatPer100g: Double,
+        servingSizeGrams: Double?,
+        brand: String?,
+        source: FoodSource
+    ) {
+        self.id = UUID()
+        self.barcode = barcode
+        self.name = name.foodDisplayName
+        self.servingSize = servingSize
+        self.caloriesPer100g = caloriesPer100g
+        self.proteinPer100g = proteinPer100g
+        self.carbsPer100g = carbsPer100g
+        self.fatPer100g = fatPer100g
+        self.servingSizeGrams = servingSizeGrams
+        self.brand = brand?.foodDisplayName
+        self.source = source
     }
     
     var caloriesPerServing: Double {

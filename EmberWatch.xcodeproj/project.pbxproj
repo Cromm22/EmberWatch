@@ -18,6 +18,7 @@
 		8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9F37E2885F4A5DA562B21E /* BoardView.swift */; };
 		764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */; };
 		8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */; };
+		FN4MEFMT0000000000000002 /* FoodNameFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FN4MEFMT0000000000000001 /* FoodNameFormatting.swift */; };
 		17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D178C9F2CD744DFAA82F292E /* WaterManager.swift */; };
 		7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */; };
 		9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */; };
@@ -65,6 +66,7 @@
 		BD9F37E2885F4A5DA562B21E /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		B03F5FA19E56425B88DF41C0 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
 		E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodLookupService.swift; sourceTree = "<group>"; };
+		FN4MEFMT0000000000000001 /* FoodNameFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodNameFormatting.swift; sourceTree = "<group>"; };
 		D178C9F2CD744DFAA82F292E /* WaterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterManager.swift; sourceTree = "<group>"; };
 		1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberFlameAvatar.swift; sourceTree = "<group>"; };
 		4C8E7B9A1F2D4E5A9D3B6F12 /* AvatarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarManager.swift; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 			isa = PBXGroup;
 			children = (
 				E207C3D8A8E94B9795D0B344 /* FoodLookupService.swift */,
+				FN4MEFMT0000000000000001 /* FoodNameFormatting.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -298,6 +301,7 @@
 				8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */,
 				764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */,
 				8F2CDB3CB6AF4483BE07C4BB /* FoodLookupService.swift in Sources */,
+				FN4MEFMT0000000000000002 /* FoodNameFormatting.swift in Sources */,
 				17A3DEE4B67041BFA987AF40 /* WaterManager.swift in Sources */,
 				7A96FDEB984F4C908FB94581 /* EmberFlameAvatar.swift in Sources */,
 				9B1A2F3E5D7C4A1B8E6F03C2 /* AvatarManager.swift in Sources */,
