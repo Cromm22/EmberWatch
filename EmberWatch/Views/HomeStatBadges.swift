@@ -18,6 +18,56 @@ enum HomeStatBadgePalette {
     static let boostInk = Color(hex: "#6B4000")
 }
 
+/// Compact name bubble shown when a Home streak / XP badge is tapped.
+private struct HomeStatTooltipLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .foregroundStyle(EmberColors.cream)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .fixedSize()
+    }
+}
+
+/// Anchors a small auto-dismissing popover to a badge. Tap elsewhere also dismisses.
+private struct HomeStatTooltipModifier: ViewModifier {
+    let text: String
+    var arrowEdge: Edge = .top
+    @State private var isPresented = false
+
+    func body(content: Content) -> some View {
+        Button {
+            isPresented = true
+        } label: {
+            content
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isPresented, arrowEdge: arrowEdge) {
+            HomeStatTooltipLabel(text: text)
+                .onTapGesture { isPresented = false }
+                .presentationCompactAdaptation(.popover)
+        }
+        .task(id: isPresented) {
+            guard isPresented else { return }
+            do {
+                try await Task.sleep(for: .seconds(2))
+                isPresented = false
+            } catch {
+                // Cancelled because the bubble was already dismissed.
+            }
+        }
+    }
+}
+
+private extension View {
+    func homeStatTooltip(_ text: String, arrowEdge: Edge = .top) -> some View {
+        modifier(HomeStatTooltipModifier(text: text, arrowEdge: arrowEdge))
+    }
+}
+
 /// Compact top-right header badge: flame + streak day count (number only).
 struct DailyStreakPill: View {
     let streak: Int
@@ -40,9 +90,12 @@ struct DailyStreakPill: View {
             Capsule(style: .continuous)
                 .fill(HomeStatBadgePalette.streakFill)
         )
+        .homeStatTooltip("Daily Streak", arrowEdge: .top)
         .fixedSize(horizontal: true, vertical: true)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Daily streak, day \(max(0, streak))")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Shows Daily Streak")
     }
 }
 
@@ -55,19 +108,27 @@ struct HomeStatBadgeCard: View {
     let iconColor: Color
     let valueColor: Color
     var action: (() -> Void)? = nil
+    var tooltip: String? = nil
+    var tooltipArrowEdge: Edge = .bottom
+
+    private var isTappable: Bool { action != nil || tooltip != nil }
 
     var body: some View {
         Group {
             if let action {
                 Button(action: action) { cardContent }
                     .buttonStyle(.plain)
+            } else if let tooltip {
+                cardContent
+                    .homeStatTooltip(tooltip, arrowEdge: tooltipArrowEdge)
             } else {
                 cardContent
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label), \(value)")
-        .accessibilityAddTraits(action == nil ? [] : .isButton)
+        .accessibilityAddTraits(isTappable ? .isButton : [])
+        .accessibilityHint(tooltip.map { "Shows \($0)" } ?? "")
     }
 
     private var cardContent: some View {
@@ -121,7 +182,8 @@ struct HomeStatBadgeRow: View {
                 label: "Daily Streak",
                 background: HomeStatBadgePalette.streakFill,
                 iconColor: HomeStatBadgePalette.streakIcon,
-                valueColor: HomeStatBadgePalette.streakInk
+                valueColor: HomeStatBadgePalette.streakInk,
+                tooltip: "Daily Streak"
             )
 
             HomeStatBadgeCard(
@@ -140,7 +202,8 @@ struct HomeStatBadgeRow: View {
                 label: "XP Boost",
                 background: HomeStatBadgePalette.boostFill,
                 iconColor: HomeStatBadgePalette.boostIcon,
-                valueColor: HomeStatBadgePalette.boostInk
+                valueColor: HomeStatBadgePalette.boostInk,
+                tooltip: "XP Bonus"
             )
         }
         .frame(maxWidth: .infinity)
