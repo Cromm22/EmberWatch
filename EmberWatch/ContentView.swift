@@ -12,6 +12,7 @@ struct ContentView: View {
     @EnvironmentObject var feedbackManager: FeedbackManager
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
+    @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var showingFeedback = false
@@ -99,6 +100,7 @@ struct ContentView: View {
                     .environmentObject(levelManager)
                     .environmentObject(sparksManager)
                     .environmentObject(emberTalkManager)
+                    .environmentObject(workoutGoalManager)
                 
                 FoodDiaryView()
                     .tabItem {
