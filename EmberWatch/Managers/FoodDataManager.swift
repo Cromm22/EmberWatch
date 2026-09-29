@@ -19,6 +19,27 @@ class FoodDataManager: ObservableObject {
         fetchRecentEntries()
     }
     
+    /// All food entries with timestamps in `[start, end)`.
+    func entries(from start: Date, to end: Date) -> [FoodEntry] {
+        guard let modelContext else { return [] }
+        
+        let predicate = #Predicate<FoodEntry> { entry in
+            entry.timestamp >= start && entry.timestamp < end
+        }
+        
+        let descriptor = FetchDescriptor<FoodEntry>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.timestamp, order: .forward)]
+        )
+        
+        do {
+            return try modelContext.fetch(descriptor)
+        } catch {
+            print("Failed to fetch food entries in range: \(error)")
+            return []
+        }
+    }
+    
     func fetchTodayEntries() {
         guard let modelContext else { return }
         
