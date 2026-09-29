@@ -130,6 +130,99 @@ class HealthKitManager: ObservableObject {
         fetchTodayActivity(markAccessFromResult: markAccessFromResult)
     }
 
+    /// HealthKit workouts in `[start, end)` plus any local Quick Add rows in that window.
+    /// Does not replace today's published `workouts` list.
+    func fetchWorkouts(from start: Date, to end: Date, completion: @escaping ([WorkoutData]) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            DispatchQueue.main.async { [weak self] in
+                self?.pruneLocalWorkoutsToToday()
+                let locals = self?.localWorkouts.filter { $0.startDate >= start && $0.startDate < end } ?? []
+                completion(locals)
+            }
+            return
+        }
+
+        fetchWorkoutsInRange(from: start, to: end) { [weak self] rows, _ in
+            DispatchQueue.main.async {
+                guard let self else {
+                    completion([])
+                    return
+                }
+                self.pruneLocalWorkoutsToToday()
+                let locals = self.localWorkouts.filter { $0.startDate >= start && $0.startDate < end }
+                let localIDs = Set(locals.map(\.id))
+                completion(locals + rows.filter { !localIDs.contains($0.id) })
+            }
+        }
+    }
+
+    /// Active Energy (kcal) keyed by start-of-day for samples in `[start, end)`.
+    func fetchActiveEnergyByDay(from start: Date, to end: Date, completion: @escaping ([Date: Double]) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            DispatchQueue.main.async { completion([:]) }
+            return
+        }
+
+        let calendar = Calendar.current
+        let anchor = calendar.startOfDay(for: start)
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: .strictStartDate
+        )
+
+        let query = HKStatisticsCollectionQuery(
+            quantityType: activeEnergyType,
+            quantitySamplePredicate: predicate,
+            options: .cumulativeSum,
+            anchorDate: anchor,
+            intervalComponents: DateComponents(day: 1)
+        )
+
+        query.initialResultsHandler = { _, results, _ in
+            var map: [Date: Double] = [:]
+            if let results {
+                let lastIncluded = end.addingTimeInterval(-1)
+                results.enumerateStatistics(from: start, to: lastIncluded) { stats, _ in
+                    let kcal = stats.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
+                    map[calendar.startOfDay(for: stats.startDate)] = kcal
+                }
+            }
+            DispatchQueue.main.async {
+                completion(map)
+            }
+        }
+
+        healthStore.execute(query)
+    }
+
+    /// Workouts and per-day Active Energy for a date window. Completes on the main queue.
+    func fetchWeekActivity(
+        from start: Date,
+        to end: Date,
+        completion: @escaping (_ workouts: [WorkoutData], _ energyByDay: [Date: Double]) -> Void
+    ) {
+        let group = DispatchGroup()
+        var workouts: [WorkoutData] = []
+        var energy: [Date: Double] = [:]
+
+        group.enter()
+        fetchWorkouts(from: start, to: end) { rows in
+            workouts = rows
+            group.leave()
+        }
+
+        group.enter()
+        fetchActiveEnergyByDay(from: start, to: end) { map in
+            energy = map
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            completion(workouts, energy)
+        }
+    }
+
     /// Append a Quick Add workout to today's list without writing to HealthKit
     /// and without changing Active Energy (`totalCaloriesBurned`).
     func addLocalWorkout(_ workout: WorkoutData) {
@@ -347,9 +440,17 @@ class HealthKitManager: ObservableObject {
 
     private func fetchWorkoutsToday(completion: @escaping ([WorkoutData], Error?) -> Void) {
         let bounds = dayBounds()
+        fetchWorkoutsInRange(from: bounds.start, to: bounds.end, completion: completion)
+    }
+
+    private func fetchWorkoutsInRange(
+        from start: Date,
+        to end: Date,
+        completion: @escaping ([WorkoutData], Error?) -> Void
+    ) {
         let predicate = HKQuery.predicateForSamples(
-            withStart: bounds.start,
-            end: bounds.end,
+            withStart: start,
+            end: end,
             options: .strictStartDate
         )
         let sortDescriptor = NSSortDescriptor(
