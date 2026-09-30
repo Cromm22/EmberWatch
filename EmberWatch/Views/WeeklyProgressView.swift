@@ -13,6 +13,7 @@ enum WeeklyProgressWindow {
 }
 
 /// Display-ready weekly totals for weight, calorie days, and workouts.
+@MainActor
 struct WeeklyProgressSnapshot {
     let start: Date
     let end: Date

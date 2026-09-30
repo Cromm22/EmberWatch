@@ -101,7 +101,7 @@ class WeightManager: ObservableObject {
     }
     
     /// Matches the original hardcoded 4 lb/month projection used by the weight graph.
-    static let defaultWeeklyPaceLb = 4.0 * 7.0 / 30.4375
+    nonisolated static let defaultWeeklyPaceLb = 4.0 * 7.0 / 30.4375
     
     private enum Keys {
         static let starting = "startingWeightLb"
@@ -260,7 +260,7 @@ class WeightManager: ObservableObject {
         return Calendar.current.date(byAdding: .day, value: Int((weeks * 7).rounded()), to: Calendar.current.startOfDay(for: startDate))
     }
     
-    static func format(_ value: Double) -> String {
+    nonisolated static func format(_ value: Double) -> String {
         if abs(value - value.rounded()) < 0.05 {
             return String(Int(value.rounded()))
         }
