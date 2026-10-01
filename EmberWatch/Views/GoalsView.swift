@@ -349,18 +349,15 @@ struct WeightGoalEditView: View {
                             }
                         }
                         
-                        if let start = draftOrParsedStarting, let goal = draftOrParsedGoal, abs(start - goal) > 0.5 {
-                            WeightProjectionChart(
-                                startingWeightLb: start,
-                                goalWeightLb: goal,
-                                currentWeightLb: weightManager.currentWeightLb,
-                                unit: unit,
-                                weeklyPaceLb: previewWeeklyPaceLb(start: start, goal: goal)
-                            )
-                            .padding(.horizontal)
-                        }
+                        WeightProjectionChart(
+                            startingWeightLb: draftOrParsedStarting ?? weightManager.startingWeightLb,
+                            currentWeightLb: weightManager.currentWeightLb,
+                            history: weightManager.history,
+                            unit: unit
+                        )
+                        .padding(.horizontal)
                         
-                        Text("Saves to the same start and goal used on Home and in Weight settings, so the graph stays in sync.")
+                        Text("Saves to the same start and goal used on Home and in Weight settings.")
                             .font(.caption)
                             .foregroundColor(EmberColors.muted)
                             .multilineTextAlignment(.center)
@@ -404,27 +401,6 @@ struct WeightGoalEditView: View {
         if trimmed.isEmpty { return nil }
         if let value = parse(trimmed) { return unit.toPounds(value) }
         return draftStartingLb
-    }
-    
-    private var draftOrParsedGoal: Double? {
-        let trimmed = goalInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return nil }
-        if let value = parse(trimmed) { return unit.toPounds(value) }
-        return draftGoalLb
-    }
-    
-    private func previewWeeklyPaceLb(start: Double, goal: Double) -> Double {
-        if timingMode == .targetDate {
-            let startDay = Calendar.current.startOfDay(for: Date())
-            let end = Calendar.current.startOfDay(for: targetDate)
-            let weeks = end.timeIntervalSince(startDay) / (7 * 24 * 60 * 60)
-            let delta = abs(goal - start)
-            if weeks > 0.1 { return max(0.05, delta / weeks) }
-        }
-        if let pace = parse(paceInput) {
-            return max(0.05, unit.toPounds(pace))
-        }
-        return max(0.05, draftPaceLb)
     }
     
     private func goalField(title: String, text: Binding<String>, placeholder: String) -> some View {
