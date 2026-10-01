@@ -133,9 +133,9 @@ struct WeightProjectionChart: View {
     
     private struct DataPoint: Identifiable {
         let series: String
-        let date: Date
+        let dayNumber: Int
         let displayWeight: Double
-        var id: String { "\(series)-\(date.timeIntervalSince1970)" }
+        var id: String { "\(series)-\(dayNumber)" }
     }
     
     private var calendar: Calendar { Calendar.current }
@@ -197,12 +197,8 @@ struct WeightProjectionChart: View {
         }
     }
     
-    private var xAxisTickDates: [Date] {
-        WeightThirtyDayWindow.tickDates(from: windowStart)
-    }
-    
-    private var xDomain: ClosedRange<Date> {
-        windowStart...windowEnd
+    private var xDomain: ClosedRange<Int> {
+        1...WeightThirtyDayWindow.dayCount
     }
     
     private var yDomain: ClosedRange<Double> {
@@ -292,45 +288,38 @@ struct WeightProjectionChart: View {
         }
     }
     
-    @ChartContentBuilder
+    /// Conservative iOS 16 API: `LineMark(x:y:)` only. `series:` is not used because
+    /// the compiler can resolve that third label as `PointMark`/`LineMark` `z:`.
     private func projectedLine(_ point: DataPoint) -> some ChartContent {
-        LineMark(
-            x: .value("Day", point.date),
-            y: .value("Weight", point.displayWeight),
-            series: .value("Series", point.series)
-        )
-        .foregroundStyle(EmberColors.ember)
-        .lineStyle(WeightChartStyle.projectedStroke)
+        let x: PlottableValue<Int> = .value("Day", point.dayNumber)
+        let y: PlottableValue<Double> = .value("Weight", point.displayWeight)
+        return LineMark(x: x, y: y)
+            .foregroundStyle(EmberColors.ember)
+            .lineStyle(WeightChartStyle.projectedStroke)
     }
     
-    @ChartContentBuilder
     private func actualLine(_ point: DataPoint) -> some ChartContent {
-        LineMark(
-            x: .value("Day", point.date),
-            y: .value("Weight", point.displayWeight),
-            series: .value("Series", point.series)
-        )
-        .interpolationMethod(.linear)
-        .foregroundStyle(EmberColors.gold)
-        .lineStyle(WeightChartStyle.actualStroke)
+        let x: PlottableValue<Int> = .value("Day", point.dayNumber)
+        let y: PlottableValue<Double> = .value("Weight", point.displayWeight)
+        return LineMark(x: x, y: y)
+            .interpolationMethod(.linear)
+            .foregroundStyle(EmberColors.gold)
+            .lineStyle(WeightChartStyle.actualStroke)
     }
     
-    @ChartContentBuilder
     private func actualPoint(_ point: DataPoint) -> some ChartContent {
-        PointMark(
-            x: .value("Day", point.date),
-            y: .value("Weight", point.displayWeight),
-            series: .value("Series", point.series)
-        )
-        .foregroundStyle(EmberColors.gold)
-        .symbolSize(WeightChartStyle.pointSize)
+        let x: PlottableValue<Int> = .value("Day", point.dayNumber)
+        let y: PlottableValue<Double> = .value("Weight", point.displayWeight)
+        return PointMark(x: x, y: y)
+            .foregroundStyle(EmberColors.gold)
+            .symbolSize(WeightChartStyle.pointSize)
     }
     
     private var gridLineColor: Color { EmberColors.muted.opacity(0.2) }
     private var tickColor: Color { EmberColors.muted.opacity(0.35) }
     
     private var xAxisMarks: some AxisContent {
-        AxisMarks(values: xAxisTickDates) { value in
+        AxisMarks(values: WeightThirtyDayWindow.labeledDayNumbers) { value in
             AxisValueLabel {
                 xTickText(value)
             }
@@ -343,8 +332,8 @@ struct WeightProjectionChart: View {
     
     @ViewBuilder
     private func xTickText(_ value: AxisValue) -> some View {
-        if let date = value.as(Date.self) {
-            Text(WeightThirtyDayWindow.label(for: date, start: windowStart))
+        if let day = value.as(Int.self) {
+            Text("Day \(day)")
                 .font(.caption2)
                 .foregroundColor(EmberColors.muted)
         }
@@ -407,7 +396,7 @@ struct WeightProjectionChart: View {
     private func makePoint(series: String, date: Date, weightLb: Double) -> DataPoint {
         DataPoint(
             series: series,
-            date: date,
+            dayNumber: WeightThirtyDayWindow.dayNumber(for: date, start: windowStart),
             displayWeight: unit.fromPounds(weightLb)
         )
     }
