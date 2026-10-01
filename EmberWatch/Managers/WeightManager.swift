@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum WeightUnit: String, CaseIterable, Identifiable {
+enum WeightUnit: String, CaseIterable, Identifiable, Sendable {
     case lb
     case kg
     
@@ -41,7 +41,7 @@ enum WeightGoalTiming: String, CaseIterable, Identifiable {
     }
 }
 
-struct WeighIn: Codable, Identifiable, Equatable {
+struct WeighIn: Codable, Identifiable, Equatable, Sendable {
     var id: UUID
     var date: Date
     /// Always stored in pounds.
@@ -118,7 +118,8 @@ class WeightManager: ObservableObject {
         static let timingMode = "weightGoalTimingMode"
     }
     
-    private let maxHistory = 10
+    /// Enough for a 30-day cycle of daily weigh-ins, including a few same-day extras.
+    private let maxHistory = 90
     
     init() {
         let defaults = UserDefaults.standard

@@ -525,25 +525,12 @@ struct HomeView: View {
                 }
             }
 
-            Group {
-                if let start = weightManager.startingWeightLb,
-                   let goal = weightManager.goalWeightLb,
-                   abs(start - goal) > 0.5 {
-                    WeightProjectionChart(
-                        startingWeightLb: start,
-                        goalWeightLb: goal,
-                        currentWeightLb: weightManager.currentWeightLb,
-                        unit: weightManager.unit
-                    )
-                } else {
-                    HomeWeightTrendChart(
-                        entries: weightManager.history,
-                        startingWeightLb: weightManager.startingWeightLb,
-                        currentWeightLb: weightManager.currentWeightLb,
-                        unit: weightManager.unit
-                    )
-                }
-            }
+            WeightProjectionChart(
+                startingWeightLb: weightManager.startingWeightLb,
+                currentWeightLb: weightManager.currentWeightLb,
+                history: weightManager.history,
+                unit: weightManager.unit
+            )
             .onTapGesture {
                 showingWeightSettings = true
             }
@@ -952,15 +939,13 @@ struct WeightSettingsView: View {
                         }
                         .padding(.horizontal)
                         
-                        if let startingLb = draftStartingLb, let goalLb = draftGoalLb, abs(startingLb - goalLb) > 0.5 {
-                            WeightProjectionChart(
-                                startingWeightLb: startingLb,
-                                goalWeightLb: goalLb,
-                                currentWeightLb: draftCurrentLb,
-                                unit: unit
-                            )
-                            .padding(.horizontal)
-                        }
+                        WeightProjectionChart(
+                            startingWeightLb: draftStartingLb ?? weightManager.startingWeightLb,
+                            currentWeightLb: draftCurrentLb ?? weightManager.currentWeightLb,
+                            history: weightManager.history,
+                            unit: unit
+                        )
+                        .padding(.horizontal)
                         
                         if !weightManager.history.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
