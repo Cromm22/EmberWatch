@@ -239,7 +239,7 @@ struct WeightProjectionChart: View {
                         series: .value("Series", "Projected")
                     )
                     .foregroundStyle(EmberColors.ember)
-                    .lineStyle(StrokeStyle(lineWidth: 2.5, dash: [6, 4], lineCap: .round))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [6, 4]))
                 }
                 
                 ForEach(actualPoints) { point in
