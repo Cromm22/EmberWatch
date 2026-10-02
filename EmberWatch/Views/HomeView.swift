@@ -864,6 +864,7 @@ struct WeightSettingsView: View {
     @State private var currentInput: String = ""
     @State private var goalInput: String = ""
     @State private var unit: WeightUnit = .lb
+    @StateObject private var speechRecognizer = SpeechRecognizer()
     /// Tracks unsaved field values in pounds so unit toggles convert correctly.
     @State private var draftStartingLb: Double?
     @State private var draftCurrentLb: Double?
@@ -909,16 +910,25 @@ struct WeightSettingsView: View {
                             Text("Current weight")
                                 .font(.headline)
                                 .foregroundColor(EmberColors.cream)
-                            TextField("e.g. 180", text: $currentInput)
-                                .keyboardType(.decimalPad)
-                                .font(.system(size: 40, weight: .bold, design: .rounded))
-                                .foregroundColor(EmberColors.ember)
-                                .multilineTextAlignment(.center)
-                                .padding()
-                                .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
+                            ZStack(alignment: .trailing) {
+                                TextField("e.g. 180", text: $currentInput)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                                    .foregroundColor(EmberColors.ember)
+                                    .multilineTextAlignment(.center)
+                                    .padding()
+                                    .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
+                                SpeechMicButton(recognizer: speechRecognizer, accessibilityName: "Dictate weight")
+                                    .padding(.trailing, 10)
+                            }
                             Text(unit.label)
                                 .font(.subheadline)
                                 .foregroundColor(EmberColors.cream.opacity(0.7))
+                            if speechRecognizer.isListening {
+                                Text(speechRecognizer.transcript.isEmpty ? "Listening…" : speechRecognizer.transcript)
+                                    .font(.caption)
+                                    .foregroundColor(EmberColors.cream.opacity(0.6))
+                            }
                         }
                         .padding(.horizontal)
                         
@@ -990,6 +1000,12 @@ struct WeightSettingsView: View {
                         .foregroundColor(EmberColors.ember)
                 }
             }
+            .speechPermissionAlert(speechRecognizer)
+            .onChange(of: speechRecognizer.completedTranscript) { _, spoken in
+                if !spoken.isEmpty {
+                    applySpokenWeight(spoken)
+                }
+            }
             .onAppear {
                 unit = weightManager.unit
                 draftStartingLb = weightManager.startingWeightLb
@@ -997,7 +1013,16 @@ struct WeightSettingsView: View {
                 draftGoalLb = weightManager.goalWeightLb
                 refreshInputs(from: unit)
             }
+            .onDisappear {
+                speechRecognizer.stopListening()
+            }
         }
+    }
+    
+    private func applySpokenWeight(_ spoken: String) {
+        guard let value = SpokenWeightParser.parse(spoken) else { return }
+        currentInput = SpokenWeightParser.displayString(value)
+        draftCurrentLb = unit.toPounds(value)
     }
     
     private func parse(_ raw: String) -> Double? {
