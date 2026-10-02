@@ -306,8 +306,8 @@ struct WeightGoalEditView: View {
                             refreshInputs(from: newUnit)
                         }
                         
-                        goalField(title: "Starting weight", text: $startingInput, placeholder: "e.g. 180")
-                        goalField(title: "Goal weight", text: $goalInput, placeholder: "e.g. 165")
+                        goalField(title: "Starting weight", text: $startingInput, placeholder: "e.g. 182.4")
+                        goalField(title: "Goal weight", text: $goalInput, placeholder: "e.g. 165.0")
                         
                         VStack(spacing: 10) {
                             Text("Target")
@@ -399,7 +399,7 @@ struct WeightGoalEditView: View {
     private var draftOrParsedStarting: Double? {
         let trimmed = startingInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
-        if let value = parse(trimmed) { return unit.toPounds(value) }
+        if let value = WeightManager.parseBodyWeight(trimmed) { return unit.toPounds(value) }
         return draftStartingLb
     }
     
@@ -422,29 +422,22 @@ struct WeightGoalEditView: View {
         .padding(.horizontal)
     }
     
-    private func parse(_ raw: String) -> Double? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: ",", with: ".")
-        guard let value = Double(trimmed), value > 0 else { return nil }
-        return value
-    }
-    
     private func syncDraftFromInputs(using inputUnit: WeightUnit) {
         let startingTrimmed = startingInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if startingTrimmed.isEmpty {
             draftStartingLb = nil
-        } else if let s = parse(startingTrimmed) {
+        } else if let s = WeightManager.parseBodyWeight(startingTrimmed) {
             draftStartingLb = inputUnit.toPounds(s)
         }
         
         let goalTrimmed = goalInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if goalTrimmed.isEmpty {
             draftGoalLb = nil
-        } else if let g = parse(goalTrimmed) {
+        } else if let g = WeightManager.parseBodyWeight(goalTrimmed) {
             draftGoalLb = inputUnit.toPounds(g)
         }
         
-        if let pace = parse(paceInput) {
+        if let pace = WeightManager.parseDecimal(paceInput) {
             draftPaceLb = inputUnit.toPounds(pace)
         }
     }
