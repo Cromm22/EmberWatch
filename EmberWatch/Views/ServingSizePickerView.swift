@@ -132,6 +132,15 @@ struct ServingSizePickerView: View {
                     color: .yellow
                 )
             }
+            
+            HStack(spacing: 12) {
+                NutritionValueCard(
+                    label: "Sodium",
+                    value: Int(calculatedSodium),
+                    unit: "mg",
+                    color: .mint
+                )
+            }
         }
         .padding()
         .background(
@@ -166,6 +175,13 @@ struct ServingSizePickerView: View {
             return (product.fatPer100g * selectedGrams) / 100.0
         }
         return product.fatPerServing * selectedMultiplier
+    }
+    
+    private var calculatedSodium: Double {
+        if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
+            return (product.sodiumPer100g * selectedGrams) / 100.0
+        }
+        return product.sodiumPerServing * selectedMultiplier
     }
     
     private var servingSizeCard: some View {
@@ -291,12 +307,14 @@ struct ServingSizePickerView: View {
             protein: calculatedProtein,
             carbs: calculatedCarbs,
             fat: calculatedFat,
+            sodium: calculatedSodium,
             mealType: selectedMealType.rawValue,
             servings: selectedMultiplier,
             caloriesPerServing: product.caloriesPerServing,
             proteinPerServing: product.proteinPerServing,
             carbsPerServing: product.carbsPerServing,
             fatPerServing: product.fatPerServing,
+            sodiumPerServing: product.sodiumPerServing,
             servingSizeGrams: product.servingSizeGrams ?? 0
         )
         

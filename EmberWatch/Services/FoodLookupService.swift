@@ -9,6 +9,8 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
     let proteinPer100g: Double
     let carbsPer100g: Double
     let fatPer100g: Double
+    /// Milligrams per 100g. Missing API values decode as 0.
+    let sodiumPer100g: Double
     let servingSizeGrams: Double?
     let brand: String?
     let source: FoodSource
@@ -32,7 +34,8 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
         fatPer100g: Double,
         servingSizeGrams: Double?,
         brand: String?,
-        source: FoodSource
+        source: FoodSource,
+        sodiumPer100g: Double = 0
     ) {
         self.id = UUID()
         self.barcode = barcode
@@ -42,6 +45,7 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
         self.proteinPer100g = proteinPer100g
         self.carbsPer100g = carbsPer100g
         self.fatPer100g = fatPer100g
+        self.sodiumPer100g = sodiumPer100g
         self.servingSizeGrams = servingSizeGrams
         self.brand = brand?.foodDisplayName
         self.source = source
@@ -73,6 +77,13 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
             return fatPer100g
         }
         return (fatPer100g * grams) / 100.0
+    }
+    
+    var sodiumPerServing: Double {
+        guard let grams = servingSizeGrams, grams > 0 else {
+            return sodiumPer100g
+        }
+        return (sodiumPer100g * grams) / 100.0
     }
     
     var hasValidMacros: Bool {
@@ -746,6 +757,7 @@ class FoodLookupService: ObservableObject {
         let protein = nutriments.proteins100g ?? 0
         let carbs = nutriments.carbohydrates100g ?? 0
         let fat = nutriments.fat100g ?? 0
+        let sodium = sodiumMgPer100g(from: nutriments)
         guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
         let name = product.productName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !name.isEmpty else { return nil }
@@ -762,7 +774,8 @@ class FoodLookupService: ObservableObject {
             fatPer100g: fat,
             servingSizeGrams: product.servingQuantityValue,
             brand: brand,
-            source: .openFoodFacts
+            source: .openFoodFacts,
+            sodiumPer100g: sodium
         )
     }
     
@@ -772,6 +785,7 @@ class FoodLookupService: ObservableObject {
         let protein = nutrients.first(where: { $0.resolvedId == 1003 })?.value ?? 0
         let carbs = nutrients.first(where: { $0.resolvedId == 1005 })?.value ?? 0
         let fat = nutrients.first(where: { $0.resolvedId == 1004 })?.value ?? 0
+        let sodium = nutrients.first(where: { $0.resolvedId == 1093 })?.value ?? 0
         guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
         let servingSize = food.servingSize ?? 100
         return FoodProduct(
@@ -784,7 +798,8 @@ class FoodLookupService: ObservableObject {
             fatPer100g: fat,
             servingSizeGrams: servingSize,
             brand: nil,
-            source: .usda
+            source: .usda,
+            sodiumPer100g: sodium
         )
     }
     
@@ -794,6 +809,7 @@ class FoodLookupService: ObservableObject {
         let protein = nutrients.first(where: { $0.nutrient?.id == 1003 })?.amount ?? 0
         let carbs = nutrients.first(where: { $0.nutrient?.id == 1005 })?.amount ?? 0
         let fat = nutrients.first(where: { $0.nutrient?.id == 1004 })?.amount ?? 0
+        let sodium = nutrients.first(where: { $0.nutrient?.id == 1093 })?.amount ?? 0
         guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
         let servingSize = detail.servingSize ?? 100
         return FoodProduct(
@@ -806,7 +822,8 @@ class FoodLookupService: ObservableObject {
             fatPer100g: fat,
             servingSizeGrams: servingSize,
             brand: nil,
-            source: .usda
+            source: .usda,
+            sodiumPer100g: sodium
         )
     }
     
@@ -842,6 +859,7 @@ class FoodLookupService: ObservableObject {
         var fat: Double = 0
         var carbs: Double = 0
         var protein: Double = 0
+        var sodium: Double = 0
         
         for component in components {
             let lowerComp = component.lowercased()
@@ -853,7 +871,13 @@ class FoodLookupService: ObservableObject {
                 carbs = extractNumber(from: component) ?? 0
             } else if lowerComp.contains("prot") {
                 protein = extractNumber(from: component) ?? 0
+            } else if lowerComp.contains("sod") {
+                sodium = extractNumber(from: component) ?? 0
             }
+        }
+        
+        if sodium <= 0, let servingSodium = item.resolvedSodiumMg {
+            sodium = servingSodium
         }
         
         // Convert to per 100g
@@ -861,6 +885,7 @@ class FoodLookupService: ObservableObject {
         let pro100 = (protein / servingGrams) * 100
         let carb100 = (carbs / servingGrams) * 100
         let fat100 = (fat / servingGrams) * 100
+        let sodium100 = (sodium / servingGrams) * 100
         
         // Require at least some nutrition data
         guard cal100 > 0 || pro100 > 0 || carb100 > 0 || fat100 > 0 else { return nil }
@@ -879,7 +904,8 @@ class FoodLookupService: ObservableObject {
             fatPer100g: fat100,
             servingSizeGrams: servingGrams,
             brand: brand,
-            source: .fatSecret
+            source: .fatSecret,
+            sodiumPer100g: sodium100
         )
     }
     
@@ -892,6 +918,17 @@ class FoodLookupService: ObservableObject {
             return nil
         }
         return Double(text[range])
+    }
+    
+    /// OFF stores sodium/salt per 100g in grams. Convert to milligrams.
+    nonisolated private static func sodiumMgPer100g(from nutriments: OFFNutriments) -> Double {
+        if let sodiumG = nutriments.sodium100g {
+            return sodiumG * 1000.0
+        }
+        if let saltG = nutriments.salt100g {
+            return saltG * 400.0
+        }
+        return 0
     }
 }
 
@@ -959,12 +996,16 @@ struct OFFNutriments: Codable, Sendable {
     let proteins100g: Double?
     let carbohydrates100g: Double?
     let fat100g: Double?
+    let sodium100g: Double?
+    let salt100g: Double?
     
     enum CodingKeys: String, CodingKey {
         case energyKcal100g = "energy-kcal_100g"
         case proteins100g = "proteins_100g"
         case carbohydrates100g = "carbohydrates_100g"
         case fat100g = "fat_100g"
+        case sodium100g = "sodium_100g"
+        case salt100g = "salt_100g"
     }
 }
 
@@ -1020,4 +1061,76 @@ struct FatSecretFood: Codable, Sendable {
     let brand_name: String?
     let food_description: String?
     let food_type: String?
+    let servings: FatSecretServingsContainer?
+    
+    enum CodingKeys: String, CodingKey {
+        case food_id
+        case food_name
+        case brand_name
+        case food_description
+        case food_type
+        case servings
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let asString = try? container.decode(String.self, forKey: .food_id) {
+            food_id = asString
+        } else if let asInt = try? container.decode(Int.self, forKey: .food_id) {
+            food_id = String(asInt)
+        } else {
+            food_id = nil
+        }
+        food_name = try container.decodeIfPresent(String.self, forKey: .food_name)
+        brand_name = try container.decodeIfPresent(String.self, forKey: .brand_name)
+        food_description = try container.decodeIfPresent(String.self, forKey: .food_description)
+        food_type = try container.decodeIfPresent(String.self, forKey: .food_type)
+        servings = try? container.decode(FatSecretServingsContainer.self, forKey: .servings)
+    }
+    
+    /// Sodium in mg from a search serving payload when FatSecret includes it.
+    var resolvedSodiumMg: Double? {
+        servings?.firstServing?.sodium?.value
+    }
+}
+
+struct FatSecretServingsContainer: Codable, Sendable {
+    let serving: FatSecretServingList?
+    
+    var firstServing: FatSecretServing? {
+        serving?.first
+    }
+}
+
+/// FatSecret may return one serving object or an array.
+struct FatSecretServingList: Codable, Sendable {
+    let items: [FatSecretServing]
+    
+    var first: FatSecretServing? { items.first }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let many = try? container.decode([FatSecretServing].self) {
+            items = many
+            return
+        }
+        if let one = try? container.decode(FatSecretServing.self) {
+            items = [one]
+            return
+        }
+        items = []
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if items.count == 1, let only = items.first {
+            try container.encode(only)
+        } else {
+            try container.encode(items)
+        }
+    }
+}
+
+struct FatSecretServing: Codable, Sendable {
+    let sodium: FlexibleDouble?
 }

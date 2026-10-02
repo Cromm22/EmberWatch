@@ -226,6 +226,15 @@ struct FoodServingSheet: View {
                     color: .yellow
                 )
             }
+            
+            HStack(spacing: 12) {
+                NutritionValueCard(
+                    label: "Sodium",
+                    value: Int(calculatedSodium),
+                    unit: "mg",
+                    color: .mint
+                )
+            }
         }
         .padding()
         .background(
@@ -260,6 +269,13 @@ struct FoodServingSheet: View {
             return (currentProduct.fatPer100g * selectedGrams) / 100.0
         }
         return currentProduct.fatPerServing * selectedMultiplier
+    }
+    
+    private var calculatedSodium: Double {
+        if let servingGrams = currentProduct.servingSizeGrams, servingGrams > 0 {
+            return (currentProduct.sodiumPer100g * selectedGrams) / 100.0
+        }
+        return currentProduct.sodiumPerServing * selectedMultiplier
     }
     
     private var servingSizeCard: some View {
@@ -386,12 +402,14 @@ struct FoodServingSheet: View {
             protein: calculatedProtein,
             carbs: calculatedCarbs,
             fat: calculatedFat,
+            sodium: calculatedSodium,
             mealType: selectedMealType.rawValue,
             servings: selectedMultiplier,
             caloriesPerServing: currentProduct.caloriesPerServing,
             proteinPerServing: currentProduct.proteinPerServing,
             carbsPerServing: currentProduct.carbsPerServing,
             fatPerServing: currentProduct.fatPerServing,
+            sodiumPerServing: currentProduct.sodiumPerServing,
             servingSizeGrams: currentProduct.servingSizeGrams ?? 0
         )
         

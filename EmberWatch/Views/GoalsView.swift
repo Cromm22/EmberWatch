@@ -12,6 +12,7 @@ struct GoalsView: View {
     @State private var editingWeight = false
     @State private var editingWorkout = false
     @State private var editingCalories = false
+    @State private var editingMacros = false
     
     var body: some View {
         NavigationView {
@@ -30,6 +31,7 @@ struct GoalsView: View {
                         weightCard
                         workoutCard
                         calorieCard
+                        macrosCard
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
@@ -57,6 +59,10 @@ struct GoalsView: View {
             }
             .sheet(isPresented: $editingCalories) {
                 GoalSettingsView(isPresented: $editingCalories)
+                    .environmentObject(calorieGoalManager)
+            }
+            .sheet(isPresented: $editingMacros) {
+                MacroGoalEditView(isPresented: $editingMacros)
                     .environmentObject(calorieGoalManager)
             }
             .onAppear {
@@ -156,6 +162,52 @@ struct GoalsView: View {
             onEdit: { editingCalories = true }
         )
         .accessibilityLabel("Daily calories. \(Int(eaten.rounded())) of \(Int(goal.rounded())) consumed. \(caption)")
+    }
+    
+    private var macrosCard: some View {
+        let protein = foodDataManager.totalProtein
+        let carbs = foodDataManager.totalCarbs
+        let fat = foodDataManager.totalFat
+        let sodium = foodDataManager.totalSodium
+        let proteinGoal = calorieGoalManager.dailyProteinGoal
+        let carbsGoal = calorieGoalManager.dailyCarbsGoal
+        let fatGoal = calorieGoalManager.dailyFatGoal
+        let sodiumGoal = calorieGoalManager.dailySodiumGoal
+        
+        let proteinProgress = calorieGoalManager.progress(consumed: protein, goal: proteinGoal)
+        let carbsProgress = calorieGoalManager.progress(consumed: carbs, goal: carbsGoal)
+        let fatProgress = calorieGoalManager.progress(consumed: fat, goal: fatGoal)
+        let sodiumProgress = calorieGoalManager.progress(consumed: sodium, goal: sodiumGoal)
+        let progressSum = proteinProgress + carbsProgress + fatProgress + sodiumProgress
+        let progress = progressSum / 4.0
+        
+        let proteinAmount = Int(protein.rounded())
+        let proteinTarget = Int(proteinGoal.rounded())
+        let carbsAmount = Int(carbs.rounded())
+        let carbsTarget = Int(carbsGoal.rounded())
+        let fatAmount = Int(fat.rounded())
+        let fatTarget = Int(fatGoal.rounded())
+        let sodiumAmount = Int(sodium.rounded())
+        let sodiumTarget = Int(sodiumGoal.rounded())
+        
+        let value = "\(proteinAmount)/\(proteinTarget)g P"
+        let detail = "\(carbsAmount)/\(carbsTarget)g carbs · \(fatAmount)/\(fatTarget)g fat"
+        let caption = "\(sodiumAmount)/\(sodiumTarget)mg sodium"
+        let percent = Int((progress * 100).rounded())
+        
+        return GoalProgressCard(
+            icon: "chart.pie.fill",
+            title: "Daily macros",
+            fill: HomeQuickActionPalette.foodFill,
+            iconColor: EmberColors.ember,
+            value: value,
+            detail: detail,
+            caption: caption,
+            progress: progress,
+            progressLabel: "\(percent)%",
+            onEdit: { editingMacros = true }
+        )
+        .accessibilityLabel("Daily macros. Protein \(proteinAmount) of \(proteinTarget) grams. Carbs \(carbsAmount) of \(carbsTarget) grams. Fat \(fatAmount) of \(fatTarget) grams. Sodium \(sodiumAmount) of \(sodiumTarget) milligrams.")
     }
     
     private func weightAccessibilityLabel(startText: String, goalText: String, currentText: String, timing: String) -> String {
@@ -565,5 +617,106 @@ struct WorkoutGoalEditView: View {
             workoutGoalManager.targetMinutes = minutes
         }
         isPresented = false
+    }
+}
+
+// MARK: - Macro editor
+
+struct MacroGoalEditView: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var calorieGoalManager: CalorieGoalManager
+    
+    @State private var proteinInput = ""
+    @State private var carbsInput = ""
+    @State private var fatInput = ""
+    @State private var sodiumInput = ""
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                EmberColors.dusk.ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 22) {
+                        Text("Set daily protein, carbs, fat, and sodium targets used on Food, Home, and Progress.")
+                            .font(.subheadline)
+                            .foregroundColor(EmberColors.muted)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        macroField(title: "Protein", text: $proteinInput, unit: "g / day", placeholder: "150")
+                        macroField(title: "Carbs", text: $carbsInput, unit: "g / day", placeholder: "250")
+                        macroField(title: "Fat", text: $fatInput, unit: "g / day", placeholder: "65")
+                        macroField(title: "Sodium", text: $sodiumInput, unit: "mg / day", placeholder: "2300")
+                    }
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle("Daily macros")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(EmberColors.dusk, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { isPresented = false }
+                        .foregroundColor(EmberColors.cream)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") { save() }
+                        .foregroundColor(EmberColors.ember)
+                }
+            }
+            .onAppear {
+                proteinInput = String(Int(calorieGoalManager.dailyProteinGoal.rounded()))
+                carbsInput = String(Int(calorieGoalManager.dailyCarbsGoal.rounded()))
+                fatInput = String(Int(calorieGoalManager.dailyFatGoal.rounded()))
+                sodiumInput = String(Int(calorieGoalManager.dailySodiumGoal.rounded()))
+            }
+        }
+    }
+    
+    private func macroField(title: String, text: Binding<String>, unit: String, placeholder: String) -> some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+            
+            TextField(placeholder, text: text)
+                .keyboardType(.numberPad)
+                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .foregroundColor(EmberColors.ember)
+                .multilineTextAlignment(.center)
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 16).fill(EmberColors.lightPlum))
+            
+            Text(unit)
+                .font(.subheadline)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+        }
+        .padding(.horizontal)
+    }
+    
+    private func save() {
+        if let protein = parsedGoal(proteinInput) {
+            calorieGoalManager.dailyProteinGoal = protein
+        }
+        if let carbs = parsedGoal(carbsInput) {
+            calorieGoalManager.dailyCarbsGoal = carbs
+        }
+        if let fat = parsedGoal(fatInput) {
+            calorieGoalManager.dailyFatGoal = fat
+        }
+        if let sodium = parsedGoal(sodiumInput) {
+            calorieGoalManager.dailySodiumGoal = sodium
+        }
+        isPresented = false
+    }
+    
+    private func parsedGoal(_ raw: String) -> Double? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = Double(trimmed), value > 0 else { return nil }
+        return value
     }
 }

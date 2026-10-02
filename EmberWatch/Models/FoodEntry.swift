@@ -11,6 +11,8 @@ class FoodEntry {
     var protein: Double = 0
     var carbs: Double = 0
     var fat: Double = 0
+    /// Milligrams. Default 0 enables SwiftData lightweight migration from stores without sodium.
+    var sodium: Double = 0
     var timestamp: Date = Date()
     /// Defaults enable SwiftData lightweight migration from stores without mealType.
     var mealType: String = "Snack"
@@ -21,6 +23,7 @@ class FoodEntry {
     var proteinPerServing: Double = 0
     var carbsPerServing: Double = 0
     var fatPerServing: Double = 0
+    var sodiumPerServing: Double = 0
     var servingSizeGrams: Double = 0
     
     init(
@@ -30,6 +33,7 @@ class FoodEntry {
         protein: Double = 0,
         carbs: Double = 0,
         fat: Double = 0,
+        sodium: Double = 0,
         timestamp: Date = Date(),
         mealType: String? = nil,
         servings: Double = 1.0,
@@ -37,6 +41,7 @@ class FoodEntry {
         proteinPerServing: Double? = nil,
         carbsPerServing: Double? = nil,
         fatPerServing: Double? = nil,
+        sodiumPerServing: Double? = nil,
         servingSizeGrams: Double = 0
     ) {
         self.id = id
@@ -45,6 +50,7 @@ class FoodEntry {
         self.protein = protein
         self.carbs = carbs
         self.fat = fat
+        self.sodium = sodium
         self.timestamp = timestamp
         self.mealType = mealType ?? MealType.suggested(for: timestamp).rawValue
         let safeServings = max(servings, 0.01)
@@ -53,6 +59,7 @@ class FoodEntry {
         self.proteinPerServing = proteinPerServing ?? (protein / safeServings)
         self.carbsPerServing = carbsPerServing ?? (carbs / safeServings)
         self.fatPerServing = fatPerServing ?? (fat / safeServings)
+        self.sodiumPerServing = sodiumPerServing ?? (sodium / safeServings)
         self.servingSizeGrams = servingSizeGrams
     }
     
@@ -103,6 +110,11 @@ class FoodEntry {
         return fat / max(servings, 0.01)
     }
     
+    var effectiveSodiumPerServing: Double {
+        if sodiumPerServing > 0 || caloriesPerServing > 0 { return sodiumPerServing }
+        return sodium / max(servings, 0.01)
+    }
+    
     var effectiveGrams: Double {
         guard servingSizeGrams > 0 else { return 0 }
         return servingSizeGrams * servings
@@ -115,16 +127,19 @@ class FoodEntry {
         let proPS = effectiveProteinPerServing
         let carbPS = effectiveCarbsPerServing
         let fatPS = effectiveFatPerServing
+        let sodiumPS = effectiveSodiumPerServing
         
         servings = newServings
         caloriesPerServing = calPS
         proteinPerServing = proPS
         carbsPerServing = carbPS
         fatPerServing = fatPS
+        sodiumPerServing = sodiumPS
         calories = calPS * s
         protein = proPS * s
         carbs = carbPS * s
         fat = fatPS * s
+        sodium = sodiumPS * s
     }
     
     func applyGrams(_ newGrams: Double) {
