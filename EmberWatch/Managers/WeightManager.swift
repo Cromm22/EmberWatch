@@ -261,11 +261,58 @@ class WeightManager: ObservableObject {
         return Calendar.current.date(byAdding: .day, value: Int((weeks * 7).rounded()), to: Calendar.current.startOfDay(for: startDate))
     }
     
+    /// Always one fractional digit so 182.4 and 180.0 both show the decimal.
     nonisolated static func format(_ value: Double) -> String {
-        if abs(value - value.rounded()) < 0.05 {
-            return String(Int(value.rounded()))
+        String(format: "%.1f", value)
+    }
+    
+    /// Round to the stored precision (one decimal place) without mutating existing saves.
+    nonisolated static func roundedToTenth(_ value: Double) -> Double {
+        (value * 10.0).rounded() / 10.0
+    }
+    
+    /// Parse a positive decimal, including locale grouping and comma decimals (`182,4`).
+    /// Period/comma forms are tried first so `182,4` is never read as a thousands group.
+    nonisolated static func parseDecimal(_ raw: String) -> Double? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return nil
         }
-        return String(format: "%.1f", value)
+        
+        if let value = Double(trimmed), value.isFinite, value > 0 {
+            return value
+        }
+        
+        let commaAsDecimal = trimmed.replacingOccurrences(of: ",", with: ".")
+        if commaAsDecimal != trimmed, let value = Double(commaAsDecimal), value.isFinite, value > 0 {
+            return value
+        }
+        
+        let formatter = NumberFormatter()
+        formatter.locale = Locale.current
+        formatter.numberStyle = .decimal
+        if let number = formatter.number(from: trimmed) {
+            let value = number.doubleValue
+            if value.isFinite && value > 0 {
+                return value
+            }
+        }
+        
+        return nil
+    }
+    
+    /// Lowest / highest body weight accepted in the user's current unit (lb or kg).
+    nonisolated static let minimumBodyWeight = 20.0
+    nonisolated static let maximumBodyWeight = 1000.0
+    
+    /// Body-weight field: locale decimal parse, one-tenth rounding, sensible range.
+    nonisolated static func parseBodyWeight(_ raw: String) -> Double? {
+        guard let value = parseDecimal(raw) else { return nil }
+        let rounded = roundedToTenth(value)
+        if rounded < minimumBodyWeight || rounded > maximumBodyWeight {
+            return nil
+        }
+        return rounded
     }
     
     /// Weigh-ins whose date falls in `[start, end)`, oldest first.
@@ -281,7 +328,7 @@ class WeightManager: ObservableObject {
     /// `nil` if first log, unchanged, or weight went up.
     @discardableResult
     func logCurrentWeight(_ valueInUnit: Double) -> Double? {
-        let lb = unit.toPounds(valueInUnit)
+        let lb = unit.toPounds(Self.roundedToTenth(valueInUnit))
         let previous = currentWeightLb
         currentWeightLb = lb
         var next = history
@@ -299,7 +346,7 @@ class WeightManager: ObservableObject {
     
     func setStartingWeight(_ valueInUnit: Double?) {
         if let valueInUnit {
-            startingWeightLb = unit.toPounds(valueInUnit)
+            startingWeightLb = unit.toPounds(Self.roundedToTenth(valueInUnit))
         } else {
             startingWeightLb = nil
         }
@@ -307,7 +354,7 @@ class WeightManager: ObservableObject {
     
     func setGoalWeight(_ valueInUnit: Double?) {
         if let valueInUnit {
-            goalWeightLb = unit.toPounds(valueInUnit)
+            goalWeightLb = unit.toPounds(Self.roundedToTenth(valueInUnit))
         } else {
             goalWeightLb = nil
         }

@@ -892,7 +892,7 @@ struct WeightSettingsView: View {
                             Text("Starting weight")
                                 .font(.headline)
                                 .foregroundColor(EmberColors.cream)
-                            TextField("Optional", text: $startingInput)
+                            TextField("e.g. 182.4", text: $startingInput)
                                 .keyboardType(.decimalPad)
                                 .font(.system(size: 36, weight: .bold, design: .rounded))
                                 .foregroundColor(EmberColors.ember.opacity(0.85))
@@ -909,7 +909,7 @@ struct WeightSettingsView: View {
                             Text("Current weight")
                                 .font(.headline)
                                 .foregroundColor(EmberColors.cream)
-                            TextField("e.g. 180", text: $currentInput)
+                            TextField("e.g. 182.4", text: $currentInput)
                                 .keyboardType(.decimalPad)
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
                                 .foregroundColor(EmberColors.ember)
@@ -926,7 +926,7 @@ struct WeightSettingsView: View {
                             Text("Goal weight")
                                 .font(.headline)
                                 .foregroundColor(EmberColors.cream)
-                            TextField("Optional", text: $goalInput)
+                            TextField("e.g. 165.0", text: $goalInput)
                                 .keyboardType(.decimalPad)
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
                                 .foregroundColor(EmberColors.ember)
@@ -1000,29 +1000,22 @@ struct WeightSettingsView: View {
         }
     }
     
-    private func parse(_ raw: String) -> Double? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: ",", with: ".")
-        guard let value = Double(trimmed), value > 0 else { return nil }
-        return value
-    }
-    
     private func syncDraftFromInputs(using inputUnit: WeightUnit) {
         let startingTrimmed = startingInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if startingTrimmed.isEmpty {
             draftStartingLb = nil
-        } else if let s = parse(startingTrimmed) {
+        } else if let s = WeightManager.parseBodyWeight(startingTrimmed) {
             draftStartingLb = inputUnit.toPounds(s)
         }
         
-        if let c = parse(currentInput) {
+        if let c = WeightManager.parseBodyWeight(currentInput) {
             draftCurrentLb = inputUnit.toPounds(c)
         }
         
         let goalTrimmed = goalInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if goalTrimmed.isEmpty {
             draftGoalLb = nil
-        } else if let g = parse(goalTrimmed) {
+        } else if let g = WeightManager.parseBodyWeight(goalTrimmed) {
             draftGoalLb = inputUnit.toPounds(g)
         }
     }
