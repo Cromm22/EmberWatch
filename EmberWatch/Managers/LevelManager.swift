@@ -325,12 +325,7 @@ final class LevelManager: ObservableObject {
         guard gained > 0 else { return 0 }
         
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let lostLabel: String = {
-            if abs(poundsLost - poundsLost.rounded()) < 0.05 {
-                return String(Int(poundsLost.rounded()))
-            }
-            return String(format: "%.1f", poundsLost)
-        }()
+        let lostLabel = WeightManager.format(poundsLost)
         weightLossBanner = "Down \(lostLabel) lb — +\(gained) XP"
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) { [weak self] in
             if self?.weightLossBanner?.contains("+\(gained) XP") == true {

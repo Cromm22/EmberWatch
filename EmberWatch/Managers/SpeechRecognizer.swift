@@ -610,12 +610,4 @@ enum SpokenWeightParser {
         }
         return value
     }
-
-    static func displayString(_ value: Double) -> String {
-        let rounded = (value * 10).rounded() / 10
-        if abs(rounded - rounded.rounded()) < 0.05 {
-            return String(Int(rounded.rounded()))
-        }
-        return String(format: "%.1f", rounded)
-    }
 }
