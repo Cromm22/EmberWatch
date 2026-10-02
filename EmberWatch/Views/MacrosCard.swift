@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// Layout tokens and helpers for the Home / Food Macros rings.
+/// Layout tokens and helpers for the Home / Food Macros card.
 /// File-level so these are not MainActor-isolated with the SwiftUI views.
 enum MacrosCardChrome {
-    static let cornerRadius: CGFloat = 16
-    static let ringSize: CGFloat = 60
-    static let ringLineWidth: CGFloat = 5
-    static let trackColor = Color(hex: "#E5E7EB")
+    static let cardCornerRadius: CGFloat = 16
+    static let tileCornerRadius: CGFloat = 12
+    static let gridSpacing: CGFloat = 12
+    static let ringSize: CGFloat = 102
+    static let ringLineWidth: CGFloat = 9
+    static let tileFill = Color(hex: "#F3F4F6")
     
     /// Consumed / target, clamped to 0...1. A zero or negative target is an empty ring.
     static func clampedProgress(consumed: Double, target: Double) -> CGFloat {
@@ -17,15 +19,18 @@ enum MacrosCardChrome {
         return CGFloat(notAboveOne)
     }
     
-    /// "58 / 180g" or "0 / 2,300mg" using the locale thousands separator.
-    static func valueText(amount: Int, target: Int, unit: String) -> String {
-        let consumed = amount.formatted()
+    static func amountText(amount: Int) -> String {
+        amount.formatted()
+    }
+    
+    /// "/ 180g" or "/ 2,300mg" using the locale thousands separator.
+    static func targetText(target: Int, unit: String) -> String {
         let goal = target.formatted()
-        return "\(consumed) / \(goal)\(unit)"
+        return "/ \(goal)\(unit)"
     }
 }
 
-/// White rounded Macros card: bold title + one row of four progress rings.
+/// White Macros card: Today's Summary title style + a 2×2 of ring tiles.
 struct MacrosCard: View {
     let protein: Double
     let carbs: Double
@@ -37,9 +42,9 @@ struct MacrosCard: View {
     let sodiumTarget: Double
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(spacing: 12) {
             titleRow
-            rings
+            grid
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -54,7 +59,7 @@ struct MacrosCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
     
-    private var rings: some View {
+    private var grid: some View {
         DailyMacrosGrid(
             protein: protein,
             carbs: carbs,
@@ -68,13 +73,12 @@ struct MacrosCard: View {
     }
     
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: MacrosCardChrome.cornerRadius, style: .continuous)
+        RoundedRectangle(cornerRadius: MacrosCardChrome.cardCornerRadius)
             .fill(Color.white)
-            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 3)
     }
 }
 
-/// Four circular macro rings in a single row. Call-site inputs are unchanged.
+/// 2×2 grid: Protein / Carbs on top, Fat / Sodium on the bottom.
 struct DailyMacrosGrid: View {
     let protein: Double
     let carbs: Double
@@ -86,16 +90,28 @@ struct DailyMacrosGrid: View {
     let sodiumTarget: Double
     
     var body: some View {
-        HStack(alignment: .top, spacing: 6) {
-            proteinRing
-            carbsRing
-            fatRing
-            sodiumRing
+        VStack(spacing: MacrosCardChrome.gridSpacing) {
+            topRow
+            bottomRow
         }
         .frame(maxWidth: .infinity)
     }
     
-    private var proteinRing: some View {
+    private var topRow: some View {
+        HStack(spacing: MacrosCardChrome.gridSpacing) {
+            proteinTile
+            carbsTile
+        }
+    }
+    
+    private var bottomRow: some View {
+        HStack(spacing: MacrosCardChrome.gridSpacing) {
+            fatTile
+            sodiumTile
+        }
+    }
+    
+    private var proteinTile: some View {
         MacroCard(
             name: "Protein",
             consumed: protein,
@@ -106,7 +122,7 @@ struct DailyMacrosGrid: View {
         )
     }
     
-    private var carbsRing: some View {
+    private var carbsTile: some View {
         MacroCard(
             name: "Carbs",
             consumed: carbs,
@@ -117,7 +133,7 @@ struct DailyMacrosGrid: View {
         )
     }
     
-    private var fatRing: some View {
+    private var fatTile: some View {
         MacroCard(
             name: "Fat",
             consumed: fat,
@@ -128,7 +144,7 @@ struct DailyMacrosGrid: View {
         )
     }
     
-    private var sodiumRing: some View {
+    private var sodiumTile: some View {
         MacroCard(
             name: "Sodium",
             consumed: sodium,
@@ -140,7 +156,7 @@ struct DailyMacrosGrid: View {
     }
 }
 
-/// One thin circular progress ring, icon at the top, "58 / 180g" under the ring.
+/// One light-gray tile: large ring (icon + value + target inside) and a name under it.
 struct MacroCard: View {
     let name: String
     let consumed: Double
@@ -151,10 +167,13 @@ struct MacroCard: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            ringStack
-            valueLabel
+            ringBlock
+            nameLabel
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 8)
+        .background(tileBackground)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
     }
@@ -171,43 +190,90 @@ struct MacroCard: View {
         MacrosCardChrome.clampedProgress(consumed: consumed, target: target)
     }
     
-    private var valueString: String {
-        MacrosCardChrome.valueText(amount: amountInt, target: targetInt, unit: unit)
+    private var amountString: String {
+        MacrosCardChrome.amountText(amount: amountInt)
+    }
+    
+    private var targetString: String {
+        MacrosCardChrome.targetText(target: targetInt, unit: unit)
     }
     
     private var accessibilityText: String {
         "\(name), \(amountInt) of \(targetInt) \(unit)"
     }
     
-    private var ringStack: some View {
-        ZStack(alignment: .top) {
+    private var ringBlock: some View {
+        ZStack {
             MacroRingView(progress: ringProgress, color: color)
-            ringIcon
+            MacroRingCenter(
+                icon: icon,
+                color: color,
+                amountText: amountString,
+                targetText: targetString
+            )
         }
         .frame(width: MacrosCardChrome.ringSize, height: MacrosCardChrome.ringSize)
     }
     
-    private var ringIcon: some View {
+    private var nameLabel: some View {
+        Text(name)
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundColor(EmberColors.muted)
+    }
+    
+    private var tileBackground: some View {
+        RoundedRectangle(cornerRadius: MacrosCardChrome.tileCornerRadius)
+            .fill(MacrosCardChrome.tileFill)
+    }
+}
+
+/// Icon, bold consumed value, and "/ 180g" stacked in the center of a ring.
+private struct MacroRingCenter: View {
+    let icon: String
+    let color: Color
+    let amountText: String
+    let targetText: String
+    
+    var body: some View {
+        VStack(spacing: 2) {
+            iconView
+            amountView
+            targetView
+        }
+        .padding(.horizontal, 12)
+    }
+    
+    private var iconView: some View {
         Image(systemName: icon)
-            .font(.system(size: 13, weight: .semibold))
+            .font(.system(size: 14, weight: .semibold))
             .foregroundColor(color)
             .symbolRenderingMode(.monochrome)
-            .offset(y: 7)
             .accessibilityHidden(true)
     }
     
-    private var valueLabel: some View {
-        Text(valueString)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+    private var amountView: some View {
+        Text(amountText)
+            .font(.system(size: 22, weight: .bold, design: .rounded))
             .foregroundColor(EmberColors.cream)
             .lineLimit(1)
-            .minimumScaleFactor(0.55)
+            .minimumScaleFactor(0.6)
+            .monospacedDigit()
+            .multilineTextAlignment(.center)
+    }
+    
+    private var targetView: some View {
+        Text(targetText)
+            .font(.system(size: 11, weight: .medium, design: .rounded))
+            .foregroundColor(EmberColors.muted)
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
             .monospacedDigit()
             .multilineTextAlignment(.center)
     }
 }
 
-/// Light-gray track + colored progress arc with rounded caps.
+/// Same-hue tinted track + colored progress arc. Starts at 12 o'clock, clockwise.
 private struct MacroRingView: View {
     let progress: CGFloat
     let color: Color
@@ -221,7 +287,7 @@ private struct MacroRingView: View {
     
     private var track: some View {
         Circle()
-            .stroke(MacrosCardChrome.trackColor, lineWidth: MacrosCardChrome.ringLineWidth)
+            .stroke(trackColor, lineWidth: MacrosCardChrome.ringLineWidth)
     }
     
     private var progressArc: some View {
@@ -229,6 +295,10 @@ private struct MacroRingView: View {
             .trim(from: trimStart, to: progress)
             .stroke(color, style: progressStroke)
             .rotationEffect(startAngle)
+    }
+    
+    private var trackColor: Color {
+        color.opacity(0.22)
     }
     
     private var trimStart: CGFloat { 0 }
