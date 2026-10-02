@@ -285,14 +285,19 @@ private final class RecognitionRelay: @unchecked Sendable {
 struct SpeechMicButton: View {
     @ObservedObject var recognizer: SpeechRecognizer
     let accessibilityName: String
+    /// When set, pulse and color follow this flag instead of `recognizer.isListening`.
+    /// Use this when several fields share one recognizer so only the active mic pulses.
+    var listeningOverride: Bool? = nil
+    /// Replaces the default `toggleListening()` so a form can select the target field first.
+    var onPress: (() -> Void)? = nil
 
     @State private var pulseOn = false
 
     var body: some View {
         Button {
-            recognizer.toggleListening()
+            pressMic()
         } label: {
-            Image(systemName: recognizer.isListening ? "mic.fill" : "mic")
+            Image(systemName: displayedListening ? "mic.fill" : "mic")
                 .font(.body.weight(.semibold))
                 .foregroundColor(micColor)
                 .scaleEffect(pulseOn ? 1.18 : 1.0)
@@ -300,18 +305,33 @@ struct SpeechMicButton: View {
                 .padding(6)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(recognizer.isListening ? "Stop listening" : accessibilityName)
+        .accessibilityLabel(displayedListening ? "Stop listening" : accessibilityName)
         .accessibilityHint("Speak to fill this field")
-        .onChange(of: recognizer.isListening) { _, listening in
-            updatePulse(listening)
+        .onChange(of: recognizer.isListening) { _, _ in
+            updatePulse(displayedListening)
         }
         .onAppear {
-            updatePulse(recognizer.isListening)
+            updatePulse(displayedListening)
         }
     }
 
+    private var displayedListening: Bool {
+        if let listeningOverride {
+            return listeningOverride
+        }
+        return recognizer.isListening
+    }
+
+    private func pressMic() {
+        if let onPress {
+            onPress()
+            return
+        }
+        recognizer.toggleListening()
+    }
+
     private var micColor: Color {
-        if recognizer.isListening {
+        if displayedListening {
             return EmberColors.ember
         }
         return EmberColors.cream.opacity(0.65)
@@ -605,9 +625,298 @@ enum SpokenWeightParser {
             }
         }
 
-        guard let value = Double(compact), value > 0, value < 2000 else {
+        if let value = Double(compact), value > 0, value < 2000 {
+            return value
+        }
+
+        if let spoken = SpokenNumberParser.parse(transcript), spoken > 0, spoken < 2000 {
+            return spoken
+        }
+        return nil
+    }
+}
+
+/// Parses spoken quantities such as "two hundred fifty", "one eighty point five", or "182.4".
+enum SpokenNumberParser {
+    static func parse(_ transcript: String) -> Double? {
+        let normalized = normalize(transcript)
+        if normalized.isEmpty {
+            return nil
+        }
+
+        if let digits = parseDigitOnly(normalized) {
+            return clampQuantity(digits)
+        }
+
+        if let words = parseWordNumber(normalized) {
+            return clampQuantity(words)
+        }
+        return nil
+    }
+
+    /// Formats a parsed quantity for a decimal `TextField` (no trailing zeros).
+    static func format(_ value: Double) -> String {
+        let nearest = (value * 100).rounded() / 100
+        let whole = nearest.rounded()
+        let remainder = abs(nearest - whole)
+        if remainder < 0.0001 {
+            return String(Int(whole))
+        }
+
+        let twoPlaces = String(format: "%.2f", nearest)
+        return trimTrailingZeros(twoPlaces)
+    }
+
+    private static func clampQuantity(_ value: Double) -> Double? {
+        if value < 0 || value >= 100_000 {
             return nil
         }
         return value
+    }
+
+    private static func normalize(_ transcript: String) -> String {
+        var text = transcript.lowercased()
+        text = text.replacingOccurrences(of: "-", with: " ")
+        text = text.replacingOccurrences(of: "point", with: " . ")
+        text = text.replacingOccurrences(of: "dot", with: " . ")
+
+        let extras = [
+            "calories", "calorie", "cals", "cal",
+            "grams", "gram", "protein", "carbs", "carbohydrates", "carb",
+            "fat", "fats", "serving", "servings"
+        ]
+        var extraIndex = 0
+        while extraIndex < extras.count {
+            text = text.replacingOccurrences(of: extras[extraIndex], with: " ")
+            extraIndex += 1
+        }
+
+        var cleaned = ""
+        for character in text {
+            if character.isLetter || character.isNumber || character == "." || character.isWhitespace {
+                cleaned.append(character)
+            } else if character == "," {
+                cleaned.append(".")
+            }
+        }
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func parseDigitOnly(_ text: String) -> Double? {
+        var compact = ""
+        var sawDigit = false
+        for character in text {
+            if character.isNumber {
+                compact.append(character)
+                sawDigit = true
+            } else if character == "." {
+                compact.append(".")
+            } else if character.isLetter {
+                return nil
+            }
+        }
+        if !sawDigit {
+            return nil
+        }
+        return Double(compact)
+    }
+
+    private static func parseWordNumber(_ text: String) -> Double? {
+        let tokens = text
+            .split(whereSeparator: { $0.isWhitespace })
+            .map(String.init)
+        if tokens.isEmpty {
+            return nil
+        }
+
+        var integerTokens: [String] = []
+        var fractionTokens: [String] = []
+        var inFraction = false
+        var tokenIndex = 0
+        while tokenIndex < tokens.count {
+            let token = tokens[tokenIndex]
+            if token == "." {
+                inFraction = true
+                tokenIndex += 1
+                continue
+            }
+            if token == "and" || token == "a" || token == "an" {
+                tokenIndex += 1
+                continue
+            }
+            if inFraction {
+                fractionTokens.append(token)
+            } else {
+                integerTokens.append(token)
+            }
+            tokenIndex += 1
+        }
+
+        let integerPart = accumulateInteger(integerTokens)
+        let fractionPart = accumulateFraction(fractionTokens)
+        if integerPart == nil && fractionPart == nil {
+            return nil
+        }
+
+        let whole = integerPart ?? 0
+        let fraction = fractionPart ?? 0
+        return whole + fraction
+    }
+
+    private static func accumulateInteger(_ tokens: [String]) -> Double? {
+        if tokens.isEmpty {
+            return nil
+        }
+
+        var total: Double = 0
+        var current: Double = 0
+        var sawNumber = false
+        var index = 0
+        while index < tokens.count {
+            let token = tokens[index]
+            if token == "hundred" {
+                if current == 0 {
+                    current = 1
+                }
+                current *= 100
+                sawNumber = true
+                index += 1
+                continue
+            }
+            if token == "thousand" {
+                if current == 0 {
+                    current = 1
+                }
+                total += current * 1000
+                current = 0
+                sawNumber = true
+                index += 1
+                continue
+            }
+
+            if let value = numberToken(token) {
+                current = combineInteger(current: current, next: value)
+                sawNumber = true
+                index += 1
+                continue
+            }
+            index += 1
+        }
+
+        if !sawNumber {
+            return nil
+        }
+        return total + current
+    }
+
+    private static func combineInteger(current: Double, next: Double) -> Double {
+        let currentOnes = current.truncatingRemainder(dividingBy: 10)
+        if next >= 20 && current >= 1 && current <= 9 {
+            return current * 100 + next
+        }
+        if next >= 10 && next <= 19 && current >= 1 && current <= 9 {
+            return current * 100 + next
+        }
+        if next <= 9 && current >= 1 && current <= 9 {
+            return current * 10 + next
+        }
+        if next <= 9 && current >= 20 && currentOnes == 0 {
+            return current + next
+        }
+        return current + next
+    }
+
+    private static func accumulateFraction(_ tokens: [String]) -> Double? {
+        if tokens.isEmpty {
+            return nil
+        }
+
+        var digits = ""
+        var index = 0
+        while index < tokens.count {
+            let token = tokens[index]
+            if let single = singleDigit(token) {
+                digits.append(String(single))
+            } else if let value = numberToken(token) {
+                let whole = Int(value.rounded())
+                digits.append(String(whole))
+            } else {
+                index += 1
+                continue
+            }
+            index += 1
+        }
+
+        if digits.isEmpty {
+            return nil
+        }
+        let placed = "0." + digits
+        return Double(placed)
+    }
+
+    private static func numberToken(_ token: String) -> Double? {
+        if let value = Double(token) {
+            return value
+        }
+        if let single = singleDigit(token) {
+            return Double(single)
+        }
+
+        switch token {
+        case "ten": return 10
+        case "eleven": return 11
+        case "twelve": return 12
+        case "thirteen": return 13
+        case "fourteen": return 14
+        case "fifteen": return 15
+        case "sixteen": return 16
+        case "seventeen": return 17
+        case "eighteen": return 18
+        case "nineteen": return 19
+        case "twenty": return 20
+        case "thirty": return 30
+        case "forty": return 40
+        case "fifty": return 50
+        case "sixty": return 60
+        case "seventy": return 70
+        case "eighty": return 80
+        case "ninety": return 90
+        default:
+            return nil
+        }
+    }
+
+    private static func singleDigit(_ token: String) -> Int? {
+        if token.count == 1, let value = Int(token), value >= 0, value <= 9 {
+            return value
+        }
+        switch token {
+        case "zero", "oh": return 0
+        case "one": return 1
+        case "two": return 2
+        case "three": return 3
+        case "four": return 4
+        case "five": return 5
+        case "six": return 6
+        case "seven": return 7
+        case "eight": return 8
+        case "nine": return 9
+        default:
+            return nil
+        }
+    }
+
+    private static func trimTrailingZeros(_ text: String) -> String {
+        var result = text
+        if result.hasSuffix("0") {
+            result = String(result.dropLast())
+        }
+        if result.hasSuffix("0") {
+            result = String(result.dropLast())
+        }
+        if result.hasSuffix(".") {
+            result = String(result.dropLast())
+        }
+        return result
     }
 }

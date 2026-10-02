@@ -772,16 +772,64 @@ struct EditServingsView: View {
     }
 }
 
+private enum ManualFoodVoiceField: Equatable {
+    case name
+    case calories
+    case protein
+    case carbs
+    case fat
+    case servingGrams
+}
+
+private struct ManualFoodVoiceRow: View {
+    @ObservedObject var recognizer: SpeechRecognizer
+    let placeholder: String
+    @Binding var text: String
+    let keyboard: UIKeyboardType
+    let accessibilityName: String
+    let isFieldListening: Bool
+    let listeningCaption: String
+    let onMicPress: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            fieldRow
+            if isFieldListening {
+                Text(listeningCaption)
+                    .font(.caption)
+                    .foregroundColor(EmberColors.cream.opacity(0.6))
+            }
+        }
+    }
+    
+    private var fieldRow: some View {
+        HStack(spacing: 8) {
+            TextField(placeholder, text: $text)
+                .keyboardType(keyboard)
+                .foregroundColor(EmberColors.cream)
+            SpeechMicButton(
+                recognizer: recognizer,
+                accessibilityName: accessibilityName,
+                listeningOverride: isFieldListening,
+                onPress: onMicPress
+            )
+        }
+    }
+}
+
 struct AddFoodView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
     
+    @StateObject private var speechRecognizer = SpeechRecognizer()
+    @State private var voiceTarget: ManualFoodVoiceField?
     @State private var foodName = ""
     @State private var calories = ""
     @State private var protein = ""
     @State private var carbs = ""
     @State private var fat = ""
+    @State private var servingGrams = ""
     @State private var selectedMealType: MealType = MealType.suggested()
     
     var body: some View {
@@ -791,46 +839,10 @@ struct AddFoodView: View {
                     .ignoresSafeArea()
                 
                 Form {
-                    Section {
-                        TextField("Food Name", text: $foodName)
-                            .foregroundColor(EmberColors.cream)
-                        
-                        Picker("Meal Type", selection: $selectedMealType) {
-                            ForEach(MealType.allCases, id: \.self) { type in
-                                Text(type.rawValue).tag(type)
-                            }
-                        }
-                        .foregroundColor(EmberColors.cream)
-                    } header: {
-                        Text("Food Details")
-                    }
-                    .listRowBackground(EmberColors.lightPlum)
-                    
-                    Section {
-                        TextField("Calories", text: $calories)
-                            .keyboardType(.decimalPad)
-                            .foregroundColor(EmberColors.cream)
-                    } header: {
-                        Text("Calories (required)")
-                    }
-                    .listRowBackground(EmberColors.lightPlum)
-                    
-                    Section {
-                        TextField("Protein (g)", text: $protein)
-                            .keyboardType(.decimalPad)
-                            .foregroundColor(EmberColors.cream)
-                        
-                        TextField("Carbs (g)", text: $carbs)
-                            .keyboardType(.decimalPad)
-                            .foregroundColor(EmberColors.cream)
-                        
-                        TextField("Fat (g)", text: $fat)
-                            .keyboardType(.decimalPad)
-                            .foregroundColor(EmberColors.cream)
-                    } header: {
-                        Text("Macros (optional)")
-                    }
-                    .listRowBackground(EmberColors.lightPlum)
+                    foodDetailsSection
+                    caloriesSection
+                    macrosSection
+                    servingSection
                 }
                 .scrollContentBackground(.hidden)
             }
@@ -842,6 +854,7 @@ struct AddFoodView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
+                        speechRecognizer.stopListening()
                         isPresented = false
                     }
                     .foregroundColor(EmberColors.cream)
@@ -855,19 +868,239 @@ struct AddFoodView: View {
                     .disabled(!isValid)
                 }
             }
+            .speechPermissionAlert(speechRecognizer)
+            .onChange(of: speechRecognizer.transcript) { _, spoken in
+                applyLiveTranscript(spoken)
+            }
+            .onChange(of: speechRecognizer.completedTranscript) { _, spoken in
+                applyCompletedTranscript(spoken)
+            }
+            .onDisappear {
+                speechRecognizer.stopListening()
+            }
         }
+    }
+    
+    private var foodDetailsSection: some View {
+        Section {
+            nameVoiceRow
+            
+            Picker("Meal Type", selection: $selectedMealType) {
+                ForEach(MealType.allCases, id: \.self) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .foregroundColor(EmberColors.cream)
+        } header: {
+            Text("Food Details")
+        }
+        .listRowBackground(EmberColors.lightPlum)
+    }
+    
+    private var caloriesSection: some View {
+        Section {
+            caloriesVoiceRow
+        } header: {
+            Text("Calories (required)")
+        }
+        .listRowBackground(EmberColors.lightPlum)
+    }
+    
+    private var macrosSection: some View {
+        Section {
+            proteinVoiceRow
+            carbsVoiceRow
+            fatVoiceRow
+        } header: {
+            Text("Macros (optional)")
+        }
+        .listRowBackground(EmberColors.lightPlum)
+    }
+    
+    private var servingSection: some View {
+        Section {
+            servingVoiceRow
+        } header: {
+            Text("Serving (optional)")
+        }
+        .listRowBackground(EmberColors.lightPlum)
+    }
+    
+    private var nameVoiceRow: some View {
+        ManualFoodVoiceRow(
+            recognizer: speechRecognizer,
+            placeholder: "Food Name",
+            text: $foodName,
+            keyboard: .default,
+            accessibilityName: "Dictate food name",
+            isFieldListening: isListening(to: .name),
+            listeningCaption: listeningCaption,
+            onMicPress: { toggleVoice(for: .name) }
+        )
+    }
+    
+    private var caloriesVoiceRow: some View {
+        ManualFoodVoiceRow(
+            recognizer: speechRecognizer,
+            placeholder: "Calories",
+            text: $calories,
+            keyboard: .decimalPad,
+            accessibilityName: "Dictate calories",
+            isFieldListening: isListening(to: .calories),
+            listeningCaption: listeningCaption,
+            onMicPress: { toggleVoice(for: .calories) }
+        )
+    }
+    
+    private var proteinVoiceRow: some View {
+        ManualFoodVoiceRow(
+            recognizer: speechRecognizer,
+            placeholder: "Protein (g)",
+            text: $protein,
+            keyboard: .decimalPad,
+            accessibilityName: "Dictate protein",
+            isFieldListening: isListening(to: .protein),
+            listeningCaption: listeningCaption,
+            onMicPress: { toggleVoice(for: .protein) }
+        )
+    }
+    
+    private var carbsVoiceRow: some View {
+        ManualFoodVoiceRow(
+            recognizer: speechRecognizer,
+            placeholder: "Carbs (g)",
+            text: $carbs,
+            keyboard: .decimalPad,
+            accessibilityName: "Dictate carbs",
+            isFieldListening: isListening(to: .carbs),
+            listeningCaption: listeningCaption,
+            onMicPress: { toggleVoice(for: .carbs) }
+        )
+    }
+    
+    private var fatVoiceRow: some View {
+        ManualFoodVoiceRow(
+            recognizer: speechRecognizer,
+            placeholder: "Fat (g)",
+            text: $fat,
+            keyboard: .decimalPad,
+            accessibilityName: "Dictate fat",
+            isFieldListening: isListening(to: .fat),
+            listeningCaption: listeningCaption,
+            onMicPress: { toggleVoice(for: .fat) }
+        )
+    }
+    
+    private var servingVoiceRow: some View {
+        ManualFoodVoiceRow(
+            recognizer: speechRecognizer,
+            placeholder: "Serving (g)",
+            text: $servingGrams,
+            keyboard: .decimalPad,
+            accessibilityName: "Dictate serving grams",
+            isFieldListening: isListening(to: .servingGrams),
+            listeningCaption: listeningCaption,
+            onMicPress: { toggleVoice(for: .servingGrams) }
+        )
+    }
+    
+    private var listeningCaption: String {
+        let spoken = speechRecognizer.transcript
+        if spoken.isEmpty {
+            return "Listening…"
+        }
+        return spoken
     }
     
     private var isValid: Bool {
         !foodName.isEmpty && Double(calories) != nil
     }
     
+    private func isListening(to target: ManualFoodVoiceField) -> Bool {
+        speechRecognizer.isListening && voiceTarget == target
+    }
+    
+    private func toggleVoice(for target: ManualFoodVoiceField) {
+        if speechRecognizer.isListening {
+            let receiveTarget = voiceTarget
+            speechRecognizer.stopListening()
+            if let receiveTarget {
+                applySpoken(speechRecognizer.completedTranscript, to: receiveTarget)
+            }
+            if receiveTarget == target {
+                voiceTarget = nil
+                return
+            }
+            // Drop the target before starting the next field so a late
+            // completedTranscript onChange cannot write into the new field.
+            voiceTarget = nil
+            Task { @MainActor in
+                self.voiceTarget = target
+                await self.speechRecognizer.startListening()
+            }
+            return
+        }
+        voiceTarget = target
+        Task { @MainActor in
+            await speechRecognizer.startListening()
+        }
+    }
+    
+    private func applyLiveTranscript(_ spoken: String) {
+        guard speechRecognizer.isListening else { return }
+        guard voiceTarget == .name else { return }
+        let trimmed = spoken.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return
+        }
+        foodName = trimmed
+    }
+    
+    private func applyCompletedTranscript(_ spoken: String) {
+        guard let target = voiceTarget else { return }
+        applySpoken(spoken, to: target)
+    }
+    
+    private func applySpoken(_ spoken: String, to target: ManualFoodVoiceField) {
+        let trimmed = spoken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        if target == .name {
+            foodName = trimmed
+            return
+        }
+        
+        guard let value = SpokenNumberParser.parse(trimmed) else { return }
+        let formatted = SpokenNumberParser.format(value)
+        switch target {
+        case .name:
+            break
+        case .calories:
+            calories = formatted
+        case .protein:
+            protein = formatted
+        case .carbs:
+            carbs = formatted
+        case .fat:
+            fat = formatted
+        case .servingGrams:
+            servingGrams = formatted
+        }
+    }
+    
     private func addFood() {
+        if speechRecognizer.isListening, let target = voiceTarget {
+            speechRecognizer.stopListening()
+            applySpoken(speechRecognizer.completedTranscript, to: target)
+        } else {
+            speechRecognizer.stopListening()
+        }
         guard let caloriesValue = Double(calories) else { return }
         
         let proteinValue = Double(protein) ?? 0
         let carbsValue = Double(carbs) ?? 0
         let fatValue = Double(fat) ?? 0
+        let servingValue = Double(servingGrams) ?? 0
         
         let entry = FoodEntry(
             name: foodName,
@@ -881,7 +1114,7 @@ struct AddFoodView: View {
             proteinPerServing: proteinValue,
             carbsPerServing: carbsValue,
             fatPerServing: fatValue,
-            servingSizeGrams: 0
+            servingSizeGrams: servingValue
         )
         
         foodDataManager.addFoodEntry(entry)
