@@ -61,6 +61,7 @@ struct WorkoutsView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
     @State private var flamePulse = false
+    @StateObject private var speechRecognizer = SpeechRecognizer()
     
     /// Only one Quick Add drawer open at a time.
     @State private var expandedQuickAddID: String? = nil
@@ -191,6 +192,15 @@ struct WorkoutsView: View {
                 healthKitManager.fetchTodayWorkouts()
                 syncXP()
             }
+            .speechPermissionAlert(speechRecognizer)
+            .onChange(of: speechRecognizer.completedTranscript) { _, spoken in
+                if !spoken.isEmpty {
+                    applySpokenWorkout(spoken)
+                }
+            }
+            .onDisappear {
+                speechRecognizer.stopListening()
+            }
             .sheet(isPresented: Binding(
                 get: { workoutToEdit != nil },
                 set: { if !$0 { workoutToEdit = nil } }
@@ -244,16 +254,55 @@ struct WorkoutsView: View {
     
     private var quickAddSection: some View {
         VStack(spacing: 12) {
-            Text("Quick Add")
-                .font(.headline)
-                .foregroundColor(EmberColors.cream)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
+            HStack(alignment: .center, spacing: 8) {
+                Text("Quick Add")
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                SpeechMicButton(recognizer: speechRecognizer, accessibilityName: "Dictate workout")
+            }
+            .padding(.horizontal, 4)
+            
+            if speechRecognizer.isListening {
+                Text(speechRecognizer.transcript.isEmpty ? "Listening…" : speechRecognizer.transcript)
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+            }
             
             VStack(spacing: 10) {
                 ForEach(quickAddExercises) { exercise in
                     quickAddRow(exercise)
                 }
+            }
+        }
+    }
+    
+    private func applySpokenWorkout(_ spoken: String) {
+        guard let parsed = SpokenWorkoutParser.parse(spoken) else { return }
+        var exerciseID = parsed.exerciseID
+        var found = false
+        for exercise in quickAddExercises {
+            if exercise.id == exerciseID {
+                found = true
+                break
+            }
+        }
+        if !found {
+            exerciseID = "other"
+        }
+        
+        focusedQuickField = nil
+        withAnimation(.easeInOut(duration: 0.28)) {
+            expandedQuickAddID = exerciseID
+            distanceText = ""
+            timeText = String(parsed.minutes)
+            if let calories = parsed.calories {
+                caloriesText = String(Int(calories.rounded()))
+            } else {
+                caloriesText = ""
             }
         }
     }

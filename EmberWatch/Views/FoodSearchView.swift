@@ -7,6 +7,7 @@ struct FoodSearchView: View {
     
     @StateObject private var lookupService = FoodLookupService()
     @StateObject private var searchHistory = SearchHistoryManager()
+    @StateObject private var speechRecognizer = SpeechRecognizer()
     @State private var query = ""
     @State private var results: [FoodProduct] = []
     @State private var selectedProduct: FoodProduct?
@@ -14,6 +15,7 @@ struct FoodSearchView: View {
     @State private var hasSearched = false
     @State private var lastSearchedQuery = ""
     @State private var isSearchFieldFocused = false
+    @State private var voiceSuggestions: [String] = []
     
     var body: some View {
         NavigationView {
@@ -24,7 +26,13 @@ struct FoodSearchView: View {
                     searchField
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, voiceSuggestions.isEmpty ? 12 : 8)
+                    
+                    if !voiceSuggestions.isEmpty {
+                        voiceSuggestionChips
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
+                    }
                     
                     content
                 }
@@ -39,6 +47,7 @@ struct FoodSearchView: View {
                     Button("Close") {
                         debounceTask?.cancel()
                         lookupService.cancelSearch()
+                        speechRecognizer.stopListening()
                         isPresented = false
                     }
                     .foregroundColor(EmberColors.cream)
@@ -59,9 +68,21 @@ struct FoodSearchView: View {
                     }
                 )
             }
+            .speechPermissionAlert(speechRecognizer)
+            .onChange(of: speechRecognizer.transcript) { _, spoken in
+                if speechRecognizer.isListening && !spoken.isEmpty {
+                    query = spoken
+                }
+            }
+            .onChange(of: speechRecognizer.completedTranscript) { _, spoken in
+                if !spoken.isEmpty {
+                    applyVoiceTranscript(spoken)
+                }
+            }
             .onDisappear {
                 debounceTask?.cancel()
                 lookupService.cancelSearch()
+                speechRecognizer.stopListening()
             }
         }
     }
@@ -91,12 +112,15 @@ struct FoodSearchView: View {
                     results = []
                     hasSearched = false
                     lastSearchedQuery = ""
+                    voiceSuggestions = []
                     lookupService.errorMessage = nil
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(EmberColors.cream.opacity(0.5))
                 }
             }
+            
+            SpeechMicButton(recognizer: speechRecognizer, accessibilityName: "Dictate food search")
         }
         .padding(14)
         .background(
@@ -248,7 +272,48 @@ struct FoodSearchView: View {
         }
     }
     
+    private var voiceSuggestionChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(voiceSuggestions, id: \.self) { suggestion in
+                    Button {
+                        query = suggestion
+                        performSearchNow()
+                    } label: {
+                        Text(suggestion)
+                            .font(.subheadline)
+                            .foregroundColor(EmberColors.cream)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(EmberColors.lightPlum)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .accessibilityLabel("Spoken food items")
+    }
+    
+    private func applyVoiceTranscript(_ spoken: String) {
+        let trimmed = spoken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        query = trimmed
+        let parts = SpokenFoodParser.queries(from: trimmed)
+        if parts.count > 1 {
+            voiceSuggestions = parts
+        } else {
+            voiceSuggestions = []
+        }
+        performSearchNow()
+    }
+    
     private func debounceSearch(_ value: String) {
+        if speechRecognizer.isListening {
+            return
+        }
         debounceTask?.cancel()
         lookupService.cancelSearch()
         debounceTask = Task {

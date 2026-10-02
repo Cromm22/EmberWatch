@@ -53,6 +53,7 @@
 		S5H0P5T0R300000000000002 /* SparksShopStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = S5H0P5T0R300000000000001 /* SparksShopStore.swift */; };
 		G0AL5V13W000000000000002 /* GoalsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G0AL5V13W000000000000001 /* GoalsView.swift */; };
 		WKG0ALMGR000000000000002 /* WorkoutGoalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = WKG0ALMGR000000000000001 /* WorkoutGoalManager.swift */; };
+		SPCHREC00000000000000002 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = SPCHREC00000000000000001 /* SpeechRecognizer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -105,6 +106,7 @@
 		S5H0P5T0R300000000000001 /* SparksShopStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparksShopStore.swift; sourceTree = "<group>"; };
 		G0AL5V13W000000000000001 /* GoalsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsView.swift; sourceTree = "<group>"; };
 		WKG0ALMGR000000000000001 /* WorkoutGoalManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutGoalManager.swift; sourceTree = "<group>"; };
+		SPCHREC00000000000000001 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -218,6 +220,7 @@
 				8FFD5926647D460D8448F0BD /* FriendsManager.swift */,
 				SHMGR0000000000000000001 /* SearchHistoryManager.swift */,
 				9B0D1032C8C44EAC8B0F675C /* EmberTalkManager.swift */,
+				SPCHREC00000000000000001 /* SpeechRecognizer.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -343,6 +346,7 @@
 				WKG0ALMGR000000000000002 /* WorkoutGoalManager.swift in Sources */,
 				ADDFR1END0000000000000002 /* AddFriendView.swift in Sources */,
 				PR0F1L3S3TT1NG5V13W002 /* ProfileSettingsView.swift in Sources */,
+				SPCHREC00000000000000002 /* SpeechRecognizer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -480,6 +484,8 @@
 			ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EmberWatch/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ember uses the microphone so you can log food, workouts, and weight by speaking.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ember uses speech recognition to turn what you say into food searches, workouts, and weight entries.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -510,6 +516,8 @@
 			ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EmberWatch/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ember uses the microphone so you can log food, workouts, and weight by speaking.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ember uses speech recognition to turn what you say into food searches, workouts, and weight entries.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
