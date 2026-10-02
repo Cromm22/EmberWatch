@@ -740,27 +740,15 @@ struct HomeView: View {
     }
     
     private var quickStatsCard: some View {
-        VStack(spacing: 16) {
-            Text("Macros")
-                .font(.headline)
-                .foregroundColor(EmberColors.cream)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            DailyMacrosGrid(
-                protein: foodDataManager.totalProtein,
-                carbs: foodDataManager.totalCarbs,
-                fat: foodDataManager.totalFat,
-                sodium: foodDataManager.totalSodium,
-                proteinTarget: calorieGoalManager.dailyProteinGoal,
-                carbsTarget: calorieGoalManager.dailyCarbsGoal,
-                fatTarget: calorieGoalManager.dailyFatGoal,
-                sodiumTarget: calorieGoalManager.dailySodiumGoal
-            )
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(EmberColors.lightPlum)
+        MacrosCard(
+            protein: foodDataManager.totalProtein,
+            carbs: foodDataManager.totalCarbs,
+            fat: foodDataManager.totalFat,
+            sodium: foodDataManager.totalSodium,
+            proteinTarget: calorieGoalManager.dailyProteinGoal,
+            carbsTarget: calorieGoalManager.dailyCarbsGoal,
+            fatTarget: calorieGoalManager.dailyFatGoal,
+            sodiumTarget: calorieGoalManager.dailySodiumGoal
         )
     }
 }

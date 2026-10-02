@@ -234,27 +234,15 @@ struct FoodDiaryView: View {
     }
     
     private var macrosSummaryCard: some View {
-        VStack(spacing: 16) {
-            Text("Macros")
-                .font(.headline)
-                .foregroundColor(EmberColors.cream)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            DailyMacrosGrid(
-                protein: foodDataManager.totalProtein,
-                carbs: foodDataManager.totalCarbs,
-                fat: foodDataManager.totalFat,
-                sodium: foodDataManager.totalSodium,
-                proteinTarget: calorieGoalManager.dailyProteinGoal,
-                carbsTarget: calorieGoalManager.dailyCarbsGoal,
-                fatTarget: calorieGoalManager.dailyFatGoal,
-                sodiumTarget: calorieGoalManager.dailySodiumGoal
-            )
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(EmberColors.lightPlum)
+        MacrosCard(
+            protein: foodDataManager.totalProtein,
+            carbs: foodDataManager.totalCarbs,
+            fat: foodDataManager.totalFat,
+            sodium: foodDataManager.totalSodium,
+            proteinTarget: calorieGoalManager.dailyProteinGoal,
+            carbsTarget: calorieGoalManager.dailyCarbsGoal,
+            fatTarget: calorieGoalManager.dailyFatGoal,
+            sodiumTarget: calorieGoalManager.dailySodiumGoal
         )
     }
     
@@ -343,101 +331,6 @@ struct FoodDiaryView: View {
                 }
             }
         }
-    }
-}
-
-struct DailyMacrosGrid: View {
-    let protein: Double
-    let carbs: Double
-    let fat: Double
-    let sodium: Double
-    let proteinTarget: Double
-    let carbsTarget: Double
-    let fatTarget: Double
-    let sodiumTarget: Double
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                MacroCard(
-                    name: "Protein",
-                    amount: Int(protein.rounded()),
-                    target: Int(proteinTarget.rounded()),
-                    unit: "g",
-                    color: .orange,
-                    icon: "flame.fill"
-                )
-                MacroCard(
-                    name: "Carbs",
-                    amount: Int(carbs.rounded()),
-                    target: Int(carbsTarget.rounded()),
-                    unit: "g",
-                    color: .blue,
-                    icon: "bolt.fill"
-                )
-            }
-            HStack(spacing: 12) {
-                MacroCard(
-                    name: "Fat",
-                    amount: Int(fat.rounded()),
-                    target: Int(fatTarget.rounded()),
-                    unit: "g",
-                    color: .yellow,
-                    icon: "drop.fill"
-                )
-                MacroCard(
-                    name: "Sodium",
-                    amount: Int(sodium.rounded()),
-                    target: Int(sodiumTarget.rounded()),
-                    unit: "mg",
-                    color: .mint,
-                    icon: "humidity.fill"
-                )
-            }
-        }
-    }
-}
-
-struct MacroCard: View {
-    let name: String
-    let amount: Int
-    let target: Int
-    let unit: String
-    let color: Color
-    let icon: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(color)
-            
-            Text("\(amount)")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(EmberColors.cream)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .monospacedDigit()
-            
-            Text("/ \(target)\(unit)")
-                .font(.caption)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .monospacedDigit()
-            
-            Text(name)
-                .font(.caption)
-                .foregroundColor(EmberColors.cream.opacity(0.7))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(EmberColors.darkPlum)
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name), \(amount) of \(target) \(unit)")
     }
 }
 
