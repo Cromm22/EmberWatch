@@ -228,6 +228,8 @@ struct WeeklyProgressView: View {
                             )
                         }
                         
+                        weeklyMacrosCard
+                        
                         encouragementCard
                         
                         viewHistoryButton
@@ -276,6 +278,77 @@ struct WeeklyProgressView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 4)
         .accessibilityElement(children: .combine)
+    }
+    
+    private var weeklyMacroTotals: WeeklyMacroTotals {
+        var protein = 0.0
+        var carbs = 0.0
+        var fat = 0.0
+        var sodium = 0.0
+        var days = Set<Date>()
+        let calendar = Calendar.current
+        
+        for entry in foodEntries {
+            protein += entry.protein
+            carbs += entry.carbs
+            fat += entry.fat
+            sodium += entry.sodium
+            days.insert(calendar.startOfDay(for: entry.timestamp))
+        }
+        
+        return WeeklyMacroTotals(
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            sodium: sodium,
+            days: days.count
+        )
+    }
+    
+    private var weeklyMacrosCard: some View {
+        let totals = weeklyMacroTotals
+        let days = max(totals.days, 1)
+        let avgProtein = totals.protein / Double(days)
+        let avgCarbs = totals.carbs / Double(days)
+        let avgFat = totals.fat / Double(days)
+        let avgSodium = totals.sodium / Double(days)
+        let caption: String
+        if totals.days == 0 {
+            caption = "Log food to see weekly macro averages"
+        } else if totals.days == 1 {
+            caption = "Daily average across 1 logged day"
+        } else {
+            caption = "Daily average across \(totals.days) logged days"
+        }
+        
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("Macros")
+                .font(.headline)
+                .foregroundColor(EmberColors.cream)
+            
+            DailyMacrosGrid(
+                protein: avgProtein,
+                carbs: avgCarbs,
+                fat: avgFat,
+                sodium: avgSodium,
+                proteinTarget: calorieGoalManager.dailyProteinGoal,
+                carbsTarget: calorieGoalManager.dailyCarbsGoal,
+                fatTarget: calorieGoalManager.dailyFatGoal,
+                sodiumTarget: calorieGoalManager.dailySodiumGoal
+            )
+            
+            Text(caption)
+                .font(.caption)
+                .foregroundColor(EmberColors.muted)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(EmberColors.lightPlum)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Weekly macros. \(caption)")
     }
     
     private var encouragementCard: some View {
@@ -362,6 +435,14 @@ struct WeeklyProgressView: View {
             isLoadingActivity = false
         }
     }
+}
+
+private struct WeeklyMacroTotals {
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let sodium: Double
+    let days: Int
 }
 
 private struct WeeklyProgressStatCard: View {

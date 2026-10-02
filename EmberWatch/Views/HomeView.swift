@@ -746,11 +746,16 @@ struct HomeView: View {
                 .foregroundColor(EmberColors.cream)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            HStack(spacing: 12) {
-                MacroCard(name: "Protein", amount: Int(foodDataManager.totalProtein), color: .orange, icon: "flame.fill")
-                MacroCard(name: "Carbs", amount: Int(foodDataManager.totalCarbs), color: .blue, icon: "bolt.fill")
-                MacroCard(name: "Fat", amount: Int(foodDataManager.totalFat), color: .yellow, icon: "drop.fill")
-            }
+            DailyMacrosGrid(
+                protein: foodDataManager.totalProtein,
+                carbs: foodDataManager.totalCarbs,
+                fat: foodDataManager.totalFat,
+                sodium: foodDataManager.totalSodium,
+                proteinTarget: calorieGoalManager.dailyProteinGoal,
+                carbsTarget: calorieGoalManager.dailyCarbsGoal,
+                fatTarget: calorieGoalManager.dailyFatGoal,
+                sodiumTarget: calorieGoalManager.dailySodiumGoal
+            )
         }
         .padding()
         .background(

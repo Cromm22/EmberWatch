@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct FoodDiaryView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
@@ -239,11 +240,16 @@ struct FoodDiaryView: View {
                 .foregroundColor(EmberColors.cream)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            HStack(spacing: 12) {
-                MacroCard(name: "Protein", amount: Int(foodDataManager.totalProtein), color: .orange, icon: "flame.fill")
-                MacroCard(name: "Carbs", amount: Int(foodDataManager.totalCarbs), color: .blue, icon: "bolt.fill")
-                MacroCard(name: "Fat", amount: Int(foodDataManager.totalFat), color: .yellow, icon: "drop.fill")
-            }
+            DailyMacrosGrid(
+                protein: foodDataManager.totalProtein,
+                carbs: foodDataManager.totalCarbs,
+                fat: foodDataManager.totalFat,
+                sodium: foodDataManager.totalSodium,
+                proteinTarget: calorieGoalManager.dailyProteinGoal,
+                carbsTarget: calorieGoalManager.dailyCarbsGoal,
+                fatTarget: calorieGoalManager.dailyFatGoal,
+                sodiumTarget: calorieGoalManager.dailySodiumGoal
+            )
         }
         .padding()
         .background(
@@ -340,9 +346,63 @@ struct FoodDiaryView: View {
     }
 }
 
+struct DailyMacrosGrid: View {
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let sodium: Double
+    let proteinTarget: Double
+    let carbsTarget: Double
+    let fatTarget: Double
+    let sodiumTarget: Double
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                MacroCard(
+                    name: "Protein",
+                    amount: Int(protein.rounded()),
+                    target: Int(proteinTarget.rounded()),
+                    unit: "g",
+                    color: .orange,
+                    icon: "flame.fill"
+                )
+                MacroCard(
+                    name: "Carbs",
+                    amount: Int(carbs.rounded()),
+                    target: Int(carbsTarget.rounded()),
+                    unit: "g",
+                    color: .blue,
+                    icon: "bolt.fill"
+                )
+            }
+            HStack(spacing: 12) {
+                MacroCard(
+                    name: "Fat",
+                    amount: Int(fat.rounded()),
+                    target: Int(fatTarget.rounded()),
+                    unit: "g",
+                    color: .yellow,
+                    icon: "drop.fill"
+                )
+                MacroCard(
+                    name: "Sodium",
+                    amount: Int(sodium.rounded()),
+                    target: Int(sodiumTarget.rounded()),
+                    unit: "mg",
+                    color: .mint,
+                    icon: "humidity.fill"
+                )
+            }
+        }
+    }
+}
+
 struct MacroCard: View {
     let name: String
     let amount: Int
+    let target: Int
+    let unit: String
     let color: Color
     let icon: String
     
@@ -352,9 +412,19 @@ struct MacroCard: View {
                 .font(.system(size: 20))
                 .foregroundColor(color)
             
-            Text("\(amount)g")
+            Text("\(amount)")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundColor(EmberColors.cream)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .monospacedDigit()
+            
+            Text("/ \(target)\(unit)")
+                .font(.caption)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .monospacedDigit()
             
             Text(name)
                 .font(.caption)
@@ -366,6 +436,8 @@ struct MacroCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(EmberColors.darkPlum)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(name), \(amount) of \(target) \(unit)")
     }
 }
 
@@ -455,12 +527,14 @@ struct RecentFoodRow: View {
                 protein: entry.protein,
                 carbs: entry.carbs,
                 fat: entry.fat,
+                sodium: entry.sodium,
                 mealType: MealType.suggested().rawValue,
                 servings: entry.servings,
                 caloriesPerServing: entry.effectiveCaloriesPerServing,
                 proteinPerServing: entry.effectiveProteinPerServing,
                 carbsPerServing: entry.effectiveCarbsPerServing,
-                fatPerServing: entry.effectiveFatPerServing
+                fatPerServing: entry.effectiveFatPerServing,
+                sodiumPerServing: entry.effectiveSodiumPerServing
             )
             foodDataManager.addFoodEntry(newEntry)
             emberTalkManager.showFoodPhrase()
@@ -534,6 +608,7 @@ struct EditServingsView: View {
     private var proteinPerServing: Double { entry.effectiveProteinPerServing }
     private var carbsPerServing: Double { entry.effectiveCarbsPerServing }
     private var fatPerServing: Double { entry.effectiveFatPerServing }
+    private var sodiumPerServing: Double { entry.effectiveSodiumPerServing }
     
     var body: some View {
         NavigationView {
@@ -613,6 +688,15 @@ struct EditServingsView: View {
                                     value: Int(fatPerServing * selectedMultiplier),
                                     unit: "g",
                                     color: .yellow
+                                )
+                            }
+                            
+                            HStack(spacing: 12) {
+                                NutritionValueCard(
+                                    label: "Sodium",
+                                    value: Int(sodiumPerServing * selectedMultiplier),
+                                    unit: "mg",
+                                    color: .mint
                                 )
                             }
                         }
@@ -778,6 +862,7 @@ private enum ManualFoodVoiceField: Equatable {
     case protein
     case carbs
     case fat
+    case sodium
     case servingGrams
 }
 
@@ -829,6 +914,7 @@ struct AddFoodView: View {
     @State private var protein = ""
     @State private var carbs = ""
     @State private var fat = ""
+    @State private var sodium = ""
     @State private var servingGrams = ""
     @State private var selectedMealType: MealType = MealType.suggested()
     
@@ -911,6 +997,7 @@ struct AddFoodView: View {
             proteinVoiceRow
             carbsVoiceRow
             fatVoiceRow
+            sodiumVoiceRow
         } header: {
             Text("Macros (optional)")
         }
@@ -988,6 +1075,19 @@ struct AddFoodView: View {
             isFieldListening: isListening(to: .fat),
             listeningCaption: listeningCaption,
             onMicPress: { toggleVoice(for: .fat) }
+        )
+    }
+    
+    private var sodiumVoiceRow: some View {
+        ManualFoodVoiceRow(
+            recognizer: speechRecognizer,
+            placeholder: "Sodium (mg)",
+            text: $sodium,
+            keyboard: .decimalPad,
+            accessibilityName: "Dictate sodium",
+            isFieldListening: isListening(to: .sodium),
+            listeningCaption: listeningCaption,
+            onMicPress: { toggleVoice(for: .sodium) }
         )
     }
     
@@ -1083,6 +1183,8 @@ struct AddFoodView: View {
             carbs = formatted
         case .fat:
             fat = formatted
+        case .sodium:
+            sodium = formatted
         case .servingGrams:
             servingGrams = formatted
         }
@@ -1100,6 +1202,7 @@ struct AddFoodView: View {
         let proteinValue = Double(protein) ?? 0
         let carbsValue = Double(carbs) ?? 0
         let fatValue = Double(fat) ?? 0
+        let sodiumValue = Double(sodium) ?? 0
         let servingValue = Double(servingGrams) ?? 0
         
         let entry = FoodEntry(
@@ -1108,12 +1211,14 @@ struct AddFoodView: View {
             protein: proteinValue,
             carbs: carbsValue,
             fat: fatValue,
+            sodium: sodiumValue,
             mealType: selectedMealType.rawValue,
             servings: 1.0,
             caloriesPerServing: caloriesValue,
             proteinPerServing: proteinValue,
             carbsPerServing: carbsValue,
             fatPerServing: fatValue,
+            sodiumPerServing: sodiumValue,
             servingSizeGrams: servingValue
         )
         

@@ -683,7 +683,8 @@ enum SpokenNumberParser {
         let extras = [
             "calories", "calorie", "cals", "cal",
             "grams", "gram", "protein", "carbs", "carbohydrates", "carb",
-            "fat", "fats", "serving", "servings"
+            "fat", "fats", "serving", "servings",
+            "sodium", "milligrams", "milligram", "mg"
         ]
         var extraIndex = 0
         while extraIndex < extras.count {

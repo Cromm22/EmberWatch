@@ -10,6 +10,7 @@ class FoodDataManager: ObservableObject {
     @Published var totalProtein: Double = 0
     @Published var totalCarbs: Double = 0
     @Published var totalFat: Double = 0
+    @Published var totalSodium: Double = 0
     
     private var modelContext: ModelContext?
     
@@ -103,6 +104,7 @@ class FoodDataManager: ObservableObject {
         totalProtein = todayFoodEntries.reduce(0) { $0 + $1.protein }
         totalCarbs = todayFoodEntries.reduce(0) { $0 + $1.carbs }
         totalFat = todayFoodEntries.reduce(0) { $0 + $1.fat }
+        totalSodium = todayFoodEntries.reduce(0) { $0 + $1.sodium }
     }
     
     func fetchRecentEntries() {
@@ -194,6 +196,7 @@ class FoodDataManager: ObservableObject {
                     protein: source.protein,
                     carbs: source.carbs,
                     fat: source.fat,
+                    sodium: source.sodium,
                     timestamp: timestamp,
                     mealType: mealRaw,
                     servings: source.servings,
@@ -201,6 +204,7 @@ class FoodDataManager: ObservableObject {
                     proteinPerServing: source.effectiveProteinPerServing,
                     carbsPerServing: source.effectiveCarbsPerServing,
                     fatPerServing: source.effectiveFatPerServing,
+                    sodiumPerServing: source.effectiveSodiumPerServing,
                     servingSizeGrams: source.servingSizeGrams
                 )
                 modelContext.insert(copy)
