@@ -12,6 +12,8 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
     /// Milligrams per 100g. Missing API values decode as 0.
     let sodiumPer100g: Double
     let servingSizeGrams: Double?
+    /// Gram weight of 1 cup when FatSecret/OFF list a cup serving; nil means use fallback.
+    let gramsPerCup: Double?
     let brand: String?
     let source: FoodSource
     
@@ -35,7 +37,8 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
         servingSizeGrams: Double?,
         brand: String?,
         source: FoodSource,
-        sodiumPer100g: Double = 0
+        sodiumPer100g: Double = 0,
+        gramsPerCup: Double? = nil
     ) {
         self.id = UUID()
         self.barcode = barcode
@@ -47,8 +50,33 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
         self.fatPer100g = fatPer100g
         self.sodiumPer100g = sodiumPer100g
         self.servingSizeGrams = servingSizeGrams
+        self.gramsPerCup = gramsPerCup
         self.brand = brand?.foodDisplayName
         self.source = source
+    }
+    
+    var resolvedGramsPerCup: Double {
+        FoodCupWeight.resolvedGramsPerCup(
+            explicit: gramsPerCup,
+            servingSizeText: servingSize
+        )
+    }
+    
+    func withGramsPerCup(_ value: Double?) -> FoodProduct {
+        FoodProduct(
+            barcode: barcode,
+            name: name,
+            servingSize: servingSize,
+            caloriesPer100g: caloriesPer100g,
+            proteinPer100g: proteinPer100g,
+            carbsPer100g: carbsPer100g,
+            fatPer100g: fatPer100g,
+            servingSizeGrams: servingSizeGrams,
+            brand: brand,
+            source: source,
+            sodiumPer100g: sodiumPer100g,
+            gramsPerCup: value ?? gramsPerCup
+        )
     }
     
     var caloriesPerServing: Double {
@@ -410,6 +438,17 @@ class FoodLookupService: ObservableObject {
             do {
                 try Task.checkCancellation()
                 
+                if product.barcode.hasPrefix("fs-") {
+                    let foodId = String(product.barcode.dropFirst(3))
+                    if !foodId.isEmpty,
+                       let detailed = try? await Self.fetchFatSecretFoodDetail(foodId: foodId, base: product) {
+                        return .success(detailed)
+                    }
+                    if product.hasValidMacros {
+                        return .success(product.withGramsPerCup(product.resolvedGramsPerCup))
+                    }
+                }
+                
                 if product.barcode.starts(with: "usda-"),
                    let fdcIdStr = product.barcode.split(separator: "-").last,
                    let fdcId = Int(fdcIdStr) {
@@ -679,21 +718,8 @@ class FoodLookupService: ObservableObject {
     }
     
     nonisolated private static func searchFatSecret(query: String) async throws -> [FoodProduct] {
-        guard let clientId = fatSecretClientId, let clientSecret = fatSecretClientSecret else {
+        guard let token = await fatSecretBearerToken() else {
             return []
-        }
-        
-        // Get OAuth token (cached or fresh)
-        let token: String
-        if let cached = await tokenCache.getToken() {
-            token = cached
-        } else {
-            // Fetch new token using OAuth 2.0 client credentials
-            guard let freshToken = try? await fetchFatSecretToken(clientId: clientId, clientSecret: clientSecret) else {
-                // Token fetch failed — skip FatSecret gracefully
-                return []
-            }
-            token = freshToken
         }
         
         // Search using FatSecret foods.search.v3 or foods.search
@@ -763,11 +789,13 @@ class FoodLookupService: ObservableObject {
         guard !name.isEmpty else { return nil }
         
         let brand = product.brands?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let servingText = product.servingSize ?? "100g"
+        let cupGrams = FoodCupWeight.gramsPerCup(fromServingSizeText: servingText)
         
         return FoodProduct(
             barcode: product.code ?? fallbackBarcode,
             name: name,
-            servingSize: product.servingSize ?? "100g",
+            servingSize: servingText,
             caloriesPer100g: calories,
             proteinPer100g: protein,
             carbsPer100g: carbs,
@@ -775,7 +803,8 @@ class FoodLookupService: ObservableObject {
             servingSizeGrams: product.servingQuantityValue,
             brand: brand,
             source: .openFoodFacts,
-            sodiumPer100g: sodium
+            sodiumPer100g: sodium,
+            gramsPerCup: cupGrams
         )
     }
     
@@ -893,6 +922,8 @@ class FoodLookupService: ObservableObject {
         let name = item.food_name ?? "Unknown"
         let brand = item.brand_name?.trimmingCharacters(in: .whitespaces)
         let servingSize = "\(Int(servingGrams))g"
+        let cupGrams = gramsPerCup(fromFatSecretServings: item.servings?.allServings ?? [])
+            ?? FoodCupWeight.gramsPerCup(fromServingSizeText: description)
         
         return FoodProduct(
             barcode: "fs-\(item.food_id ?? "")",
@@ -905,8 +936,71 @@ class FoodLookupService: ObservableObject {
             servingSizeGrams: servingGrams,
             brand: brand,
             source: .fatSecret,
-            sodiumPer100g: sodium100
+            sodiumPer100g: sodium100,
+            gramsPerCup: cupGrams
         )
+    }
+    
+    nonisolated private static func gramsPerCup(fromFatSecretServings servings: [FatSecretServing]) -> Double? {
+        var bestGrams: Double?
+        var bestDistance = Double.greatestFiniteMagnitude
+        for serving in servings {
+            let description = serving.servingDescription ?? ""
+            let measurement = serving.measurementDescription ?? ""
+            guard let grams = FoodCupWeight.gramsPerCup(
+                description: serving.servingDescription,
+                measurement: serving.measurementDescription,
+                metricAmount: serving.metricServingAmount?.value,
+                metricUnit: serving.metricServingUnit,
+                numberOfUnits: serving.numberOfUnits?.value
+            ) else {
+                continue
+            }
+            let cups = FoodCupWeight.parseCupCount(in: description.isEmpty ? measurement : description) ?? 1
+            let distance = abs(cups - 1)
+            if distance < bestDistance {
+                bestDistance = distance
+                bestGrams = grams
+            }
+        }
+        return bestGrams
+    }
+    
+    nonisolated private static func fatSecretBearerToken() async -> String? {
+        guard let clientId = fatSecretClientId, let clientSecret = fatSecretClientSecret else {
+            return nil
+        }
+        if let cached = await tokenCache.getToken() {
+            return cached
+        }
+        guard let freshToken = try? await fetchFatSecretToken(clientId: clientId, clientSecret: clientSecret) else {
+            return nil
+        }
+        return freshToken
+    }
+    
+    nonisolated private static func fetchFatSecretFoodDetail(foodId: String, base: FoodProduct) async throws -> FoodProduct? {
+        guard hasFatSecret else { return nil }
+        guard let token = await fatSecretBearerToken() else { return nil }
+        
+        var components = URLComponents(string: "https://platform.fatsecret.com/rest/server.api")!
+        components.queryItems = [
+            URLQueryItem(name: "method", value: "food.get.v4"),
+            URLQueryItem(name: "food_id", value: foodId),
+            URLQueryItem(name: "format", value: "json")
+        ]
+        guard let url = components.url else { return nil }
+        
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let data = try await fetchOK(request: request)
+        let response = try JSONDecoder().decode(FatSecretFoodGetResponse.self, from: data)
+        let servings = response.food?.servings?.allServings ?? []
+        let cupGrams = gramsPerCup(fromFatSecretServings: servings)
+            ?? FoodCupWeight.gramsPerCup(fromServingSizeText: base.servingSize)
+            ?? FoodCupWeight.fallbackGramsPerCup
+        return base.withGramsPerCup(cupGrams)
     }
     
     nonisolated private static func extractNumber(from text: String) -> Double? {
@@ -1097,6 +1191,10 @@ struct FatSecretFood: Codable, Sendable {
 struct FatSecretServingsContainer: Codable, Sendable {
     let serving: FatSecretServingList?
     
+    var allServings: [FatSecretServing] {
+        serving?.items ?? []
+    }
+    
     var firstServing: FatSecretServing? {
         serving?.first
     }
@@ -1131,6 +1229,24 @@ struct FatSecretServingList: Codable, Sendable {
     }
 }
 
+struct FatSecretFoodGetResponse: Codable, Sendable {
+    let food: FatSecretFood?
+}
+
 struct FatSecretServing: Codable, Sendable {
     let sodium: FlexibleDouble?
+    let servingDescription: String?
+    let metricServingAmount: FlexibleDouble?
+    let metricServingUnit: String?
+    let numberOfUnits: FlexibleDouble?
+    let measurementDescription: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case sodium
+        case servingDescription = "serving_description"
+        case metricServingAmount = "metric_serving_amount"
+        case metricServingUnit = "metric_serving_unit"
+        case numberOfUnits = "number_of_units"
+        case measurementDescription = "measurement_description"
+    }
 }

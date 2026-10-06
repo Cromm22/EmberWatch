@@ -25,6 +25,12 @@ class FoodEntry {
     var fatPerServing: Double = 0
     var sodiumPerServing: Double = 0
     var servingSizeGrams: Double = 0
+    /// `FoodAmountUnit.rawValue`. Empty string = infer grams/servings for pre-unit rows.
+    var amountUnit: String = ""
+    /// Count of the chosen unit (grams, servings, cups, or half-cups). 0 = infer from servings/grams.
+    var amountQuantity: Double = 0
+    /// Gram weight of 1 cup for this food. 0 = unknown; cup math uses the 240 g fallback.
+    var gramsPerCup: Double = 0
     
     init(
         id: UUID = UUID(),
@@ -42,7 +48,10 @@ class FoodEntry {
         carbsPerServing: Double? = nil,
         fatPerServing: Double? = nil,
         sodiumPerServing: Double? = nil,
-        servingSizeGrams: Double = 0
+        servingSizeGrams: Double = 0,
+        amountUnit: String = "",
+        amountQuantity: Double = 0,
+        gramsPerCup: Double = 0
     ) {
         self.id = id
         self.name = name
@@ -61,6 +70,9 @@ class FoodEntry {
         self.fatPerServing = fatPerServing ?? (fat / safeServings)
         self.sodiumPerServing = sodiumPerServing ?? (sodium / safeServings)
         self.servingSizeGrams = servingSizeGrams
+        self.amountUnit = amountUnit
+        self.amountQuantity = amountQuantity
+        self.gramsPerCup = gramsPerCup
     }
     
     /// Canonical meal type; derives from timestamp when unset/unknown (legacy rows).
@@ -146,6 +158,74 @@ class FoodEntry {
         guard servingSizeGrams > 0 else { return }
         let newServings = newGrams / servingSizeGrams
         applyServings(newServings)
+        amountUnit = FoodAmountUnit.grams.rawValue
+        amountQuantity = newGrams
+    }
+    
+    var resolvedGramsPerCup: Double {
+        if gramsPerCup > 0 { return gramsPerCup }
+        return FoodCupWeight.fallbackGramsPerCup
+    }
+    
+    var resolvedAmountUnit: FoodAmountUnit {
+        if let unit = FoodAmountUnit(rawValue: amountUnit) {
+            return unit
+        }
+        if servingSizeGrams > 0 {
+            return .grams
+        }
+        return .servings
+    }
+    
+    var resolvedAmountQuantity: Double {
+        if amountQuantity > 0 {
+            return amountQuantity
+        }
+        switch resolvedAmountUnit {
+        case .grams:
+            let grams = effectiveGrams
+            if grams > 0 { return grams }
+            if servingSizeGrams > 0 { return servingSizeGrams }
+            return 100
+        case .servings:
+            return servings > 0 ? servings : 1
+        case .cup:
+            let grams = effectiveGrams
+            let cup = resolvedGramsPerCup
+            if cup > 0 && grams > 0 {
+                return grams / cup
+            }
+            return 1
+        case .halfCup:
+            let grams = effectiveGrams
+            let half = resolvedGramsPerCup * 0.5
+            if half > 0 && grams > 0 {
+                return grams / half
+            }
+            return 1
+        }
+    }
+    
+    var amountDisplayLabel: String {
+        FoodAmountMath.displayLabel(
+            unit: resolvedAmountUnit,
+            quantity: resolvedAmountQuantity
+        )
+    }
+    
+    func applyAmount(unit: FoodAmountUnit, quantity: Double, gramsPerCup newGramsPerCup: Double? = nil) {
+        if let newGramsPerCup, newGramsPerCup > 0 {
+            gramsPerCup = newGramsPerCup
+        }
+        amountUnit = unit.rawValue
+        amountQuantity = quantity
+        let multiplier = FoodAmountMath.servingsMultiplier(
+            unit: unit,
+            quantity: quantity,
+            servingSizeGrams: servingSizeGrams,
+            gramsPerCup: resolvedGramsPerCup
+        )
+        applyServings(multiplier)
     }
 }
 
