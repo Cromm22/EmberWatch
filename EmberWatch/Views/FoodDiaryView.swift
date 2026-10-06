@@ -538,8 +538,12 @@ struct EditServingsView: View {
                 }
             }
             .onAppear {
-                selectedUnit = entry.resolvedAmountUnit
-                selectedQuantity = entry.resolvedAmountQuantity
+                let mapped = FoodAmountMath.pickerSelection(
+                    unit: entry.resolvedAmountUnit,
+                    quantity: entry.resolvedAmountQuantity
+                )
+                selectedUnit = mapped.unit
+                selectedQuantity = mapped.quantity
             }
         }
     }

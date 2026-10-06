@@ -18,6 +18,12 @@ enum FoodAmountUnit: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .halfCup: return "½ cup"
         }
     }
+
+    /// Units shown in the amount segmented control. `halfCup` stays in the
+    /// enum so old SwiftData rows still decode; half a cup is 1 cup × 0.5.
+    static var pickerCases: [FoodAmountUnit] {
+        [.servings, .grams, .cup]
+    }
 }
 
 enum FoodCupWeight {
@@ -235,8 +241,14 @@ enum FoodAmountMath {
     }
 
     static func formatQuantity(_ value: Double) -> String {
+        if abs(value - 0.25) < 0.001 {
+            return "0.25"
+        }
         if abs(value - 0.5) < 0.001 {
             return "0.5"
+        }
+        if abs(value - 0.75) < 0.001 {
+            return "0.75"
         }
         if abs(value - 1.5) < 0.001 {
             return "1.5"
@@ -259,8 +271,14 @@ enum FoodAmountMath {
             }
             return "\(formatQuantity(qty)) servings"
         case .cup:
+            if abs(qty - 0.25) < 0.001 {
+                return "1/4 cup"
+            }
             if abs(qty - 0.5) < 0.001 {
                 return "1/2 cup"
+            }
+            if abs(qty - 0.75) < 0.001 {
+                return "3/4 cup"
             }
             if abs(qty - 1) < 0.001 {
                 return "1 cup"
@@ -289,5 +307,16 @@ enum FoodAmountMath {
         case .cup, .halfCup:
             return 1
         }
+    }
+
+    /// Maps stored `halfCup` rows onto the cup picker (quantity × 0.5).
+    static func pickerSelection(
+        unit: FoodAmountUnit,
+        quantity: Double
+    ) -> (unit: FoodAmountUnit, quantity: Double) {
+        if unit == .halfCup {
+            return (.cup, max(quantity, 0) * 0.5)
+        }
+        return (unit, quantity)
     }
 }
