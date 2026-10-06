@@ -1,21 +1,72 @@
 import SwiftUI
 
-/// Shared Home colors for the compact streak pill and the streak / sparks / XP cards.
+/// Compact header-pill colors. Separate from the three Home cards so restyling
+/// the cards does not retint the top-right streak capsule.
 enum HomeStatBadgePalette {
-    // Richer peach / orange — same hue family, higher chroma than the original pastels.
     static let streakFill = Color(hex: "#FFD2B3")
     static let streakIcon = Color(hex: "#FF5314")
     static let streakInk = Color(hex: "#6B2410")
+}
 
-    // Richer sky blue
-    static let sparksFill = Color(hex: "#BDD5FF")
-    static let sparksIcon = Color(hex: "#2568F5")
-    static let sparksInk = Color(hex: "#122E68")
+/// Layout tokens for the three Home stat cards. File-level so these are not
+/// MainActor-isolated with the SwiftUI views.
+enum HomeStatBadgeMetrics {
+    static let rowSpacing: CGFloat = 10
+    static let cardHeight: CGFloat = 72
+    static let cardCornerRadius: CGFloat = 16
+    static let cardPadding: CGFloat = 12
+    static let iconSize: CGFloat = 28
+    static let iconTextSpacing: CGFloat = 8
+    static let textStackSpacing: CGFloat = 2
+    static let valueChevronSpacing: CGFloat = 3
+    static let valueSize: CGFloat = 20
+    static let labelSize: CGFloat = 13
+    static let chevronSize: CGFloat = 11
+    static let textMinimumScale: CGFloat = 0.7
+}
 
-    // Richer gold / amber
-    static let boostFill = Color(hex: "#FFE6A3")
-    static let boostIcon = Color(hex: "#E89800")
-    static let boostInk = Color(hex: "#6B4000")
+/// Visual tokens for one Home stat card. Sampled from the design mock PNG.
+struct HomeStatBadgeStyle {
+    let fill: Color
+    let iconName: String
+    let iconTop: Color
+    let iconBottom: Color
+    let valueColor: Color
+    let labelColor: Color
+    let chevronColor: Color
+
+    /// Pale peach fill, orange-to-red-orange flame.
+    static let streak = HomeStatBadgeStyle(
+        fill: Color(hex: "#FED7BF"),
+        iconName: "flame.fill",
+        iconTop: Color(hex: "#FF7A18"),
+        iconBottom: Color(hex: "#FD3D00"),
+        valueColor: Color(hex: "#1A1A1A"),
+        labelColor: Color(hex: "#855F49"),
+        chevronColor: Color(hex: "#9A9A9A")
+    )
+
+    /// Pale periwinkle fill, royal-blue sparkles.
+    static let sparks = HomeStatBadgeStyle(
+        fill: Color(hex: "#BDD5FD"),
+        iconName: "sparkles",
+        iconTop: Color(hex: "#2F5BEA"),
+        iconBottom: Color(hex: "#2F5BEA"),
+        valueColor: Color(hex: "#1A1A1A"),
+        labelColor: Color(hex: "#5D78B2"),
+        chevronColor: Color(hex: "#9A9A9A")
+    )
+
+    /// Pale butter-yellow fill, gold/amber star.
+    static let boost = HomeStatBadgeStyle(
+        fill: Color(hex: "#FEE5A5"),
+        iconName: "star.fill",
+        iconTop: Color(hex: "#C98A12"),
+        iconBottom: Color(hex: "#C98A12"),
+        valueColor: Color(hex: "#1A1A1A"),
+        labelColor: Color(hex: "#A57A22"),
+        chevronColor: Color(hex: "#9A9A9A")
+    )
 }
 
 /// Compact name bubble shown when a Home streak / XP badge is tapped.
@@ -99,14 +150,78 @@ struct DailyStreakPill: View {
     }
 }
 
-/// One of the three equal Home stat cards (Daily Streak / Sparks / XP Boost).
-struct HomeStatBadgeCard: View {
-    let icon: String
+/// Large left icon for a Home stat card. Always a two-stop vertical gradient
+/// (solid icons use the same color twice) so the type checker sees one path.
+private struct HomeStatBadgeIcon: View {
+    let name: String
+    let topColor: Color
+    let bottomColor: Color
+
+    var body: some View {
+        Image(systemName: name)
+            .font(.system(size: HomeStatBadgeMetrics.iconSize, weight: .semibold))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(fill)
+            .frame(width: HomeStatBadgeMetrics.iconSize, height: HomeStatBadgeMetrics.iconSize)
+    }
+
+    private var fill: LinearGradient {
+        LinearGradient(
+            colors: [topColor, bottomColor],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+}
+
+/// Value + gray chevron on the first line, label on the second.
+private struct HomeStatBadgeTexts: View {
     let value: String
     let label: String
-    let background: Color
-    let iconColor: Color
     let valueColor: Color
+    let labelColor: Color
+    let chevronColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HomeStatBadgeMetrics.textStackSpacing) {
+            valueRow
+            labelText
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var valueRow: some View {
+        HStack(spacing: HomeStatBadgeMetrics.valueChevronSpacing) {
+            Text(value)
+                .font(.system(size: HomeStatBadgeMetrics.valueSize, weight: .bold, design: .rounded))
+                .foregroundStyle(valueColor)
+                .lineLimit(1)
+                .minimumScaleFactor(HomeStatBadgeMetrics.textMinimumScale)
+                .monospacedDigit()
+                .frame(minWidth: 0.0, alignment: .leading)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: HomeStatBadgeMetrics.chevronSize, weight: .semibold))
+                .foregroundStyle(chevronColor)
+                .fixedSize()
+        }
+    }
+
+    private var labelText: some View {
+        Text(label)
+            .font(.system(size: HomeStatBadgeMetrics.labelSize, weight: .medium))
+            .foregroundStyle(labelColor)
+            .lineLimit(1)
+            .minimumScaleFactor(HomeStatBadgeMetrics.textMinimumScale)
+            .frame(minWidth: 0.0, maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// One of the three equal Home stat cards (Daily Streak / Sparks / XP Boost).
+struct HomeStatBadgeCard: View {
+    let value: String
+    let label: String
+    let style: HomeStatBadgeStyle
     var action: (() -> Void)? = nil
     var tooltip: String? = nil
     var tooltipArrowEdge: Edge = .bottom
@@ -114,56 +229,58 @@ struct HomeStatBadgeCard: View {
     private var isTappable: Bool { action != nil || tooltip != nil }
 
     var body: some View {
-        Group {
-            if let action {
-                Button(action: action) { cardContent }
-                    .buttonStyle(.plain)
-            } else if let tooltip {
-                cardContent
-                    .homeStatTooltip(tooltip, arrowEdge: tooltipArrowEdge)
-            } else {
+        tappableCard
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(label), \(value)")
+            .accessibilityAddTraits(isTappable ? .isButton : [])
+            .accessibilityHint(tooltip.map { "Shows \($0)" } ?? "")
+    }
+
+    @ViewBuilder
+    private var tappableCard: some View {
+        if let action {
+            Button {
+                action()
+            } label: {
                 cardContent
             }
+            .buttonStyle(.plain)
+        } else if let tooltip {
+            cardContent
+                .homeStatTooltip(tooltip, arrowEdge: tooltipArrowEdge)
+        } else {
+            cardContent
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label), \(value)")
-        .accessibilityAddTraits(isTappable ? .isButton : [])
-        .accessibilityHint(tooltip.map { "Shows \($0)" } ?? "")
     }
 
     private var cardContent: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(iconColor)
-                    .symbolRenderingMode(.monochrome)
-
-                Text(value)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(valueColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .monospacedDigit()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(valueColor.opacity(0.4))
-            }
-
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(valueColor.opacity(0.62))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+        HStack(spacing: HomeStatBadgeMetrics.iconTextSpacing) {
+            HomeStatBadgeIcon(
+                name: style.iconName,
+                topColor: style.iconTop,
+                bottomColor: style.iconBottom
+            )
+            HomeStatBadgeTexts(
+                value: value,
+                label: label,
+                valueColor: style.valueColor,
+                labelColor: style.labelColor,
+                chevronColor: style.chevronColor
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(background)
+        .padding(.horizontal, HomeStatBadgeMetrics.cardPadding)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: HomeStatBadgeMetrics.cardHeight,
+            maxHeight: HomeStatBadgeMetrics.cardHeight,
+            alignment: .leading
         )
+        .background(cardFill)
+    }
+
+    private var cardFill: some View {
+        RoundedRectangle(cornerRadius: HomeStatBadgeMetrics.cardCornerRadius, style: .continuous)
+            .fill(style.fill)
     }
 }
 
@@ -175,38 +292,39 @@ struct HomeStatBadgeRow: View {
     var onSparksTap: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 8) {
-            HomeStatBadgeCard(
-                icon: "flame.fill",
-                value: "\(max(0, streak))d",
-                label: "Daily Streak",
-                background: HomeStatBadgePalette.streakFill,
-                iconColor: HomeStatBadgePalette.streakIcon,
-                valueColor: HomeStatBadgePalette.streakInk,
-                tooltip: "Daily Streak"
-            )
-
-            HomeStatBadgeCard(
-                icon: "sparkles",
-                value: "+\(max(0, sparks))",
-                label: "Sparks",
-                background: HomeStatBadgePalette.sparksFill,
-                iconColor: HomeStatBadgePalette.sparksIcon,
-                valueColor: HomeStatBadgePalette.sparksInk,
-                action: onSparksTap
-            )
-
-            HomeStatBadgeCard(
-                icon: "rocket.fill",
-                value: xpBoost,
-                label: "XP Boost",
-                background: HomeStatBadgePalette.boostFill,
-                iconColor: HomeStatBadgePalette.boostIcon,
-                valueColor: HomeStatBadgePalette.boostInk,
-                tooltip: "XP Bonus"
-            )
+        HStack(spacing: HomeStatBadgeMetrics.rowSpacing) {
+            streakCard
+            sparksCard
+            boostCard
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var streakCard: some View {
+        HomeStatBadgeCard(
+            value: "\(max(0, streak))d",
+            label: "Daily Streak",
+            style: HomeStatBadgeStyle.streak,
+            tooltip: "Daily Streak"
+        )
+    }
+
+    private var sparksCard: some View {
+        HomeStatBadgeCard(
+            value: "+\(max(0, sparks))",
+            label: "Sparks",
+            style: HomeStatBadgeStyle.sparks,
+            action: onSparksTap
+        )
+    }
+
+    private var boostCard: some View {
+        HomeStatBadgeCard(
+            value: xpBoost,
+            label: "XP Boost",
+            style: HomeStatBadgeStyle.boost,
+            tooltip: "XP Bonus"
+        )
     }
 }
 
@@ -316,7 +434,7 @@ struct HomeQuickActionRow: View {
 }
 
 #Preview("Stat cards") {
-    HomeStatBadgeRow(streak: 6, sparks: 340, xpBoost: "+30%")
+    HomeStatBadgeRow(streak: 20, sparks: 805, xpBoost: "+30%")
         .padding()
         .background(Color.white)
 }

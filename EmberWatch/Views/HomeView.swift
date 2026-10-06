@@ -323,7 +323,7 @@ struct HomeView: View {
                     xpBoost: levelManager.xpBoostPercentLabel,
                     onSparksTap: { showingAvatarPicker = true }
                 )
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 16)
             }
             
             // XP Progress Bar with level label inside
