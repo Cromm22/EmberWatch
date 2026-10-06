@@ -20,6 +20,9 @@ struct FoodAmountPickerView: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(EmberColors.lightPlum)
         )
+        .onAppear {
+            normalizeHalfCupIfNeeded()
+        }
     }
 
     private var header: some View {
@@ -31,7 +34,7 @@ struct FoodAmountPickerView: View {
 
     private var unitPicker: some View {
         Picker("Unit", selection: unitBinding) {
-            ForEach(FoodAmountUnit.allCases) { item in
+            ForEach(FoodAmountUnit.pickerCases) { item in
                 Text(item.pickerTitle).tag(item)
             }
         }
@@ -41,7 +44,7 @@ struct FoodAmountPickerView: View {
     
     private var unitBinding: Binding<FoodAmountUnit> {
         Binding(
-            get: { unit },
+            get: { displayedUnit },
             set: { newUnit in
                 unit = newUnit
                 quantity = FoodAmountMath.defaultQuantity(
@@ -52,9 +55,20 @@ struct FoodAmountPickerView: View {
         )
     }
 
+    private var displayedUnit: FoodAmountUnit {
+        FoodAmountMath.pickerSelection(unit: unit, quantity: quantity).unit
+    }
+
+    private func normalizeHalfCupIfNeeded() {
+        guard unit == .halfCup else { return }
+        let mapped = FoodAmountMath.pickerSelection(unit: unit, quantity: quantity)
+        unit = mapped.unit
+        quantity = mapped.quantity
+    }
+
     @ViewBuilder
     private var quantityEditor: some View {
-        switch unit {
+        switch displayedUnit {
         case .servings:
             ServingsQuantityEditor(quantity: $quantity)
         case .grams:
@@ -62,16 +76,8 @@ struct FoodAmountPickerView: View {
                 quantity: $quantity,
                 servingSizeGrams: servingSizeGrams
             )
-        case .cup:
-            CupQuantityEditor(
-                quantity: $quantity,
-                unitLabel: "1 cup"
-            )
-        case .halfCup:
-            CupQuantityEditor(
-                quantity: $quantity,
-                unitLabel: "1/2 cup"
-            )
+        case .cup, .halfCup:
+            CupQuantityEditor(quantity: $quantity)
         }
     }
 
@@ -91,11 +97,8 @@ struct FoodAmountPickerView: View {
             return "Uses this food’s default serving"
         case .grams:
             return "Nutrition scales with gram weight"
-        case .cup:
+        case .cup, .halfCup:
             return "1 cup ≈ \(Int(gramsPerCup.rounded())) g"
-        case .halfCup:
-            let half = gramsPerCup * 0.5
-            return "1/2 cup ≈ \(Int(half.rounded())) g"
         }
     }
 }
@@ -233,9 +236,8 @@ private struct GramsQuantityEditor: View {
 
 private struct CupQuantityEditor: View {
     @Binding var quantity: Double
-    let unitLabel: String
 
-    private let presets: [Double] = [1, 2, 3]
+    private let presets: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
 
     var body: some View {
         VStack(spacing: 12) {
@@ -246,7 +248,7 @@ private struct CupQuantityEditor: View {
                             quantity = preset
                         }
                     } label: {
-                        Text(presetLabel(preset))
+                        Text(FoodAmountMath.formatQuantity(preset))
                             .font(.headline)
                             .foregroundColor(isSelected(preset) ? EmberColors.cream : EmberColors.cream.opacity(0.7))
                             .frame(maxWidth: .infinity)
@@ -260,22 +262,22 @@ private struct CupQuantityEditor: View {
             }
 
             HStack {
-                Text(unitLabel)
+                Text("Cups")
                     .foregroundColor(EmberColors.cream.opacity(0.7))
                 Spacer()
                 Button {
-                    quantity = max(1, quantity - 1)
+                    quantity = max(0.25, roundedQuarter(quantity) - 0.25)
                 } label: {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
                         .foregroundColor(EmberColors.ember)
                 }
-                Text(stepperLabel)
+                Text(FoodAmountMath.displayLabel(unit: .cup, quantity: quantity))
                     .font(.headline)
                     .foregroundColor(EmberColors.cream)
                     .frame(minWidth: 72)
                 Button {
-                    quantity = min(10, quantity + 1)
+                    quantity = min(10, roundedQuarter(quantity) + 0.25)
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
@@ -285,22 +287,11 @@ private struct CupQuantityEditor: View {
         }
     }
 
-    private var stepperLabel: String {
-        let count = max(Int(quantity.rounded()), 1)
-        if count == 1 {
-            return unitLabel
-        }
-        return "\(count) × \(unitLabel)"
-    }
-
-    private func presetLabel(_ preset: Double) -> String {
-        if abs(preset - 1) < 0.001 {
-            return unitLabel
-        }
-        return "\(Int(preset)) ×"
-    }
-
     private func isSelected(_ preset: Double) -> Bool {
         abs(quantity - preset) < 0.001
+    }
+
+    private func roundedQuarter(_ value: Double) -> Double {
+        (value * 4).rounded() / 4
     }
 }
