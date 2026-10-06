@@ -205,7 +205,10 @@ class FoodDataManager: ObservableObject {
                     carbsPerServing: source.effectiveCarbsPerServing,
                     fatPerServing: source.effectiveFatPerServing,
                     sodiumPerServing: source.effectiveSodiumPerServing,
-                    servingSizeGrams: source.servingSizeGrams
+                    servingSizeGrams: source.servingSizeGrams,
+                    amountUnit: source.amountUnit,
+                    amountQuantity: source.amountQuantity,
+                    gramsPerCup: source.gramsPerCup
                 )
                 modelContext.insert(copy)
             }

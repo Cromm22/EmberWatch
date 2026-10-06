@@ -5,11 +5,9 @@ struct ServingSizePickerView: View {
     let product: FoodProduct
     let onConfirm: (FoodEntry) -> Void
     
-    @State private var selectedMultiplier: Double = 1.0
-    @State private var selectedGrams: Double = 0
+    @State private var selectedUnit: FoodAmountUnit = .grams
+    @State private var selectedQuantity: Double = 100
     @State private var selectedMealType: MealType = MealType.suggested()
-    
-    private let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
     
     var body: some View {
         NavigationView {
@@ -53,7 +51,13 @@ struct ServingSizePickerView: View {
         }
         .presentationBackground(EmberColors.dusk)
         .onAppear {
-            selectedGrams = product.servingSizeGrams ?? 100
+            if let grams = product.servingSizeGrams, grams > 0 {
+                selectedUnit = .grams
+                selectedQuantity = grams
+            } else {
+                selectedUnit = .servings
+                selectedQuantity = 1
+            }
         }
     }
     
@@ -90,15 +94,9 @@ struct ServingSizePickerView: View {
                 
                 Spacer()
                 
-                if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
-                    Text("\(Int(selectedGrams))g")
-                        .font(.subheadline)
-                        .foregroundColor(EmberColors.ember)
-                } else {
-                    Text("\(String(format: "%.1f", selectedMultiplier))× serving")
-                        .font(.subheadline)
-                        .foregroundColor(EmberColors.ember)
-                }
+                Text(amountLabel)
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.ember)
             }
             
             HStack(spacing: 12) {
@@ -149,122 +147,45 @@ struct ServingSizePickerView: View {
         )
     }
     
+    private var amountServings: Double {
+        FoodAmountMath.servingsMultiplier(
+            unit: selectedUnit,
+            quantity: selectedQuantity,
+            servingSizeGrams: product.servingSizeGrams ?? 0,
+            gramsPerCup: product.resolvedGramsPerCup
+        )
+    }
+    
+    private var amountLabel: String {
+        FoodAmountMath.displayLabel(unit: selectedUnit, quantity: selectedQuantity)
+    }
+    
     private var calculatedCalories: Double {
-        if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
-            return (product.caloriesPer100g * selectedGrams) / 100.0
-        }
-        return product.caloriesPerServing * selectedMultiplier
+        product.caloriesPerServing * amountServings
     }
     
     private var calculatedProtein: Double {
-        if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
-            return (product.proteinPer100g * selectedGrams) / 100.0
-        }
-        return product.proteinPerServing * selectedMultiplier
+        product.proteinPerServing * amountServings
     }
     
     private var calculatedCarbs: Double {
-        if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
-            return (product.carbsPer100g * selectedGrams) / 100.0
-        }
-        return product.carbsPerServing * selectedMultiplier
+        product.carbsPerServing * amountServings
     }
     
     private var calculatedFat: Double {
-        if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
-            return (product.fatPer100g * selectedGrams) / 100.0
-        }
-        return product.fatPerServing * selectedMultiplier
+        product.fatPerServing * amountServings
     }
     
     private var calculatedSodium: Double {
-        if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
-            return (product.sodiumPer100g * selectedGrams) / 100.0
-        }
-        return product.sodiumPerServing * selectedMultiplier
+        product.sodiumPerServing * amountServings
     }
     
     private var servingSizeCard: some View {
-        VStack(spacing: 16) {
-            Text("Serving Size")
-                .font(.headline)
-                .foregroundColor(EmberColors.cream)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            if let servingGrams = product.servingSizeGrams, servingGrams > 0 {
-                let gramPresets = [servingGrams * 0.5, servingGrams, servingGrams * 1.5, servingGrams * 2.0, servingGrams * 3.0]
-                HStack(spacing: 12) {
-                    ForEach(gramPresets, id: \.self) { grams in
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedGrams = grams
-                                selectedMultiplier = grams / servingGrams
-                            }
-                        }) {
-                            Text("\(Int(grams))g")
-                                .font(.headline)
-                                .foregroundColor(abs(selectedGrams - grams) < 1.0 ? EmberColors.cream : EmberColors.cream.opacity(0.7))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(abs(selectedGrams - grams) < 1.0 ? EmberColors.ember : EmberColors.dusk)
-                                )
-                        }
-                    }
-                }
-                
-                HStack {
-                    Text("Adjust")
-                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                    Spacer()
-                    Button {
-                        selectedGrams = max(1, selectedGrams - 10)
-                        selectedMultiplier = selectedGrams / servingGrams
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(EmberColors.ember)
-                    }
-                    Text("\(Int(selectedGrams))g")
-                        .font(.headline)
-                        .foregroundColor(EmberColors.cream)
-                        .frame(minWidth: 60)
-                    Button {
-                        selectedGrams = min(1000, selectedGrams + 10)
-                        selectedMultiplier = selectedGrams / servingGrams
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(EmberColors.ember)
-                    }
-                }
-            } else {
-                HStack(spacing: 12) {
-                    ForEach(multipliers, id: \.self) { multiplier in
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedMultiplier = multiplier
-                            }
-                        }) {
-                            Text(formatMultiplier(multiplier))
-                                .font(.headline)
-                                .foregroundColor(selectedMultiplier == multiplier ? EmberColors.cream : EmberColors.cream.opacity(0.7))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(selectedMultiplier == multiplier ? EmberColors.ember : EmberColors.dusk)
-                                )
-                        }
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(EmberColors.lightPlum)
+        FoodAmountPickerView(
+            unit: $selectedUnit,
+            quantity: $selectedQuantity,
+            servingSizeGrams: product.servingSizeGrams ?? 0,
+            gramsPerCup: product.resolvedGramsPerCup
         )
     }
     
@@ -290,17 +211,8 @@ struct ServingSizePickerView: View {
         )
     }
     
-    private func formatMultiplier(_ value: Double) -> String {
-        if value == 0.5 {
-            return "0.5×"
-        } else if value.truncatingRemainder(dividingBy: 1) == 0 {
-            return "\(Int(value))×"
-        } else {
-            return "\(value)×"
-        }
-    }
-    
     private func confirmServing() {
+        let cupGrams = product.resolvedGramsPerCup
         let entry = FoodEntry(
             name: product.name,
             calories: calculatedCalories,
@@ -309,13 +221,16 @@ struct ServingSizePickerView: View {
             fat: calculatedFat,
             sodium: calculatedSodium,
             mealType: selectedMealType.rawValue,
-            servings: selectedMultiplier,
+            servings: amountServings,
             caloriesPerServing: product.caloriesPerServing,
             proteinPerServing: product.proteinPerServing,
             carbsPerServing: product.carbsPerServing,
             fatPerServing: product.fatPerServing,
             sodiumPerServing: product.sodiumPerServing,
-            servingSizeGrams: product.servingSizeGrams ?? 0
+            servingSizeGrams: product.servingSizeGrams ?? 0,
+            amountUnit: selectedUnit.rawValue,
+            amountQuantity: selectedQuantity,
+            gramsPerCup: cupGrams
         )
         
         onConfirm(entry)

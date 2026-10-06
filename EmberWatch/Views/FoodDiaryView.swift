@@ -359,15 +359,9 @@ struct FoodEntryRow: View {
                     
                     HStack(spacing: 12) {
                         Label("\(Int(entry.calories)) cal", systemImage: "flame.fill")
-                        if entry.servingSizeGrams > 0 {
-                            Text("\(Int(entry.effectiveGrams))g")
-                                .font(.caption)
-                                .foregroundColor(EmberColors.ember)
-                        } else if entry.servings != 1.0 {
-                            Text(formatServings(entry.servings))
-                                .font(.caption)
-                                .foregroundColor(EmberColors.ember)
-                        }
+                        Text(entry.amountDisplayLabel)
+                            .font(.caption)
+                            .foregroundColor(EmberColors.ember)
                     }
                     .font(.subheadline)
                     .foregroundColor(EmberColors.cream.opacity(0.7))
@@ -392,14 +386,7 @@ struct FoodEntryRow: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityHint("Tap to edit servings. Swipe left to delete.")
-    }
-    
-    private func formatServings(_ value: Double) -> String {
-        if value.truncatingRemainder(dividingBy: 1) == 0 {
-            return "\(Int(value))× serv"
-        }
-        return String(format: "%.1f× serv", value)
+        .accessibilityHint("Tap to edit amount. Swipe left to delete.")
     }
     
     private var mealTypeIcon: String {
@@ -427,7 +414,11 @@ struct RecentFoodRow: View {
                 proteinPerServing: entry.effectiveProteinPerServing,
                 carbsPerServing: entry.effectiveCarbsPerServing,
                 fatPerServing: entry.effectiveFatPerServing,
-                sodiumPerServing: entry.effectiveSodiumPerServing
+                sodiumPerServing: entry.effectiveSodiumPerServing,
+                servingSizeGrams: entry.servingSizeGrams,
+                amountUnit: entry.amountUnit,
+                amountQuantity: entry.amountQuantity,
+                gramsPerCup: entry.gramsPerCup
             )
             foodDataManager.addFoodEntry(newEntry)
             emberTalkManager.showFoodPhrase()
@@ -454,12 +445,8 @@ struct RecentFoodRow: View {
                     Text("\(Int(entry.calories)) cal")
                         .font(.caption)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
-                    if entry.servingSizeGrams > 0 {
-                        Text("\(Int(entry.effectiveGrams))g")
-                            .font(.caption2)
-                            .foregroundColor(EmberColors.ember.opacity(0.85))
-                    } else if entry.servings != 1.0 {
-                        Text(formatRecentServings(entry.servings))
+                    if !entry.amountDisplayLabel.isEmpty {
+                        Text(entry.amountDisplayLabel)
                             .font(.caption2)
                             .foregroundColor(EmberColors.ember.opacity(0.85))
                     }
@@ -478,13 +465,6 @@ struct RecentFoodRow: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Add \(entry.name), \(Int(entry.calories)) calories")
     }
-    
-    private func formatRecentServings(_ value: Double) -> String {
-        if value.truncatingRemainder(dividingBy: 1) == 0 {
-            return "\(Int(value))×"
-        }
-        return String(format: "%.1f×", value)
-    }
 }
 
 struct EditServingsView: View {
@@ -492,16 +472,23 @@ struct EditServingsView: View {
     @Binding var isPresentedEntry: FoodEntry?
     @EnvironmentObject var foodDataManager: FoodDataManager
     
-    @State private var selectedMultiplier: Double = 1.0
-    @State private var selectedGrams: Double = 0
-    
-    private let multipliers: [Double] = [0.5, 1.0, 1.5, 2.0, 3.0]
+    @State private var selectedUnit: FoodAmountUnit = .servings
+    @State private var selectedQuantity: Double = 1.0
     
     private var caloriesPerServing: Double { entry.effectiveCaloriesPerServing }
     private var proteinPerServing: Double { entry.effectiveProteinPerServing }
     private var carbsPerServing: Double { entry.effectiveCarbsPerServing }
     private var fatPerServing: Double { entry.effectiveFatPerServing }
     private var sodiumPerServing: Double { entry.effectiveSodiumPerServing }
+    
+    private var previewServings: Double {
+        FoodAmountMath.servingsMultiplier(
+            unit: selectedUnit,
+            quantity: selectedQuantity,
+            servingSizeGrams: entry.servingSizeGrams,
+            gramsPerCup: entry.resolvedGramsPerCup
+        )
+    }
     
     var body: some View {
         NavigationView {
@@ -511,204 +498,19 @@ struct EditServingsView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.system(size: 40))
-                                .foregroundColor(EmberColors.ember)
-                            
-                            Text(entry.name)
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(EmberColors.cream)
-                                .multilineTextAlignment(.center)
-                            
-                            Text(entry.resolvedMealType)
-                                .font(.subheadline)
-                                .foregroundColor(EmberColors.cream.opacity(0.7))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(EmberColors.lightPlum)
-                        )
-                        
-                        VStack(spacing: 16) {
-                            HStack {
-                                Text("Nutrition")
-                                    .font(.headline)
-                                    .foregroundColor(EmberColors.cream)
-                                
-                                Spacer()
-                                
-                                if entry.servingSizeGrams > 0 {
-                                    Text("\(Int(selectedGrams))g")
-                                        .font(.subheadline)
-                                        .foregroundColor(EmberColors.ember)
-                                } else {
-                                    Text("\(formatMultiplier(selectedMultiplier)) serving")
-                                        .font(.subheadline)
-                                        .foregroundColor(EmberColors.ember)
-                                }
-                            }
-                            
-                            HStack(spacing: 12) {
-                                NutritionValueCard(
-                                    label: "Calories",
-                                    value: Int(caloriesPerServing * selectedMultiplier),
-                                    unit: "cal",
-                                    color: EmberColors.ember
-                                )
-                                
-                                NutritionValueCard(
-                                    label: "Protein",
-                                    value: Int(proteinPerServing * selectedMultiplier),
-                                    unit: "g",
-                                    color: .orange
-                                )
-                            }
-                            
-                            HStack(spacing: 12) {
-                                NutritionValueCard(
-                                    label: "Carbs",
-                                    value: Int(carbsPerServing * selectedMultiplier),
-                                    unit: "g",
-                                    color: .blue
-                                )
-                                
-                                NutritionValueCard(
-                                    label: "Fat",
-                                    value: Int(fatPerServing * selectedMultiplier),
-                                    unit: "g",
-                                    color: .yellow
-                                )
-                            }
-                            
-                            HStack(spacing: 12) {
-                                NutritionValueCard(
-                                    label: "Sodium",
-                                    value: Int(sodiumPerServing * selectedMultiplier),
-                                    unit: "mg",
-                                    color: .mint
-                                )
-                            }
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(EmberColors.lightPlum)
-                        )
-                        
-                        VStack(spacing: 16) {
-                            Text(entry.servingSizeGrams > 0 ? "Serving Size" : "Servings")
-                                .font(.headline)
-                                .foregroundColor(EmberColors.cream)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            if entry.servingSizeGrams > 0 {
-                                let gramPresets = [entry.servingSizeGrams * 0.5, entry.servingSizeGrams, entry.servingSizeGrams * 1.5, entry.servingSizeGrams * 2.0, entry.servingSizeGrams * 3.0]
-                                HStack(spacing: 12) {
-                                    ForEach(gramPresets, id: \.self) { grams in
-                                        Button(action: {
-                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                selectedGrams = grams
-                                                selectedMultiplier = grams / entry.servingSizeGrams
-                                            }
-                                        }) {
-                                            Text("\(Int(grams))g")
-                                                .font(.headline)
-                                                .foregroundColor(abs(selectedGrams - grams) < 1.0 ? EmberColors.cream : EmberColors.cream.opacity(0.7))
-                                                .frame(maxWidth: .infinity)
-                                                .padding(.vertical, 12)
-                                                .background(
-                                                    RoundedRectangle(cornerRadius: 12)
-                                                        .fill(abs(selectedGrams - grams) < 1.0 ? EmberColors.ember : EmberColors.dusk)
-                                                )
-                                        }
-                                    }
-                                }
-                                
-                                HStack {
-                                    Text("Adjust")
-                                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                                    Spacer()
-                                    Button {
-                                        selectedGrams = max(1, selectedGrams - 10)
-                                        selectedMultiplier = selectedGrams / entry.servingSizeGrams
-                                    } label: {
-                                        Image(systemName: "minus.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(EmberColors.ember)
-                                    }
-                                    Text("\(Int(selectedGrams))g")
-                                        .font(.headline)
-                                        .foregroundColor(EmberColors.cream)
-                                        .frame(minWidth: 60)
-                                    Button {
-                                        selectedGrams = min(1000, selectedGrams + 10)
-                                        selectedMultiplier = selectedGrams / entry.servingSizeGrams
-                                    } label: {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(EmberColors.ember)
-                                    }
-                                }
-                            } else {
-                                HStack(spacing: 12) {
-                                    ForEach(multipliers, id: \.self) { multiplier in
-                                        Button(action: {
-                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                selectedMultiplier = multiplier
-                                            }
-                                        }) {
-                                            Text(formatMultiplier(multiplier))
-                                                .font(.headline)
-                                                .foregroundColor(selectedMultiplier == multiplier ? EmberColors.cream : EmberColors.cream.opacity(0.7))
-                                                .frame(maxWidth: .infinity)
-                                                .padding(.vertical, 12)
-                                                .background(
-                                                    RoundedRectangle(cornerRadius: 12)
-                                                        .fill(selectedMultiplier == multiplier ? EmberColors.ember : EmberColors.dusk)
-                                                )
-                                        }
-                                    }
-                                }
-                                
-                                HStack {
-                                    Text("Adjust")
-                                        .foregroundColor(EmberColors.cream.opacity(0.7))
-                                    Spacer()
-                                    Button {
-                                        selectedMultiplier = max(0.25, (selectedMultiplier * 4).rounded() / 4 - 0.25)
-                                    } label: {
-                                        Image(systemName: "minus.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(EmberColors.ember)
-                                    }
-                                    Text(String(format: "%.2g×", selectedMultiplier))
-                                        .font(.headline)
-                                        .foregroundColor(EmberColors.cream)
-                                        .frame(minWidth: 48)
-                                    Button {
-                                        selectedMultiplier = min(10, (selectedMultiplier * 4).rounded() / 4 + 0.25)
-                                    } label: {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(EmberColors.ember)
-                                    }
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(EmberColors.lightPlum)
+                        headerCard
+                        nutritionCard
+                        FoodAmountPickerView(
+                            unit: $selectedUnit,
+                            quantity: $selectedQuantity,
+                            servingSizeGrams: entry.servingSizeGrams,
+                            gramsPerCup: entry.resolvedGramsPerCup
                         )
                     }
                     .padding()
                 }
             }
-            .navigationTitle("Edit Servings")
+            .navigationTitle("Edit Amount")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
@@ -723,7 +525,11 @@ struct EditServingsView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        entry.applyServings(selectedMultiplier)
+                        entry.applyAmount(
+                            unit: selectedUnit,
+                            quantity: selectedQuantity,
+                            gramsPerCup: entry.resolvedGramsPerCup
+                        )
                         foodDataManager.updateFoodEntry(entry)
                         isPresentedEntry = nil
                     }
@@ -732,20 +538,96 @@ struct EditServingsView: View {
                 }
             }
             .onAppear {
-                selectedMultiplier = entry.servings > 0 ? entry.servings : 1.0
-                selectedGrams = entry.effectiveGrams > 0 ? entry.effectiveGrams : (entry.servingSizeGrams > 0 ? entry.servingSizeGrams : 100)
+                selectedUnit = entry.resolvedAmountUnit
+                selectedQuantity = entry.resolvedAmountQuantity
             }
         }
     }
     
-    private func formatMultiplier(_ value: Double) -> String {
-        if value == 0.5 {
-            return "0.5×"
-        } else if value.truncatingRemainder(dividingBy: 1) == 0 {
-            return "\(Int(value))×"
-        } else {
-            return String(format: "%.2g×", value)
+    private var headerCard: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 40))
+                .foregroundColor(EmberColors.ember)
+            
+            Text(entry.name)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(EmberColors.cream)
+                .multilineTextAlignment(.center)
+            
+            Text(entry.resolvedMealType)
+                .font(.subheadline)
+                .foregroundColor(EmberColors.cream.opacity(0.7))
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
+    }
+    
+    private var nutritionCard: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("Nutrition")
+                    .font(.headline)
+                    .foregroundColor(EmberColors.cream)
+                
+                Spacer()
+                
+                Text(FoodAmountMath.displayLabel(unit: selectedUnit, quantity: selectedQuantity))
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.ember)
+            }
+            
+            HStack(spacing: 12) {
+                NutritionValueCard(
+                    label: "Calories",
+                    value: Int(caloriesPerServing * previewServings),
+                    unit: "cal",
+                    color: EmberColors.ember
+                )
+                
+                NutritionValueCard(
+                    label: "Protein",
+                    value: Int(proteinPerServing * previewServings),
+                    unit: "g",
+                    color: .orange
+                )
+            }
+            
+            HStack(spacing: 12) {
+                NutritionValueCard(
+                    label: "Carbs",
+                    value: Int(carbsPerServing * previewServings),
+                    unit: "g",
+                    color: .blue
+                )
+                
+                NutritionValueCard(
+                    label: "Fat",
+                    value: Int(fatPerServing * previewServings),
+                    unit: "g",
+                    color: .yellow
+                )
+            }
+            
+            HStack(spacing: 12) {
+                NutritionValueCard(
+                    label: "Sodium",
+                    value: Int(sodiumPerServing * previewServings),
+                    unit: "mg",
+                    color: .mint
+                )
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(EmberColors.lightPlum)
+        )
     }
 }
 
@@ -1097,6 +979,15 @@ struct AddFoodView: View {
         let fatValue = Double(fat) ?? 0
         let sodiumValue = Double(sodium) ?? 0
         let servingValue = Double(servingGrams) ?? 0
+        let loggedUnit: String
+        let loggedQuantity: Double
+        if servingValue > 0 {
+            loggedUnit = FoodAmountUnit.grams.rawValue
+            loggedQuantity = servingValue
+        } else {
+            loggedUnit = FoodAmountUnit.servings.rawValue
+            loggedQuantity = 1.0
+        }
         
         let entry = FoodEntry(
             name: foodName,
@@ -1112,7 +1003,10 @@ struct AddFoodView: View {
             carbsPerServing: carbsValue,
             fatPerServing: fatValue,
             sodiumPerServing: sodiumValue,
-            servingSizeGrams: servingValue
+            servingSizeGrams: servingValue,
+            amountUnit: loggedUnit,
+            amountQuantity: loggedQuantity,
+            gramsPerCup: FoodCupWeight.fallbackGramsPerCup
         )
         
         foodDataManager.addFoodEntry(entry)
