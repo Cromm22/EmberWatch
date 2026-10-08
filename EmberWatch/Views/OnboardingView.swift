@@ -6,12 +6,14 @@ struct OnboardingView: View {
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var characterManager: CharacterManager
+    @EnvironmentObject var companionManager: CompanionManager
     
     @State private var step = 0
     @State private var nameDraft = ""
     @State private var selectedBuild: BuildKind?
+    @State private var selectedSpecies: CompanionSpecies?
     
-    private let totalSteps = 7 // avatar, name, build, xp1, xp2, xp3, health
+    private let totalSteps = 8 // avatar, name, build, companion, xp1, xp2, xp3, health
     
     var body: some View {
         ZStack {
@@ -34,6 +36,7 @@ struct OnboardingView: View {
                     avatarStep.tag(0)
                     nameStep.tag(1)
                     buildStep.tag(2)
+                    companionStep.tag(3)
                     xpStep(
                         title: "Earn XP every day",
                         bodyText: "Log meals, hit nutrition ranges, complete workouts, and keep a streak. XP comes from real-life habits — never from a shop."
@@ -43,14 +46,14 @@ struct OnboardingView: View {
                             .foregroundColor(EmberColors.ember)
                             .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
                     }
-                    .tag(3)
+                    .tag(4)
                     xpStep(
                         title: "Level 1 → 100",
                         bodyText: "Complete daily goals to power your Ember."
                     ) {
                         EmberGrowthOutlineIcon()
                     }
-                    .tag(4)
+                    .tag(5)
                     xpStep(
                         title: "XP is never sold",
                         bodyText: "No boosters, no XP packs. Coins and Crystals are for cosmetics only — they never buy levels or health progress."
@@ -60,8 +63,8 @@ struct OnboardingView: View {
                             .foregroundColor(EmberColors.ember)
                             .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
                     }
-                    .tag(5)
-                    healthStep.tag(6)
+                    .tag(6)
+                    healthStep.tag(7)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.25), value: step)
@@ -85,6 +88,8 @@ struct OnboardingView: View {
             return !nameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case 2:
             return selectedBuild != nil
+        case 3:
+            return selectedSpecies != nil
         default:
             return true
         }
@@ -114,6 +119,9 @@ struct OnboardingView: View {
         if step == 2, let selectedBuild {
             characterManager.selectBuild(selectedBuild)
         }
+        if step == 3, let selectedSpecies {
+            companionManager.selectSpecies(selectedSpecies, level: max(1, levelManager.level))
+        }
         if step >= totalSteps - 1 {
             healthKitManager.ensureAuthorization()
             avatarManager.completeOnboarding()
@@ -124,7 +132,8 @@ struct OnboardingView: View {
                     avatarId: avatarManager.selectedAvatarId,
                     totalXP: levelManager.totalXP,
                     level: levelManager.level,
-                    build: characterManager.selectedBuild?.rawValue
+                    build: characterManager.selectedBuild?.rawValue,
+                    companion: companionManager.selectedSpecies?.rawValue
                 )
             }
             return
@@ -237,6 +246,36 @@ struct OnboardingView: View {
                 BuildPickerView(selected: selectedBuild) { build in
                     selectedBuild = build
                 }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+        }
+    }
+    
+    private var companionStep: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Choose your Ember")
+                    .font(.title.bold())
+                    .foregroundColor(EmberColors.cream)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 8)
+                
+                Text("This companion evolves as you level. You can rename it on Home.")
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 8)
+                
+                CompanionPickerView(
+                    selected: selectedSpecies,
+                    suggested: nil,
+                    previewLevel: 1,
+                    onSelect: { species in
+                        selectedSpecies = species
+                    }
+                )
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 12)

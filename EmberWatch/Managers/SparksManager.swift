@@ -252,6 +252,17 @@ final class SparksManager: ObservableObject {
         activeNameplateId = id
     }
 
+    /// Public wallet spend for Phase 3 shop / equipment. Never spends XP.
+    @discardableResult
+    func spend(amount: Int, currency: ShopCurrency, label: String) -> Bool {
+        switch currency {
+        case .crystals:
+            return spendCrystals(amount, label: label)
+        case .coins:
+            return spendCoins(amount, label: label)
+        }
+    }
+
     /// Credit Crystals after a verified StoreKit purchase. Never call from a placeholder tap.
     @discardableResult
     func creditPurchasedCrystals(_ amount: Int) -> Int {

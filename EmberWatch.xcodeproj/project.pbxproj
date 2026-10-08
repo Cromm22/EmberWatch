@@ -65,6 +65,16 @@
 		CHARMGR00000000000000002 /* CharacterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHARMGR00000000000000001 /* CharacterManager.swift */; };
 		BLDPKR000000000000000002 /* BuildPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BLDPKR000000000000000001 /* BuildPickerView.swift */; };
 		CHARSHT00000000000000002 /* CharacterSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHARSHT00000000000000001 /* CharacterSheetView.swift */; };
+		COMPSPEC0000000000000002 /* CompanionSpecies.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPSPEC0000000000000001 /* CompanionSpecies.swift */; };
+		EQCAT0000000000000000002 /* EquipmentCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EQCAT0000000000000000001 /* EquipmentCatalog.swift */; };
+		SHOPCAT00000000000000002 /* ShopCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = SHOPCAT00000000000000001 /* ShopCatalog.swift */; };
+		COMPMGR00000000000000002 /* CompanionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPMGR00000000000000001 /* CompanionManager.swift */; };
+		COMPAV000000000000000002 /* CompanionAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPAV000000000000000001 /* CompanionAvatarView.swift */; };
+		COMPART00000000000000002 /* CompanionCreatureArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPART00000000000000001 /* CompanionCreatureArt.swift */; };
+		COMPGEAR0000000000000002 /* CompanionGearOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPGEAR0000000000000001 /* CompanionGearOverlay.swift */; };
+		COMPPKR00000000000000002 /* CompanionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPPKR00000000000000001 /* CompanionPickerView.swift */; };
+		EVOCEL000000000000000002 /* EvolutionCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EVOCEL000000000000000001 /* EvolutionCelebrationView.swift */; };
+		EQVIEW000000000000000002 /* EquipmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EQVIEW000000000000000001 /* EquipmentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -129,6 +139,16 @@
 		CHARMGR00000000000000001 /* CharacterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterManager.swift; sourceTree = "<group>"; };
 		BLDPKR000000000000000001 /* BuildPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildPickerView.swift; sourceTree = "<group>"; };
 		CHARSHT00000000000000001 /* CharacterSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterSheetView.swift; sourceTree = "<group>"; };
+		COMPSPEC0000000000000001 /* CompanionSpecies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionSpecies.swift; sourceTree = "<group>"; };
+		EQCAT0000000000000000001 /* EquipmentCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentCatalog.swift; sourceTree = "<group>"; };
+		SHOPCAT00000000000000001 /* ShopCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopCatalog.swift; sourceTree = "<group>"; };
+		COMPMGR00000000000000001 /* CompanionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionManager.swift; sourceTree = "<group>"; };
+		COMPAV000000000000000001 /* CompanionAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionAvatarView.swift; sourceTree = "<group>"; };
+		COMPART00000000000000001 /* CompanionCreatureArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionCreatureArt.swift; sourceTree = "<group>"; };
+		COMPGEAR0000000000000001 /* CompanionGearOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionGearOverlay.swift; sourceTree = "<group>"; };
+		COMPPKR00000000000000001 /* CompanionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionPickerView.swift; sourceTree = "<group>"; };
+		EVOCEL000000000000000001 /* EvolutionCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvolutionCelebrationView.swift; sourceTree = "<group>"; };
+		EQVIEW000000000000000001 /* EquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -206,6 +226,12 @@
 				G0AL5V13W000000000000001 /* GoalsView.swift */,
 				BLDPKR000000000000000001 /* BuildPickerView.swift */,
 				CHARSHT00000000000000001 /* CharacterSheetView.swift */,
+				COMPAV000000000000000001 /* CompanionAvatarView.swift */,
+				COMPART00000000000000001 /* CompanionCreatureArt.swift */,
+				COMPGEAR0000000000000001 /* CompanionGearOverlay.swift */,
+				COMPPKR00000000000000001 /* CompanionPickerView.swift */,
+				EQVIEW000000000000000001 /* EquipmentView.swift */,
+				EVOCEL000000000000000001 /* EvolutionCelebrationView.swift */,
 				LUCEL44F7B0C7808A4056AB /* LevelUpCelebrationView.swift */,
 			);
 			path = Views;
@@ -245,6 +271,10 @@
 				RPGBUILD0000000000000001 /* RPGBuild.swift */,
 				STATENG00000000000000001 /* StatEngine.swift */,
 				CHARMGR00000000000000001 /* CharacterManager.swift */,
+				COMPSPEC0000000000000001 /* CompanionSpecies.swift */,
+				EQCAT0000000000000000001 /* EquipmentCatalog.swift */,
+				SHOPCAT00000000000000001 /* ShopCatalog.swift */,
+				COMPMGR00000000000000001 /* CompanionManager.swift */,
 				S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */,
 				S5H0P5T0R300000000000001 /* SparksShopStore.swift */,
 				F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */,
@@ -363,6 +393,16 @@
 				CHARMGR00000000000000002 /* CharacterManager.swift in Sources */,
 				BLDPKR000000000000000002 /* BuildPickerView.swift in Sources */,
 				CHARSHT00000000000000002 /* CharacterSheetView.swift in Sources */,
+				COMPSPEC0000000000000002 /* CompanionSpecies.swift in Sources */,
+				EQCAT0000000000000000002 /* EquipmentCatalog.swift in Sources */,
+				SHOPCAT00000000000000002 /* ShopCatalog.swift in Sources */,
+				COMPMGR00000000000000002 /* CompanionManager.swift in Sources */,
+				COMPAV000000000000000002 /* CompanionAvatarView.swift in Sources */,
+				COMPART00000000000000002 /* CompanionCreatureArt.swift in Sources */,
+				COMPGEAR0000000000000002 /* CompanionGearOverlay.swift in Sources */,
+				COMPPKR00000000000000002 /* CompanionPickerView.swift in Sources */,
+				EVOCEL000000000000000002 /* EvolutionCelebrationView.swift in Sources */,
+				EQVIEW000000000000000002 /* EquipmentView.swift in Sources */,
 				S1P2A3R4K5S6M7A8N9A0B1 /* SparksManager.swift in Sources */,
 				E0F1A2B3C4D5E60718293A4B /* FeedbackManager.swift in Sources */,
 				A0B1C2D3E4F5061728394A5B /* WeightManager.swift in Sources */,

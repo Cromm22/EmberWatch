@@ -4,6 +4,9 @@ struct ProfileSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var characterManager: CharacterManager
+    @EnvironmentObject var companionManager: CompanionManager
+    @EnvironmentObject var avatarManager: AvatarManager
+    @EnvironmentObject var levelManager: LevelManager
     
     @AppStorage("profile.email") private var savedEmail: String = ""
     @AppStorage("profile.phone") private var savedPhone: String = ""
@@ -12,6 +15,7 @@ struct ProfileSettingsView: View {
     @State private var phoneInput: String = ""
     @State private var isSaving: Bool = false
     @State private var showingBuildPicker = false
+    @State private var showingCompanionPicker = false
     
     var body: some View {
         NavigationView {
@@ -59,6 +63,39 @@ struct ProfileSettingsView: View {
                                 
                                 Spacer()
                                 
+                                Text("Change")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(EmberColors.ember)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(EmberColors.lightPlum)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal)
+
+                        Button {
+                            showingCompanionPicker = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: companionManager.resolvedSpecies.iconName)
+                                    .font(.title3)
+                                    .foregroundColor(EmberColors.ember)
+                                    .frame(width: 28)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Ember")
+                                        .font(.headline)
+                                        .foregroundColor(EmberColors.cream)
+                                    Text(companionManager.selectedSpecies?.displayName ?? "Choose your Ember")
+                                        .font(.subheadline)
+                                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                                }
+
+                                Spacer()
+
                                 Text("Change")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundColor(EmberColors.ember)
@@ -172,6 +209,12 @@ struct ProfileSettingsView: View {
             .sheet(isPresented: $showingBuildPicker) {
                 BuildChoiceSheet(isPresented: $showingBuildPicker, allowsSkip: false)
                     .environmentObject(characterManager)
+            }
+            .sheet(isPresented: $showingCompanionPicker) {
+                CompanionChoiceSheet(isPresented: $showingCompanionPicker, allowsSkip: false)
+                    .environmentObject(companionManager)
+                    .environmentObject(avatarManager)
+                    .environmentObject(levelManager)
             }
         }
     }

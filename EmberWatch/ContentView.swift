@@ -14,6 +14,7 @@ struct ContentView: View {
     @EnvironmentObject var emberTalkManager: EmberTalkManager
     @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
     @EnvironmentObject var characterManager: CharacterManager
+    @EnvironmentObject var companionManager: CompanionManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var showingFeedback = false
@@ -22,6 +23,10 @@ struct ContentView: View {
     @State private var celebrationLevel: Int = 0
     @State private var showingBuildChoice = false
     @State private var didOfferBuildThisSession = false
+    @State private var showingCompanionChoice = false
+    @State private var didOfferCompanionThisSession = false
+    @State private var showEvolutionCelebration = false
+    @State private var evolutionStage: CompanionStage = .baby
     
     var body: some View {
         ZStack {
@@ -33,6 +38,7 @@ struct ContentView: View {
                         .environmentObject(friendsManager)
                         .environmentObject(healthKitManager)
                         .environmentObject(characterManager)
+                        .environmentObject(companionManager)
                 } else {
                     mainTabs
                 }
@@ -42,6 +48,16 @@ struct ContentView: View {
             if showLevelUpCelebration {
                 LevelUpCelebrationView(newLevel: celebrationLevel) {
                     showLevelUpCelebration = false
+                }
+                .safeAreaPadding(.bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if showEvolutionCelebration {
+                EvolutionCelebrationView(
+                    species: companionManager.resolvedSpecies,
+                    stage: evolutionStage
+                ) {
+                    showEvolutionCelebration = false
+                    companionManager.clearPendingEvolution()
                 }
                 .safeAreaPadding(.bottom)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -62,12 +78,17 @@ struct ContentView: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.82), value: showLevelUpCelebration)
+        .animation(.spring(response: 0.4, dampingFraction: 0.82), value: showEvolutionCelebration)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.xpToast)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sparksManager.toast)
         .onChange(of: levelManager.levelUpEvent) { _, newLevel in
             if let level = newLevel {
                 celebrationLevel = level
                 showLevelUpCelebration = true
+                if let stage = companionManager.checkEvolution(level: level) {
+                    evolutionStage = stage
+                    showEvolutionCelebration = true
+                }
                 // Clear the event after handling
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     levelManager.levelUpEvent = nil
@@ -80,41 +101,52 @@ struct ContentView: View {
             }
         }
         .onChange(of: characterManager.selectedBuild) { _, _ in
-            Task {
-                await friendsManager.updateMyProfile(
-                    name: avatarManager.emberName,
-                    avatarId: avatarManager.selectedAvatarId,
-                    totalXP: levelManager.totalXP,
-                    level: levelManager.level,
-                    build: characterManager.selectedBuild?.rawValue
-                )
-            }
+            publishProfile()
+        }
+        .onChange(of: companionManager.selectedSpecies) { _, _ in
+            publishProfile()
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, avatarManager.hasCompletedOnboarding else { return }
             healthKitManager.ensureAuthorization()
             _ = levelManager.checkDailyOpenReward()
             syncRPGProgress()
-            Task {
-                await friendsManager.updateMyProfile(
-                    name: avatarManager.emberName,
-                    avatarId: avatarManager.selectedAvatarId,
-                    totalXP: levelManager.totalXP,
-                    level: levelManager.level,
-                    build: characterManager.selectedBuild?.rawValue
-                )
-            }
+            publishProfile()
         }
         .onAppear {
             guard avatarManager.hasCompletedOnboarding else { return }
             healthKitManager.ensureAuthorization()
             _ = levelManager.checkDailyOpenReward()
             syncRPGProgress()
+            companionManager.grantFreeUnlocks(level: levelManager.level)
+            companionManager.noteCurrentStageWithoutCelebrating(level: levelManager.level)
             offerBuildChoiceIfNeeded()
+            offerCompanionChoiceIfNeeded()
         }
-        .sheet(isPresented: $showingBuildChoice) {
+        .sheet(isPresented: $showingBuildChoice, onDismiss: {
+            offerCompanionChoiceIfNeeded()
+        }) {
             BuildChoiceSheet(isPresented: $showingBuildChoice, allowsSkip: true)
                 .environmentObject(characterManager)
+        }
+        .sheet(isPresented: $showingCompanionChoice) {
+            CompanionChoiceSheet(isPresented: $showingCompanionChoice, allowsSkip: true)
+                .environmentObject(companionManager)
+                .environmentObject(avatarManager)
+                .environmentObject(levelManager)
+        }
+    }
+
+    private func publishProfile() {
+        Task {
+            await friendsManager.updateMyProfile(
+                name: avatarManager.emberName,
+                avatarId: avatarManager.selectedAvatarId,
+                totalXP: levelManager.totalXP,
+                level: levelManager.level,
+                build: characterManager.selectedBuild?.rawValue,
+                companion: companionManager.selectedSpecies?.rawValue
+            )
         }
     }
     
@@ -138,6 +170,7 @@ struct ContentView: View {
                     .environmentObject(emberTalkManager)
                     .environmentObject(workoutGoalManager)
                     .environmentObject(characterManager)
+                    .environmentObject(companionManager)
                 
                 FoodDiaryView()
                     .tabItem {
@@ -168,6 +201,7 @@ struct ContentView: View {
                     .environmentObject(friendsManager)
                     .environmentObject(avatarManager)
                     .environmentObject(characterManager)
+                    .environmentObject(companionManager)
                 
                 ShareView()
                     .tabItem {
@@ -181,6 +215,7 @@ struct ContentView: View {
                     .environmentObject(levelManager)
                     .environmentObject(friendsManager)
                     .environmentObject(sparksManager)
+                    .environmentObject(companionManager)
             }
             .tint(EmberColors.ember)
             
@@ -247,6 +282,15 @@ struct ContentView: View {
         guard !didOfferBuildThisSession else { return }
         didOfferBuildThisSession = true
         showingBuildChoice = true
+    }
+
+    private func offerCompanionChoiceIfNeeded() {
+        guard avatarManager.hasCompletedOnboarding else { return }
+        guard !companionManager.hasChosenCompanion else { return }
+        guard !didOfferCompanionThisSession else { return }
+        guard !showingBuildChoice else { return }
+        didOfferCompanionThisSession = true
+        showingCompanionChoice = true
     }
 }
 

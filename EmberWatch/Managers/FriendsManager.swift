@@ -26,10 +26,12 @@ struct Friend: Identifiable, Codable {
     var lastUpdated: Date
     /// Optional Phase 2 field. Missing on older CloudKit / cached rows.
     var build: String?
+    /// Optional Phase 3 field. Species only — stage is derived from level.
+    var companion: String?
     var isCurrentUser: Bool
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, avatarId, weeklyXP, totalXP, level, lastUpdated, build, isCurrentUser
+        case id, name, avatarId, weeklyXP, totalXP, level, lastUpdated, build, companion, isCurrentUser
     }
 
     init(
@@ -41,6 +43,7 @@ struct Friend: Identifiable, Codable {
         level: Int,
         lastUpdated: Date,
         build: String? = nil,
+        companion: String? = nil,
         isCurrentUser: Bool = false
     ) {
         self.id = id
@@ -51,6 +54,7 @@ struct Friend: Identifiable, Codable {
         self.level = level
         self.lastUpdated = lastUpdated
         self.build = build
+        self.companion = companion
         self.isCurrentUser = isCurrentUser
     }
 
@@ -64,6 +68,7 @@ struct Friend: Identifiable, Codable {
         level = try container.decode(Int.self, forKey: .level)
         lastUpdated = try container.decode(Date.self, forKey: .lastUpdated)
         build = try container.decodeIfPresent(String.self, forKey: .build)
+        companion = try container.decodeIfPresent(String.self, forKey: .companion)
         isCurrentUser = try container.decodeIfPresent(Bool.self, forKey: .isCurrentUser) ?? false
     }
 
@@ -77,6 +82,7 @@ struct Friend: Identifiable, Codable {
         try container.encode(level, forKey: .level)
         try container.encode(lastUpdated, forKey: .lastUpdated)
         try container.encodeIfPresent(build, forKey: .build)
+        try container.encodeIfPresent(companion, forKey: .companion)
         try container.encode(isCurrentUser, forKey: .isCurrentUser)
     }
 }
@@ -238,9 +244,9 @@ final class FriendsManager: ObservableObject {
     
     /// Update my profile when name/avatar/XP/level/build changes.
     /// `build` is optional so older clients and CloudKit schemas stay compatible.
-    func updateMyProfile(name: String, avatarId: String, totalXP: Int, level: Int, build: String? = nil) async {
+    func updateMyProfile(name: String, avatarId: String, totalXP: Int, level: Int, build: String? = nil, companion: String? = nil) async {
         guard isCloudKitAvailable, publicDB != nil else { return }
-        await publishMyProfile(name: name, avatarId: avatarId, totalXP: totalXP, level: level, build: build)
+        await publishMyProfile(name: name, avatarId: avatarId, totalXP: totalXP, level: level, build: build, companion: companion)
     }
     
     /// Update my email/phone for contact lookup (enables Contacts-based friend discovery).
@@ -306,7 +312,7 @@ final class FriendsManager: ObservableObject {
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP", "build"])
+            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP", "build", "companion"])
             
             guard let (recordID, result) = matchResults.first else {
                 throw FriendError.notFound
@@ -337,7 +343,8 @@ final class FriendsManager: ObservableObject {
                 totalXP: record["totalXP"] as? Int ?? 0,
                 level: record["level"] as? Int ?? 1,
                 lastUpdated: Date(),
-                build: record["build"] as? String
+                build: record["build"] as? String,
+                companion: record["companion"] as? String
             )
             
             if !friends.contains(where: { $0.id == friend.id }) {
@@ -384,7 +391,7 @@ final class FriendsManager: ObservableObject {
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP", "build"])
+            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP", "build", "companion"])
             
             guard let (recordID, result) = matchResults.first else {
                 throw FriendError.notFound
@@ -404,7 +411,8 @@ final class FriendsManager: ObservableObject {
                 totalXP: record["totalXP"] as? Int ?? 0,
                 level: record["level"] as? Int ?? 1,
                 lastUpdated: Date(),
-                build: record["build"] as? String
+                build: record["build"] as? String,
+                companion: record["companion"] as? String
             )
             
             if !friends.contains(where: { $0.id == friend.id }) {
@@ -436,7 +444,7 @@ final class FriendsManager: ObservableObject {
         let query = CKQuery(recordType: RecordType.profile, predicate: predicate)
         
         do {
-            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP", "build"])
+            let (matchResults, _) = try await publicDB.records(matching: query, desiredKeys: ["friendCode", "displayName", "avatarId", "totalXP", "level", "weeklyXP", "build", "companion"])
             
             var updated: [Friend] = []
             for (_, result) in matchResults {
@@ -451,7 +459,8 @@ final class FriendsManager: ObservableObject {
                     totalXP: record["totalXP"] as? Int ?? 0,
                     level: record["level"] as? Int ?? 1,
                     lastUpdated: Date(),
-                    build: record["build"] as? String
+                    build: record["build"] as? String,
+                    companion: record["companion"] as? String
                 )
                 updated.append(friend)
             }
@@ -465,7 +474,7 @@ final class FriendsManager: ObservableObject {
     
     // MARK: - Private CloudKit
     
-    private func publishMyProfile(name: String? = nil, avatarId: String? = nil, totalXP: Int? = nil, level: Int? = nil, build: String? = nil) async {
+    private func publishMyProfile(name: String? = nil, avatarId: String? = nil, totalXP: Int? = nil, level: Int? = nil, build: String? = nil, companion: String? = nil) async {
         guard let publicDB else { return }
         
         // Get current values from UserDefaults if not provided
@@ -474,6 +483,7 @@ final class FriendsManager: ObservableObject {
         let xp = totalXP ?? 0
         let lvl = level ?? 1
         let buildRaw = build ?? UserDefaults.standard.string(forKey: "characterManager.build")
+        let companionRaw = companion ?? UserDefaults.standard.string(forKey: "companionManager.species")
         
         // Try to find existing profile
         let predicate = NSPredicate(format: "friendCode == %@", myFriendCode)
@@ -508,6 +518,13 @@ final class FriendsManager: ObservableObject {
                 savedRecord["build"] = buildRaw as CKRecordValue
                 if let withBuild = try? await publicDB.save(savedRecord) {
                     myRecordID = withBuild.recordID
+                }
+            }
+
+            if let companionRaw, !companionRaw.isEmpty {
+                savedRecord["companion"] = companionRaw as CKRecordValue
+                if let withCompanion = try? await publicDB.save(savedRecord) {
+                    myRecordID = withCompanion.recordID
                 }
             }
             
