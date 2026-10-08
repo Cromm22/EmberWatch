@@ -185,7 +185,8 @@ struct ServingSizePickerView: View {
             unit: $selectedUnit,
             quantity: $selectedQuantity,
             servingSizeGrams: product.servingSizeGrams ?? 0,
-            gramsPerCup: product.resolvedGramsPerCup
+            gramsPerCup: product.resolvedGramsPerCup,
+            gramsPerCupIsEstimated: product.resolvedGramsPerCupIsEstimated
         )
     }
     
@@ -212,7 +213,7 @@ struct ServingSizePickerView: View {
     }
     
     private func confirmServing() {
-        let cupGrams = product.resolvedGramsPerCup
+        let cupWeight = product.resolvedCupWeight
         let entry = FoodEntry(
             name: product.name,
             calories: calculatedCalories,
@@ -230,7 +231,8 @@ struct ServingSizePickerView: View {
             servingSizeGrams: product.servingSizeGrams ?? 0,
             amountUnit: selectedUnit.rawValue,
             amountQuantity: selectedQuantity,
-            gramsPerCup: cupGrams
+            gramsPerCup: cupWeight.grams,
+            gramsPerCupIsEstimated: cupWeight.isEstimated
         )
         
         onConfirm(entry)

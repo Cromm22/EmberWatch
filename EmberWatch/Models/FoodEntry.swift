@@ -29,8 +29,10 @@ class FoodEntry {
     var amountUnit: String = ""
     /// Count of the chosen unit (grams, servings, cups, or half-cups). 0 = infer from servings/grams.
     var amountQuantity: Double = 0
-    /// Gram weight of 1 cup for this food. 0 = unknown; cup math uses the 240 g fallback.
+    /// Gram weight of 1 cup for this food. 0 = unknown; cup math uses density table or 240 g.
     var gramsPerCup: Double = 0
+    /// True when `gramsPerCup` is the generic 240 g fallback. Default false for old rows.
+    var gramsPerCupIsEstimated: Bool = false
     
     init(
         id: UUID = UUID(),
@@ -51,7 +53,8 @@ class FoodEntry {
         servingSizeGrams: Double = 0,
         amountUnit: String = "",
         amountQuantity: Double = 0,
-        gramsPerCup: Double = 0
+        gramsPerCup: Double = 0,
+        gramsPerCupIsEstimated: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -73,6 +76,7 @@ class FoodEntry {
         self.amountUnit = amountUnit
         self.amountQuantity = amountQuantity
         self.gramsPerCup = gramsPerCup
+        self.gramsPerCupIsEstimated = gramsPerCupIsEstimated
     }
     
     /// Canonical meal type; derives from timestamp when unset/unknown (legacy rows).
@@ -162,9 +166,20 @@ class FoodEntry {
         amountQuantity = newGrams
     }
     
+    var resolvedCupWeight: ResolvedCupWeight {
+        FoodCupWeight.resolve(
+            foodName: name,
+            explicitGrams: gramsPerCup > 0 ? gramsPerCup : nil,
+            isExplicitEstimated: gramsPerCupIsEstimated
+        )
+    }
+    
     var resolvedGramsPerCup: Double {
-        if gramsPerCup > 0 { return gramsPerCup }
-        return FoodCupWeight.fallbackGramsPerCup
+        resolvedCupWeight.grams
+    }
+    
+    var resolvedGramsPerCupIsEstimated: Bool {
+        resolvedCupWeight.isEstimated
     }
     
     var resolvedAmountUnit: FoodAmountUnit {
@@ -213,9 +228,17 @@ class FoodEntry {
         )
     }
     
-    func applyAmount(unit: FoodAmountUnit, quantity: Double, gramsPerCup newGramsPerCup: Double? = nil) {
+    func applyAmount(
+        unit: FoodAmountUnit,
+        quantity: Double,
+        gramsPerCup newGramsPerCup: Double? = nil,
+        gramsPerCupIsEstimated newIsEstimated: Bool? = nil
+    ) {
         if let newGramsPerCup, newGramsPerCup > 0 {
             gramsPerCup = newGramsPerCup
+        }
+        if let newIsEstimated {
+            gramsPerCupIsEstimated = newIsEstimated
         }
         amountUnit = unit.rawValue
         amountQuantity = quantity

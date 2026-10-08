@@ -13,6 +13,7 @@
 		D4E5F60718293A4B5C6D7E8F /* FoodSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */; };
 		F00D5E4V1NG5H33T00000002 /* FoodServingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00D5E4V1NG5H33T00000001 /* FoodServingSheet.swift */; };
 		FAMTH0000000000000000002 /* FoodAmountUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAMTH0000000000000000001 /* FoodAmountUnit.swift */; };
+		CDTBL0000000000000000002 /* CupDensityTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDTBL0000000000000000001 /* CupDensityTable.swift */; };
 		FAPKR0000000000000000002 /* FoodAmountPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAPKR0000000000000000001 /* FoodAmountPickerView.swift */; };
 		B2C3D4E5F60718293A4B5C6D /* LevelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */; };
 		162E05446EEB40B484657D3E /* ShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 241794DFC4C04FC2B1D379C7 /* ShareView.swift */; };
@@ -66,6 +67,7 @@
 		C3D4E5F60718293A4B5C6D7E /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
 		F00D5E4V1NG5H33T00000001 /* FoodServingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodServingSheet.swift; sourceTree = "<group>"; };
 		FAMTH0000000000000000001 /* FoodAmountUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodAmountUnit.swift; sourceTree = "<group>"; };
+		CDTBL0000000000000000001 /* CupDensityTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CupDensityTable.swift; sourceTree = "<group>"; };
 		FAPKR0000000000000000001 /* FoodAmountPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodAmountPickerView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E60718293A4B5C /* FeedbackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackManager.swift; sourceTree = "<group>"; };
@@ -199,6 +201,7 @@
 				3A00000C0000000000000001 /* WorkoutModel.swift */,
 				3A0000260000000000000001 /* FoodEntry.swift */,
 				FAMTH0000000000000000001 /* FoodAmountUnit.swift */,
+				CDTBL0000000000000000001 /* CupDensityTable.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -322,6 +325,7 @@
 				84A6383F8E0041B284893F32 /* ServingSizePickerView.swift in Sources */,
 				F00D5E4V1NG5H33T00000002 /* FoodServingSheet.swift in Sources */,
 				FAMTH0000000000000000002 /* FoodAmountUnit.swift in Sources */,
+				CDTBL0000000000000000002 /* CupDensityTable.swift in Sources */,
 				FAPKR0000000000000000002 /* FoodAmountPickerView.swift in Sources */,
 				8E5DA849CC0443BE82012160 /* BoardView.swift in Sources */,
 				764DDF56756743BC868300EF /* BarcodeScannerView.swift in Sources */,

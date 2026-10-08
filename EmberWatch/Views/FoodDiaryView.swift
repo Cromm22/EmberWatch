@@ -418,7 +418,8 @@ struct RecentFoodRow: View {
                 servingSizeGrams: entry.servingSizeGrams,
                 amountUnit: entry.amountUnit,
                 amountQuantity: entry.amountQuantity,
-                gramsPerCup: entry.gramsPerCup
+                gramsPerCup: entry.gramsPerCup,
+                gramsPerCupIsEstimated: entry.gramsPerCupIsEstimated
             )
             foodDataManager.addFoodEntry(newEntry)
             emberTalkManager.showFoodPhrase()
@@ -504,7 +505,8 @@ struct EditServingsView: View {
                             unit: $selectedUnit,
                             quantity: $selectedQuantity,
                             servingSizeGrams: entry.servingSizeGrams,
-                            gramsPerCup: entry.resolvedGramsPerCup
+                            gramsPerCup: entry.resolvedGramsPerCup,
+                            gramsPerCupIsEstimated: entry.resolvedGramsPerCupIsEstimated
                         )
                     }
                     .padding()
@@ -528,7 +530,8 @@ struct EditServingsView: View {
                         entry.applyAmount(
                             unit: selectedUnit,
                             quantity: selectedQuantity,
-                            gramsPerCup: entry.resolvedGramsPerCup
+                            gramsPerCup: entry.resolvedGramsPerCup,
+                            gramsPerCupIsEstimated: entry.resolvedGramsPerCupIsEstimated
                         )
                         foodDataManager.updateFoodEntry(entry)
                         isPresentedEntry = nil
@@ -992,6 +995,7 @@ struct AddFoodView: View {
             loggedUnit = FoodAmountUnit.servings.rawValue
             loggedQuantity = 1.0
         }
+        let cupWeight = FoodCupWeight.resolve(foodName: foodName)
         
         let entry = FoodEntry(
             name: foodName,
@@ -1010,7 +1014,8 @@ struct AddFoodView: View {
             servingSizeGrams: servingValue,
             amountUnit: loggedUnit,
             amountQuantity: loggedQuantity,
-            gramsPerCup: FoodCupWeight.fallbackGramsPerCup
+            gramsPerCup: cupWeight.grams,
+            gramsPerCupIsEstimated: cupWeight.isEstimated
         )
         
         foodDataManager.addFoodEntry(entry)
