@@ -7,6 +7,9 @@ struct FoodDiaryView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
+    @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var waterManager: WaterManager
+    @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
     @State private var showingAddFood = false
     @State private var showingBarcodeScanner = false
     @State private var scannedProduct: FoodProduct?
@@ -156,7 +159,30 @@ struct FoodDiaryView: View {
                         .allowsHitTesting(false)
                 }
             }
+            .onAppear {
+                foodDataManager.fetchTodayEntries()
+                syncRPGProgress()
+            }
+            .onChange(of: foodDataManager.todayFoodEntries.map(\.id)) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: foodDataManager.totalCaloriesConsumed) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: foodDataManager.totalProtein) { _, _ in
+                syncRPGProgress()
+            }
         }
+    }
+
+    private func syncRPGProgress() {
+        levelManager.syncFromApp(
+            food: foodDataManager,
+            calories: calorieGoalManager,
+            water: waterManager,
+            health: healthKitManager,
+            workoutGoal: workoutGoalManager
+        )
     }
     
     private var remainingCaloriesCard: some View {

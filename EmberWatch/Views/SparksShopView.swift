@@ -12,7 +12,7 @@ struct SparksShopView: View {
 
             VStack(spacing: 0) {
                 galleryHeader(
-                    title: "Sparks Shop",
+                    title: "Crystal Shop",
                     onBack: { dismiss() },
                     onDone: { dismiss() }
                 )
@@ -20,15 +20,16 @@ struct SparksShopView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         galleryBalanceBar(
-                            balance: sparksManager.balance,
+                            coins: sparksManager.coins,
+                            crystals: sparksManager.balance,
                             onInfo: nil
                         )
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Get more Sparks")
+                            Text("Get more Crystals")
                                 .font(.title2.weight(.bold))
                                 .foregroundColor(GalleryPalette.title)
-                            Text("Unlock rare companions and cosmetic flair. Sparks never gate tracking.")
+                            Text("Premium cosmetics only. Crystals never buy XP, levels, or tracking.")
                                 .font(.subheadline)
                                 .foregroundColor(GalleryPalette.subtitle)
                         }
@@ -36,8 +37,8 @@ struct SparksShopView: View {
                         availabilityBanner
 
                         VStack(spacing: 12) {
-                            ForEach(SparksManager.sparkPacks) { pack in
-                                SparkPackRow(
+                            ForEach(SparksManager.crystalPacks) { pack in
+                                CrystalPackRow(
                                     pack: pack,
                                     product: store.product(for: pack),
                                     isPurchasing: store.purchasingProductID == pack.productID
@@ -47,7 +48,7 @@ struct SparksShopView: View {
                             }
                         }
 
-                        Text("Buying never grants Sparks unless Apple confirms the purchase. Placeholder prices are not charges.")
+                        Text("Buying never grants Crystals unless Apple confirms the purchase. Placeholder prices are not charges. Crystals never grant XP, levels, or health progress.")
                             .font(.caption)
                             .foregroundColor(GalleryPalette.subtitle)
                             .padding(.top, 4)
@@ -116,8 +117,8 @@ struct SparksShopView: View {
     }
 }
 
-private struct SparkPackRow: View {
-    let pack: SparkPack
+private struct CrystalPackRow: View {
+    let pack: CrystalPack
     let product: Product?
     let isPurchasing: Bool
     let onBuy: () -> Void
@@ -149,7 +150,7 @@ private struct SparkPackRow: View {
                             .background(Capsule().fill(badgeFill))
                     }
                 }
-                Text("\(pack.sparks.formatted()) Sparks")
+                Text("\(pack.crystals.formatted()) Crystals")
                     .font(.caption.weight(.semibold))
                     .foregroundColor(EmberColors.ember)
                 Text(pack.detail)

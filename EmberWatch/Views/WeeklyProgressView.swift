@@ -161,7 +161,6 @@ struct WeeklyProgressView: View {
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var calorieGoalManager: CalorieGoalManager
     @EnvironmentObject var healthKitManager: HealthKitManager
-    @EnvironmentObject var levelManager: LevelManager
     
     @State private var showingWeightHistory = false
     @State private var isLoadingActivity = true
@@ -262,7 +261,6 @@ struct WeeklyProgressView: View {
         .sheet(isPresented: $showingWeightHistory) {
             WeightSettingsView(isPresented: $showingWeightHistory)
                 .environmentObject(weightManager)
-                .environmentObject(levelManager)
         }
     }
     

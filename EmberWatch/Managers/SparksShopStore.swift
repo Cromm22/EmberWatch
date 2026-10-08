@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-/// StoreKit 2 shop for consumable Sparks packs.
+/// StoreKit 2 shop for consumable Crystal packs.
 /// Credits the wallet only after a verified App Store transaction — never on a
 /// placeholder tap when products are missing from App Store Connect.
 @MainActor
@@ -34,7 +34,7 @@ final class SparksShopStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let ids = Set(SparksManager.sparkPacks.map(\.productID))
+            let ids = Set(SparksManager.crystalPacks.map(\.productID))
             storeProducts = try await Product.products(for: ids)
                 .sorted { $0.price < $1.price }
         } catch {
@@ -43,11 +43,11 @@ final class SparksShopStore: ObservableObject {
         }
     }
 
-    func product(for pack: SparkPack) -> Product? {
+    func product(for pack: CrystalPack) -> Product? {
         storeProducts.first { $0.id == pack.productID }
     }
 
-    func purchase(_ pack: SparkPack) async {
+    func purchase(_ pack: CrystalPack) async {
         guard let product = product(for: pack) else {
             statusMessage = "This pack isn’t available to purchase yet. App Store products haven’t been configured."
             return
@@ -73,20 +73,18 @@ final class SparksShopStore: ObservableObject {
         }
     }
 
-    // MARK: - Internals
-
     private func handle(update result: VerificationResult<Transaction>) async {
         guard let transaction = try? Self.verified(result) else { return }
         await fulfill(transaction)
     }
 
-    private func fulfill(_ transaction: Transaction, expectedPack: SparkPack? = nil) async {
+    private func fulfill(_ transaction: Transaction, expectedPack: CrystalPack? = nil) async {
         if Self.isProcessed(transaction.id) {
             await transaction.finish()
             return
         }
 
-        let pack = expectedPack ?? SparksManager.sparkPacks.first {
+        let pack = expectedPack ?? SparksManager.crystalPacks.first {
             $0.productID == transaction.productID
         }
         guard let pack else {
@@ -95,10 +93,10 @@ final class SparksShopStore: ObservableObject {
         }
         guard let sparksManager else { return }
 
-        sparksManager.creditPurchasedSparks(pack.sparks)
+        sparksManager.creditPurchasedCrystals(pack.crystals)
         Self.markProcessed(transaction.id)
         await transaction.finish()
-        statusMessage = "+\(pack.sparks) Sparks added"
+        statusMessage = "+\(pack.crystals) Crystals added"
     }
 
     private static func verified<T>(_ result: VerificationResult<T>) throws -> T {

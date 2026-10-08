@@ -94,7 +94,7 @@ struct ShareView: View {
                 .font(.headline)
                 .foregroundColor(EmberColors.cream)
             
-            Text("+\(LevelManager.challengeXP) XP · once per friend / day\(levelManager.boardMultiplierLabel.map { " · \($0)" } ?? "")")
+            Text("+\(SparksManager.challengeCoins) Coins · once per friend / day")
                 .font(.caption)
                 .foregroundColor(EmberColors.cream.opacity(0.6))
             
@@ -115,15 +115,12 @@ struct ShareView: View {
                 .background(RoundedRectangle(cornerRadius: 14).fill(EmberColors.lightPlum))
             } else {
                 ForEach(friendsManager.friends) { friend in
-                    let can = levelManager.canChallenge(friendId: friend.id)
+                    let can = sparksManager.canChallenge(friendId: friend.id)
                     Button {
-                        let gained = levelManager.awardChallenge(friendId: friend.id)
-                        if gained > 0 {
-                            _ = sparksManager.earnChallenge(friendId: friend.id)
-                        }
+                        let gained = sparksManager.earnChallenge(friendId: friend.id)
                         withAnimation {
                             challengeToast = gained > 0
-                                ? "Challenged \(friend.name)! +\(gained) XP"
+                                ? "Challenged \(friend.name)! +\(gained) Coins"
                                 : "Already challenged \(friend.name) today"
                         }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {

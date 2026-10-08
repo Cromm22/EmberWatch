@@ -252,10 +252,7 @@ struct BoardView: View {
                         Task {
                             let accepted = await friendsManager.acceptChallenge(challenge.challengeId)
                             if accepted {
-                                let xp = levelManager.awardChallenge(friendId: challenge.fromCode)
-                                if xp > 0 {
-                                    _ = sparksManager.earnChallenge(friendId: challenge.fromCode)
-                                }
+                                _ = sparksManager.earnChallenge(friendId: challenge.fromCode)
                                 receivedChallenges = await friendsManager.fetchReceivedChallenges()
                             }
                         }
@@ -343,10 +340,7 @@ struct BoardView: View {
                             Task {
                                 let sent = await friendsManager.sendChallenge(to: entry.id)
                                 if sent {
-                                    let xp = levelManager.awardChallenge(friendId: entry.id)
-                                    if xp > 0 {
-                                        _ = sparksManager.earnChallenge(friendId: entry.id)
-                                    }
+                                    _ = sparksManager.earnChallenge(friendId: entry.id)
                                 }
                             }
                         }

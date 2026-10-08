@@ -75,12 +75,10 @@ struct HomeView: View {
             }
             .overlay(alignment: .bottom) {
                 if let banner = levelManager.streakBanner
-                    ?? levelManager.weightLossBanner
-                    ?? levelManager.levelUpBanner
-                    ?? sparksManager.toast {
+                    ?? levelManager.levelUpBanner {
                     CelebrationToastAnchor {
                         CelebrationToastCard(
-                            accent: banner.contains("Sparks") ? EmberColors.ember : EmberColors.gold,
+                            accent: banner.contains("Crystal") ? EmberColors.ember : EmberColors.gold,
                             secondaryAccent: EmberColors.ember
                         ) {
                             Text(banner)
@@ -94,9 +92,7 @@ struct HomeView: View {
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.streakBanner)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.weightLossBanner)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.levelUpBanner)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sparksManager.toast)
             .navigationTitle("Ember")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.light, for: .navigationBar)
@@ -132,7 +128,6 @@ struct HomeView: View {
             .sheet(isPresented: $showingWeightSettings) {
                 WeightSettingsView(isPresented: $showingWeightSettings)
                     .environmentObject(weightManager)
-                    .environmentObject(levelManager)
             }
             .sheet(isPresented: $showingWeeklyProgress) {
                 WeeklyProgressView(isPresented: $showingWeeklyProgress)
@@ -140,7 +135,6 @@ struct HomeView: View {
                     .environmentObject(foodDataManager)
                     .environmentObject(calorieGoalManager)
                     .environmentObject(healthKitManager)
-                    .environmentObject(levelManager)
             }
             .sheet(isPresented: $showingHealthConnect) {
                 HealthConnectView(showsDismissButton: true)
@@ -149,17 +143,37 @@ struct HomeView: View {
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
-                syncXPFromHealth()
                 _ = levelManager.checkDailyOpenReward()
-                _ = sparksManager.earnDailyLogin()
+                syncRPGProgress()
                 startWaveAnimation()
                 checkAndShowDailyGreeting()
             }
-            .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
-                syncXPFromHealth()
-            }
             .onChange(of: healthKitManager.workouts.map(\.id)) { _, _ in
-                syncXPFromHealth()
+                syncRPGProgress()
+            }
+            .onChange(of: healthKitManager.exerciseMinutes) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: foodDataManager.todayFoodEntries.map(\.id)) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: foodDataManager.totalCaloriesConsumed) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: waterManager.glassesLogged) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: calorieGoalManager.dailyCalorieGoal) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: calorieGoalManager.dailyProteinGoal) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: workoutGoalManager.targetMinutes) { _, _ in
+                syncRPGProgress()
+            }
+            .onChange(of: workoutGoalManager.isEnabled) { _, _ in
+                syncRPGProgress()
             }
             .onChange(of: levelManager.xpGainEvent) { _, newValue in
                 guard let event = newValue else { return }
@@ -168,15 +182,21 @@ struct HomeView: View {
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
-                syncXPFromHealth()
+                _ = levelManager.checkDailyOpenReward()
+                syncRPGProgress()
             }
         }
         .navigationViewStyle(.stack)
     }
     
-    private func syncXPFromHealth() {
-        _ = levelManager.processBurnedCalories(healthKitManager.totalCaloriesBurned)
-        _ = levelManager.processWorkouts(ids: healthKitManager.workouts.map { $0.id.uuidString })
+    private func syncRPGProgress() {
+        levelManager.syncFromApp(
+            food: foodDataManager,
+            calories: calorieGoalManager,
+            water: waterManager,
+            health: healthKitManager,
+            workoutGoal: workoutGoalManager
+        )
     }
     
     private func triggerXPGainAnimation(amount: Int) {
@@ -317,11 +337,24 @@ struct HomeView: View {
                     .font(.headline)
                     .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
 
+                Text(levelManager.level >= LevelManager.maxLevel
+                     ? levelManager.levelTitle
+                     : "Lv \(levelManager.level) · \(levelManager.levelTitle)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+
                 HomeStatBadgeRow(
                     streak: levelManager.streakCount,
-                    sparks: sparksManager.balance,
-                    xpBoost: levelManager.xpBoostPercentLabel,
-                    onSparksTap: { showingAvatarPicker = true }
+                    crystals: sparksManager.balance,
+                    coins: sparksManager.coins,
+                    onCrystalsTap: { showingAvatarPicker = true },
+                    onCoinsTap: { showingAvatarPicker = true }
+                )
+                .padding(.horizontal, 16)
+
+                HomeDailyQuestCard(
+                    title: levelManager.todaysQuest.title,
+                    isComplete: levelManager.todaysQuest.isComplete
                 )
                 .padding(.horizontal, 16)
             }
@@ -675,7 +708,7 @@ struct HomeView: View {
                                 waterManager.removeGlass()
                             } else if index == waterManager.glassesLogged {
                                 if waterManager.logGlass() {
-                                    _ = levelManager.awardWaterServing()
+                                    syncRPGProgress()
                                     // Show Ember talk toast only on even-numbered glasses (2, 4, 6, ...)
                                     if waterManager.glassesLogged % 2 == 0 {
                                         emberTalkManager.showWaterPhrase()
@@ -852,7 +885,6 @@ struct GoalSettingsView: View {
 struct WeightSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var weightManager: WeightManager
-    @EnvironmentObject var levelManager: LevelManager
     @State private var startingInput: String = ""
     @State private var currentInput: String = ""
     @State private var goalInput: String = ""
@@ -1069,9 +1101,7 @@ struct WeightSettingsView: View {
         }
         
         if let lb = draftCurrentLb {
-            if let poundsLost = weightManager.logCurrentWeight(unit.fromPounds(lb)) {
-                _ = levelManager.awardWeightLoss(poundsLost: poundsLost)
-            }
+            _ = weightManager.logCurrentWeight(unit.fromPounds(lb))
         }
         
         if let lb = draftGoalLb {

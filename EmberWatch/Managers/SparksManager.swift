@@ -2,90 +2,69 @@ import Foundation
 import SwiftUI
 import UIKit
 
-/// Soft-currency economy (Sparks). Cosmetics / status only — never gates food, water,
-/// HealthKit, macros, or calorie tracking. Earn via play; optional StoreKit packs
-/// credit only after a verified App Store transaction.
+/// Crystals (premium, formerly Sparks) + Coins (gameplay). Cosmetics / status only —
+/// never gates food, water, HealthKit, macros, or calorie tracking.
+/// Existing Sparks balances migrate 1:1 to Crystals via the same UserDefaults key.
 @MainActor
 final class SparksManager: ObservableObject {
-    // MARK: - Tunable constants (single place)
+    static let challengeCoins = XPRules.challengeCoins
+    static let boardFirstCoins = XPRules.boardFirstCoins
+    static let avatarUnlockPrice = XPRules.avatarUnlockCoins
+    static let avatarUnlockCurrency = ShopCurrency.coins
 
-    static let dailyLoginSparks = 10
-    static let levelUpSparks = 25          // per level gained
-    static let challengeSparks = 15       // once / friend / day (same cadence as challenge XP)
-    static let boardFirstSparks = 50      // once / day when first detected as #1
-
-    /// Premium avatar unlock price (locked styles below).
-    static let avatarUnlockPrice = 100
-
-    /// Free styles always available. All others require Sparks unlock.
     static let freeAvatarIds: Set<String> = [
         "classic", "glacier", "aurora", "cobalt", "mint", "ink", "rose", "seafoam", "moss", "lagoon"
     ]
 
-    /// Cosmetic sinks (status only).
+    /// Premium cosmetics priced in Crystals.
     static let cosmetics: [SparkCosmetic] = [
-        SparkCosmetic(id: "glow", name: "Ember Glow", detail: "Extra aura bloom on Home", price: 75, icon: "sparkles"),
-        SparkCosmetic(id: "nameplate_gold", name: "Gold Nameplate", detail: "Gold companion name tint", price: 50, icon: "tag.fill"),
-        SparkCosmetic(id: "nameplate_aurora", name: "Aurora Nameplate", detail: "Aurora gradient name tint", price: 150, icon: "paintpalette.fill")
+        SparkCosmetic(id: "glow", name: "Ember Glow", detail: "Extra aura bloom on Home", price: 75, currency: .crystals, icon: "sparkles"),
+        SparkCosmetic(id: "nameplate_gold", name: "Gold Nameplate", detail: "Gold companion name tint", price: 50, currency: .crystals, icon: "tag.fill"),
+        SparkCosmetic(id: "nameplate_aurora", name: "Aurora Nameplate", detail: "Aurora gradient name tint", price: 150, currency: .crystals, icon: "paintpalette.fill")
     ]
 
-    /// Consumable Sparks packs shown in the shop. StoreKit product IDs must match
-    /// App Store Connect; UI still lists packs when products are not configured.
-    static let sparkPacks: [SparkPack] = [
-        SparkPack(
-            productID: "com.ember.watch.sparks.ember",
-            name: "Ember Spark",
-            detail: "A little extra glow",
-            sparks: 80,
-            placeholderPrice: "$0.99",
-            badge: nil,
-            icon: "sparkle"
-        ),
-        SparkPack(
-            productID: "com.ember.watch.sparks.glow",
-            name: "Glow Pack",
-            detail: "Enough for a new companion",
-            sparks: 250,
-            placeholderPrice: "$2.99",
-            badge: "Popular",
-            icon: "sparkles"
-        ),
-        SparkPack(
-            productID: "com.ember.watch.sparks.flame",
-            name: "Flame Bundle",
-            detail: "Stock up for the gallery",
-            sparks: 700,
+    /// StoreKit product IDs must match App Store Connect; UI still lists packs when products are missing.
+    static let crystalPacks: [CrystalPack] = [
+        CrystalPack(
+            productID: "com.ember.watch.crystals.500",
+            name: "Crystal Cache",
+            detail: "A handful of premium sparkle",
+            crystals: 500,
             placeholderPrice: "$4.99",
             badge: nil,
-            icon: "flame.fill"
+            icon: "diamond"
         ),
-        SparkPack(
-            productID: "com.ember.watch.sparks.inferno",
-            name: "Inferno Chest",
-            detail: "Best sparks per dollar",
-            sparks: 1_600,
+        CrystalPack(
+            productID: "com.ember.watch.crystals.1100",
+            name: "Crystal Vault",
+            detail: "Best for a new prestige look",
+            crystals: 1_100,
             placeholderPrice: "$9.99",
-            badge: "Best Value",
-            icon: "shippingbox.fill"
-        ),
-        SparkPack(
-            productID: "com.ember.watch.sparks.aurora",
-            name: "Aurora Vault",
-            detail: "Unlock the whole collection",
-            sparks: 4_000,
-            placeholderPrice: "$19.99",
-            badge: "Mega",
+            badge: "Popular",
             icon: "diamond.fill"
+        ),
+        CrystalPack(
+            productID: "com.ember.watch.crystals.2400",
+            name: "Crystal Crown",
+            detail: "Best crystals per dollar",
+            crystals: 2_400,
+            placeholderPrice: "$19.99",
+            badge: "Best Value",
+            icon: "crown.fill"
         )
     ]
 
-    // MARK: - Published state
-
+    /// Crystals balance. Same key as the former Sparks wallet (1:1 migrate).
     @Published private(set) var balance: Int {
-        didSet { UserDefaults.standard.set(balance, forKey: Keys.balance) }
+        didSet { UserDefaults.standard.set(balance, forKey: Keys.crystals) }
     }
 
-    /// Brief toast e.g. "+10 Sparks" or "Need 50 more Sparks".
+    var crystals: Int { balance }
+
+    @Published private(set) var coins: Int {
+        didSet { UserDefaults.standard.set(coins, forKey: Keys.coins) }
+    }
+
     @Published var toast: String? = nil
 
     @Published private(set) var unlockedAvatarIds: Set<String> {
@@ -100,7 +79,6 @@ final class SparksManager: ObservableObject {
         }
     }
 
-    /// Active nameplate cosmetic id (nil = default cream).
     @Published var activeNameplateId: String? {
         didSet {
             if let id = activeNameplateId {
@@ -115,14 +93,6 @@ final class SparksManager: ObservableObject {
         didSet { UserDefaults.standard.set(glowEnabled, forKey: Keys.glowEnabled) }
     }
 
-    // MARK: - Earn dedupe
-
-    /// yyyy-MM-dd of last daily-login Sparks award
-    private var lastDailyLoginDay: String {
-        didSet { UserDefaults.standard.set(lastDailyLoginDay, forKey: Keys.lastDailyLoginDay) }
-    }
-
-    /// friendId → yyyy-MM-dd of last challenge Sparks award
     private var challengeAwards: [String: String] {
         didSet {
             if let data = try? JSONEncoder().encode(challengeAwards) {
@@ -131,32 +101,31 @@ final class SparksManager: ObservableObject {
         }
     }
 
-    /// yyyy-MM-dd of last board-#1 Sparks award
     private var lastBoardFirstDay: String {
         didSet { UserDefaults.standard.set(lastBoardFirstDay, forKey: Keys.lastBoardFirstDay) }
     }
 
     private enum Keys {
-        static let balance = "sparksManager.balance"
+        static let crystals = "sparksManager.balance"
+        static let coins = "sparksManager.coins"
         static let unlockedAvatars = "sparksManager.unlockedAvatars"
         static let unlockedCosmetics = "sparksManager.unlockedCosmetics"
         static let activeNameplate = "sparksManager.activeNameplate"
         static let glowEnabled = "sparksManager.glowEnabled"
-        static let lastDailyLoginDay = "sparksManager.lastDailyLoginDay"
         static let challengeAwards = "sparksManager.challengeAwards"
         static let lastBoardFirstDay = "sparksManager.lastBoardFirstDay"
     }
 
     init() {
         let defaults = UserDefaults.standard
-        self.balance = max(0, defaults.integer(forKey: Keys.balance))
+        self.balance = max(0, defaults.integer(forKey: Keys.crystals))
+        self.coins = max(0, defaults.integer(forKey: Keys.coins))
         let unlocked = defaults.stringArray(forKey: Keys.unlockedAvatars) ?? []
         self.unlockedAvatarIds = Set(unlocked)
         let cosmetics = defaults.stringArray(forKey: Keys.unlockedCosmetics) ?? []
         self.unlockedCosmeticIds = Set(cosmetics)
         self.activeNameplateId = defaults.string(forKey: Keys.activeNameplate)
         self.glowEnabled = defaults.bool(forKey: Keys.glowEnabled)
-        self.lastDailyLoginDay = defaults.string(forKey: Keys.lastDailyLoginDay) ?? ""
         self.lastBoardFirstDay = defaults.string(forKey: Keys.lastBoardFirstDay) ?? ""
         if let data = defaults.data(forKey: Keys.challengeAwards),
            let map = try? JSONDecoder().decode([String: String].self, from: data) {
@@ -164,15 +133,12 @@ final class SparksManager: ObservableObject {
         } else {
             self.challengeAwards = [:]
         }
-        
-        // Grandfather currently selected avatar so existing picks stay usable.
+
         let selected = defaults.string(forKey: "selectedAvatarId") ?? "classic"
         if !Self.freeAvatarIds.contains(selected) {
             unlockedAvatarIds.insert(selected)
         }
     }
-
-    // MARK: - Accessors
 
     func isAvatarUnlocked(_ id: String) -> Bool {
         Self.freeAvatarIds.contains(id) || unlockedAvatarIds.contains(id)
@@ -186,7 +152,6 @@ final class SparksManager: ObservableObject {
         isCosmeticUnlocked("glow") && glowEnabled
     }
 
-    /// Name tint for Home companion label (nil → default cream).
     var nameplateColor: Color? {
         switch activeNameplateId {
         case "nameplate_gold" where isCosmeticUnlocked("nameplate_gold"):
@@ -198,50 +163,58 @@ final class SparksManager: ObservableObject {
         }
     }
 
-    // MARK: - Earn (flat — board XP multiplier does NOT apply)
-
-    @discardableResult
-    func earnDailyLogin() -> Int {
-        let today = Self.todayKey()
-        guard lastDailyLoginDay != today else { return 0 }
-        lastDailyLoginDay = today
-        return credit(Self.dailyLoginSparks, reason: "dailyLogin")
+    func canChallenge(friendId: String) -> Bool {
+        challengeAwards[friendId] != Self.todayKey()
     }
 
-    /// Award Sparks for each level gained (multi-level = per level).
-    @discardableResult
-    func earnLevelUp(levelsGained: Int) -> Int {
-        let n = max(0, levelsGained)
-        guard n > 0 else { return 0 }
-        return credit(Self.levelUpSparks * n, reason: "levelUp")
-    }
-
-    /// Same rate-limit as challenge XP: once per friend per calendar day.
+    /// Coins for a friend challenge; once per friend per calendar day. No XP.
     @discardableResult
     func earnChallenge(friendId: String) -> Int {
         let today = Self.todayKey()
         if challengeAwards[friendId] == today { return 0 }
         challengeAwards[friendId] = today
-        return credit(Self.challengeSparks, reason: "challenge")
+        return earnCoins(Self.challengeCoins, reason: "challenge")
     }
 
-    /// Once per day max when first detected as board rank #1 that day.
+    /// Coins once per day when first detected as board rank #1.
     @discardableResult
     func earnBoardFirstIfEligible(rank: Int) -> Int {
         guard rank == 1 else { return 0 }
         let today = Self.todayKey()
         guard lastBoardFirstDay != today else { return 0 }
         lastBoardFirstDay = today
-        return credit(Self.boardFirstSparks, reason: "boardFirst")
+        return earnCoins(Self.boardFirstCoins, reason: "boardFirst")
     }
 
-    // MARK: - Spend
+    @discardableResult
+    func earnLevelUpCoins(toLevel newLevel: Int) -> Int {
+        earnCoins(XPRules.coinsForLevelUp(to: newLevel), reason: "levelUp", toast: false)
+    }
+
+    @discardableResult
+    func earnMilestoneCrystals(forLevel level: Int) -> Int {
+        let amount = XPRules.milestoneCrystals(forLevel: level)
+        guard amount > 0 else { return 0 }
+        return creditCrystals(amount, reason: "milestone", toast: false)
+    }
+
+    @discardableResult
+    func earnCoins(_ amount: Int, reason: String, toast: Bool = true) -> Int {
+        guard amount > 0 else { return 0 }
+        coins += amount
+        if toast {
+            showToast("+\(amount) Coins")
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        _ = reason
+        return amount
+    }
 
     @discardableResult
     func unlockAvatar(_ id: String) -> Bool {
         if isAvatarUnlocked(id) { return true }
         guard AvatarStyle.presets.contains(where: { $0.id == id }) else { return false }
-        guard spend(Self.avatarUnlockPrice, label: "avatar") else { return false }
+        guard spendCoins(Self.avatarUnlockPrice, label: "avatar") else { return false }
         unlockedAvatarIds.insert(id)
         return true
     }
@@ -250,9 +223,15 @@ final class SparksManager: ObservableObject {
     func unlockCosmetic(_ id: String) -> Bool {
         if isCosmeticUnlocked(id) { return true }
         guard let item = Self.cosmetics.first(where: { $0.id == id }) else { return false }
-        guard spend(item.price, label: item.name) else { return false }
+        let spent: Bool
+        switch item.currency {
+        case .crystals:
+            spent = spendCrystals(item.price, label: item.name)
+        case .coins:
+            spent = spendCoins(item.price, label: item.name)
+        }
+        guard spent else { return false }
         unlockedCosmeticIds.insert(id)
-        // Auto-enable on unlock
         if id == "glow" {
             glowEnabled = true
         } else if id.hasPrefix("nameplate_") {
@@ -273,36 +252,53 @@ final class SparksManager: ObservableObject {
         activeNameplateId = id
     }
 
-    /// Credit Sparks after a verified StoreKit purchase. Never call from a
-    /// placeholder / preview tap — only from `SparksShopStore` after Apple confirms.
+    /// Credit Crystals after a verified StoreKit purchase. Never call from a placeholder tap.
     @discardableResult
-    func creditPurchasedSparks(_ amount: Int) -> Int {
-        credit(amount, reason: "iap")
+    func creditPurchasedCrystals(_ amount: Int) -> Int {
+        creditCrystals(amount, reason: "iap")
     }
 
     // MARK: - Internals
 
     @discardableResult
-    private func credit(_ amount: Int, reason: String) -> Int {
+    private func creditCrystals(_ amount: Int, reason: String, toast: Bool = true) -> Int {
         guard amount > 0 else { return 0 }
         balance += amount
-        showToast("+\(amount) Sparks")
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if toast {
+            showToast("+\(amount) Crystals")
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
         _ = reason
         return amount
     }
 
     @discardableResult
-    private func spend(_ amount: Int, label: String) -> Bool {
+    private func spendCrystals(_ amount: Int, label: String) -> Bool {
         guard amount > 0 else { return true }
         guard balance >= amount else {
             let need = amount - balance
-            showToast("Need \(need) more Sparks")
+            showToast("Need \(need) more Crystals")
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
             return false
         }
         balance -= amount
-        showToast("Unlocked — \(amount) Sparks")
+        showToast("Unlocked — \(amount) Crystals")
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        _ = label
+        return true
+    }
+
+    @discardableResult
+    private func spendCoins(_ amount: Int, label: String) -> Bool {
+        guard amount > 0 else { return true }
+        guard coins >= amount else {
+            let need = amount - coins
+            showToast("Need \(need) more Coins")
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            return false
+        }
+        coins -= amount
+        showToast("Unlocked — \(amount) Coins")
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         _ = label
         return true
@@ -318,11 +314,7 @@ final class SparksManager: ObservableObject {
     }
 
     private static func todayKey() -> String {
-        let f = DateFormatter()
-        f.calendar = Calendar.current
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
+        XPRules.dayKey()
     }
 }
 
@@ -331,16 +323,16 @@ struct SparkCosmetic: Identifiable, Hashable {
     let name: String
     let detail: String
     let price: Int
+    let currency: ShopCurrency
     let icon: String
 }
 
-struct SparkPack: Identifiable, Hashable {
+struct CrystalPack: Identifiable, Hashable {
     var id: String { productID }
     let productID: String
     let name: String
     let detail: String
-    let sparks: Int
-    /// Shown only when StoreKit has not returned a live product.
+    let crystals: Int
     let placeholderPrice: String
     let badge: String?
     let icon: String

@@ -46,10 +46,10 @@ struct HomeStatBadgeStyle {
         chevronColor: Color(hex: "#9A9A9A")
     )
 
-    /// Pale periwinkle fill, royal-blue sparkles.
-    static let sparks = HomeStatBadgeStyle(
+    /// Pale periwinkle fill, crystal diamond.
+    static let crystals = HomeStatBadgeStyle(
         fill: Color(hex: "#BDD5FD"),
-        iconName: "sparkles",
+        iconName: "diamond.fill",
         iconTop: Color(hex: "#2F5BEA"),
         iconBottom: Color(hex: "#2F5BEA"),
         valueColor: Color(hex: "#1A1A1A"),
@@ -57,11 +57,11 @@ struct HomeStatBadgeStyle {
         chevronColor: Color(hex: "#9A9A9A")
     )
 
-    /// Pale butter-yellow fill, gold/amber star.
-    static let boost = HomeStatBadgeStyle(
+    /// Pale butter-yellow fill, gold coin.
+    static let coins = HomeStatBadgeStyle(
         fill: Color(hex: "#FEE5A5"),
-        iconName: "star.fill",
-        iconTop: Color(hex: "#C98A12"),
+        iconName: "circle.fill",
+        iconTop: Color(hex: "#E8B923"),
         iconBottom: Color(hex: "#C98A12"),
         valueColor: Color(hex: "#1A1A1A"),
         labelColor: Color(hex: "#A57A22"),
@@ -234,7 +234,7 @@ private struct HomeStatBadgeTexts: View {
     }
 }
 
-/// One of the three equal Home stat cards (Daily Streak / Sparks / XP Boost).
+/// One of the three equal Home stat cards (Daily Streak / Crystals / Coins).
 struct HomeStatBadgeCard: View {
     let value: String
     let label: String
@@ -301,18 +301,19 @@ struct HomeStatBadgeCard: View {
     }
 }
 
-/// Horizontal row of the three Home stat cards, bound to live streak / sparks / XP boost.
+/// Horizontal row of the three Home stat cards, bound to live streak / crystals / coins.
 struct HomeStatBadgeRow: View {
     let streak: Int
-    let sparks: Int
-    let xpBoost: String
-    var onSparksTap: (() -> Void)? = nil
+    let crystals: Int
+    let coins: Int
+    var onCrystalsTap: (() -> Void)? = nil
+    var onCoinsTap: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: HomeStatBadgeMetrics.rowSpacing) {
             streakCard
-            sparksCard
-            boostCard
+            crystalsCard
+            coinsCard
         }
         .frame(maxWidth: .infinity)
     }
@@ -326,22 +327,63 @@ struct HomeStatBadgeRow: View {
         )
     }
 
-    private var sparksCard: some View {
+    private var crystalsCard: some View {
         HomeStatBadgeCard(
-            value: "+\(max(0, sparks))",
-            label: "Sparks",
-            style: HomeStatBadgeStyle.sparks,
-            action: onSparksTap
+            value: XPRules.groupedNumber(max(0, crystals)),
+            label: "Crystals",
+            style: HomeStatBadgeStyle.crystals,
+            action: onCrystalsTap
         )
     }
 
-    private var boostCard: some View {
+    private var coinsCard: some View {
         HomeStatBadgeCard(
-            value: xpBoost,
-            label: "XP Boost",
-            style: HomeStatBadgeStyle.boost,
-            tooltip: "XP Bonus"
+            value: XPRules.groupedNumber(max(0, coins)),
+            label: "Coins",
+            style: HomeStatBadgeStyle.coins,
+            action: onCoinsTap
         )
+    }
+}
+
+/// Compact Home card for the rotating daily quest.
+struct HomeDailyQuestCard: View {
+    let title: String
+    let isComplete: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isComplete ? "checkmark.circle.fill" : "flag.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(isComplete ? Color(hex: "#2FA36A") : EmberColors.ember)
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Daily Quest")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(hex: "#855F49"))
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color(hex: "#1A1A1A"))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(isComplete ? "Done" : "+\(XPRules.dailyQuestXP) XP")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(isComplete ? Color(hex: "#2FA36A") : EmberColors.ember)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(hex: "#FFE4D2"))
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Daily quest, \(title), \(isComplete ? "complete" : "+\(XPRules.dailyQuestXP) XP")")
     }
 }
 
@@ -451,7 +493,7 @@ struct HomeQuickActionRow: View {
 }
 
 #Preview("Stat cards") {
-    HomeStatBadgeRow(streak: 20, sparks: 805, xpBoost: "+30%")
+    HomeStatBadgeRow(streak: 20, crystals: 805, coins: 1250)
         .padding()
         .background(Color.white)
 }
