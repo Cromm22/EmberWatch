@@ -9,6 +9,7 @@ struct ShareView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var sparksManager: SparksManager
+    @EnvironmentObject var companionManager: CompanionManager
     
     @State private var challengeToast: String?
     
@@ -65,7 +66,10 @@ struct ShareView: View {
                 burned: healthKitManager.totalCaloriesBurned,
                 consumed: foodDataManager.totalCaloriesConsumed
             )),
-            avatarStyle: avatarManager.selectedStyle
+            avatarStyle: avatarManager.selectedStyle,
+            companionSpecies: companionManager.selectedSpecies,
+            companionStage: companionManager.stage(forLevel: levelManager.level),
+            companionTier: companionManager.tier(forLevel: levelManager.level)
         )
     }
     
@@ -175,11 +179,14 @@ struct ShareCard: View {
     let eaten: Int
     let remaining: Int
     var avatarStyle: AvatarStyle = AvatarStyle.presets[0]
+    var companionSpecies: CompanionSpecies? = nil
+    var companionStage: CompanionStage = .baby
+    var companionTier: ProgressionTier = .basic
     
     var body: some View {
         VStack(spacing: 24) {
             VStack(spacing: 12) {
-                EmberFlameAvatar(level: level, size: 160, style: avatarStyle)
+                shareCompanion
                 
                 Text("Level \(level)")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -242,6 +249,20 @@ struct ShareCard: View {
             RoundedRectangle(cornerRadius: 24)
                 .fill(EmberColors.lightPlum)
         )
+    }
+
+    @ViewBuilder
+    private var shareCompanion: some View {
+        if let companionSpecies {
+            CompanionAvatarView(
+                species: companionSpecies,
+                stage: companionStage,
+                tier: companionTier,
+                size: 160
+            )
+        } else {
+            EmberFlameAvatar(level: level, size: 160, style: avatarStyle)
+        }
     }
 }
 

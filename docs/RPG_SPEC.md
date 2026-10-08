@@ -5,8 +5,8 @@ Source of truth for the game-layer overhaul. Implement in **three separate PRs**
 | Phase | Scope | This repo |
 | --- | --- | --- |
 | **1** | XP economy, 1–100 level curve, titles, currencies (XP / Coins / Crystals), daily quest, remove XP boosters | **Merged** (PR #81) |
-| **2** | Builds onboarding, stats (STR END VIT AGI REC), `LVL N — BUILD` UI | **This PR** |
-| **3** | Character progression visuals, equipment slots/rarities, companions/evolution, shop pricing polish | Later agent |
+| **2** | Builds onboarding, stats (STR END VIT AGI REC), `LVL N — BUILD` UI | **Merged** (PR #82) |
+| **3** | Character progression visuals, equipment slots/rarities, companions/evolution, shop pricing polish | **This PR** |
 
 XP is a **status currency**. It is earned only from real-world healthy behavior. It is never spent, never purchasable, and never boosted.
 
@@ -248,23 +248,32 @@ Reward: **+50 XP** and **Coins** (see `XPRules`). Idempotent. Shown on Home. Com
 | 80 | Prestige armor |
 | 100 | Unique aura / title / effect (**IRON LEGEND**) |
 
+Drawn as gear overlays / aura on the companion. The named title (including **IRON LEGEND**) stays on the Character sheet.
+
 ---
 
 ## Equipment (Phase 3)
 
 Six slots: **Head, Chest, Hands, Legs, Feet, Accessory**.
 
-Rarities: **Common, Uncommon, Rare, Epic, Legendary, Mythic**.
+Rarities: **Common, Uncommon, Rare, Epic, Legendary, Mythic** (gray, green, blue, purple, orange, red/pink).
 
-**Cosmetic only** — no stat or XP bonuses (no pay-to-win).
+**Cosmetic only** — no stat, XP, or health bonuses (no pay-to-win).
+
+Catalog: ~7–8 items per slot. Some grant free at L1 / L20 / L40 / L60 / L80 / L100; others are buyable with Coins or Crystals. Equipment screen is opened from the Character sheet and Ember Shop.
 
 ---
 
 ## Companions (Phase 3)
 
-Chosen early in onboarding. The companion **is** the Ember the user levels.
+Chosen early in onboarding **after build**. The companion **is** the Ember the user levels and is shown on Home in place of the old flame avatar.
 
-Options: Baby dragon, Robot, Wolf, Slime, Phoenix, Cyber cat.
+Options: Baby Dragon, Robot, Wolf, Slime, Phoenix, Cyber Cat.
+
+- **New users** pick a species during onboarding (required to continue).
+- **Existing users** with no species see a **non-blocking sheet** (Later dismisses it; returns next launch). Current flame style maps to the closest species; they can still choose another.
+- Rename from the Character sheet (uses the existing Ember name).
+- Evolution celebration toast when crossing a stage threshold. Existing users already past a stage are seeded quietly so they are not spammed.
 
 Evolution with consistency / level:
 
@@ -275,6 +284,10 @@ Evolution with consistency / level:
 | 50 | Adult |
 | 75 | Elite |
 | 100 | Majestic final evolution |
+
+Each species/stage is SwiftUI vector art (shapes, gradients, SF Symbols) in the existing Ember glow / cute-face style. Later stages are larger and add horns, wings, antennae, and elite/final auras.
+
+CloudKit `UserProfile.companion` is **optional** (species raw value). Stage is derived from the already-published level. Written as a second save after core fields + `build`, ignored if the schema does not have the field. Board shows a species + stage icon when present.
 
 ---
 
@@ -331,8 +344,25 @@ Phase 2 does **not** edit Food Diary, food search, serving pickers, the Workout 
 - Any copy that says XP can be boosted or bought
 - UI string **Sparks** (wallet balance is now **Crystals**)
 
-### Out of scope until later phases
+## Phase 3 implementation map
 
-- Equipment slots, rarities, companion evolution, prestige auras
+| Piece | Where |
+| --- | --- |
+| Species, stages, progression tiers | `EmberWatch/Managers/CompanionSpecies.swift` |
+| Equipment slots, rarities, catalog | `EmberWatch/Managers/EquipmentCatalog.swift` |
+| Shop backgrounds / emotes / themes / effects / premium | `EmberWatch/Managers/ShopCatalog.swift` |
+| Persist species, loadout, ownership, evolution | `EmberWatch/Managers/CompanionManager.swift` |
+| Vector companion + gear overlays | `CompanionAvatarView`, `CompanionCreatureArt`, `CompanionGearOverlay` |
+| Onboarding + existing-user picker | `CompanionPickerView`, `OnboardingView`, `ContentView` |
+| Equipment inventory | `EquipmentView` (Character sheet + Ember Shop) |
+| Restructured Avatar Gallery | `AvatarPickerView` (now Ember Shop) + Crystal packs in `SparksShopView` |
+| Evolution toast | `EvolutionCelebrationView` |
+| Optional CloudKit `companion` + Board icon | `FriendsManager`, `BoardView` |
+| Food / workout / search screens | **Unchanged** |
+
+Phase 3 does **not** edit Food Diary, food search, serving pickers, the Workout tab, `FoodEntry`, `WorkoutData`, `FoodDataManager`, or `HealthKitManager`.
+
+### Out of scope
+
 - Sex-specific calorie floors (generic 1200 until profile sex exists)
 - HealthKit sleep permission (not already read; REC uses water + rest days)

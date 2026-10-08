@@ -98,9 +98,12 @@ struct AvatarPickerView: View {
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var sparksManager: SparksManager
+    @EnvironmentObject var companionManager: CompanionManager
 
     @State private var showingShop = false
     @State private var showingCosmeticsInfo = false
+    @State private var showingEquipment = false
+    @State private var showingCompanionPicker = false
 
     let columns = [
         GridItem(.flexible(), spacing: 10),
@@ -115,7 +118,7 @@ struct AvatarPickerView: View {
 
             VStack(spacing: 0) {
                 galleryHeader(
-                    title: "Avatar Gallery",
+                    title: "Ember Shop",
                     onBack: { dismiss() },
                     onDone: { dismiss() }
                 )
@@ -134,16 +137,24 @@ struct AvatarPickerView: View {
                         .padding(.horizontal, 20)
 
                         VStack(spacing: 6) {
-                            Text("Choose your Ember companion")
+                            Text("Cosmetics only")
                                 .font(.title2.weight(.bold))
                                 .foregroundColor(GalleryPalette.title)
                                 .multilineTextAlignment(.center)
-                            Text("A loyal companion for your journey. Collect them all!")
+                            Text("Coins and Crystals never buy XP, levels, workouts, or boosters.")
                                 .font(.subheadline)
                                 .foregroundColor(GalleryPalette.subtitle)
                                 .multilineTextAlignment(.center)
                         }
                         .padding(.horizontal, 20)
+
+                        shopPreview
+                            .padding(.horizontal, 16)
+
+                        equipmentCTA
+                            .padding(.horizontal, 16)
+
+                        shopSectionTitle("Basic companion skins")
 
                         LazyVGrid(columns: columns, spacing: 16) {
                             ForEach(AvatarStyle.presets) { style in
@@ -169,7 +180,22 @@ struct AvatarPickerView: View {
                         }
                         .padding(.horizontal, 16)
 
+                        shopCatalogSection(title: "Profile backgrounds", items: ShopCatalog.backgrounds)
+                            .padding(.horizontal, 16)
+
+                        shopCatalogSection(title: "Emotes", items: ShopCatalog.emotes)
+                            .padding(.horizontal, 16)
+
+                        shopCatalogSection(title: "Themes", items: ShopCatalog.themes)
+                            .padding(.horizontal, 16)
+
+                        shopCatalogSection(title: "Character effects", items: ShopCatalog.effects)
+                            .padding(.horizontal, 16)
+
                         cosmeticsSection
+                            .padding(.horizontal, 16)
+
+                        shopCatalogSection(title: "Premium skins", items: ShopCatalog.premium.filter { $0.id.hasPrefix("skin.") })
                             .padding(.horizontal, 16)
                             .padding(.bottom, 8)
                     }
@@ -223,6 +249,164 @@ struct AvatarPickerView: View {
             SparksShopView()
                 .environmentObject(sparksManager)
         }
+        .sheet(isPresented: $showingEquipment) {
+            EquipmentView()
+                .environmentObject(companionManager)
+                .environmentObject(sparksManager)
+                .environmentObject(levelManager)
+        }
+        .sheet(isPresented: $showingCompanionPicker) {
+            CompanionChoiceSheet(isPresented: $showingCompanionPicker, allowsSkip: false)
+                .environmentObject(companionManager)
+                .environmentObject(avatarManager)
+                .environmentObject(levelManager)
+        }
+    }
+
+    private var shopPreview: some View {
+        HStack(spacing: 12) {
+            CompanionAvatarView(
+                species: companionManager.resolvedSpecies,
+                stage: companionManager.stage(forLevel: levelManager.level),
+                tier: companionManager.tier(forLevel: levelManager.level),
+                size: 88,
+                extraGlow: sparksManager.hasGlow,
+                equipped: companionManager.equippedMap(),
+                effectId: companionManager.activeEffectId,
+                prestigeSkinId: companionManager.activePrestigeSkinId
+            )
+            .frame(width: 96, height: 108)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(avatarManager.displayName)
+                    .font(.headline)
+                    .foregroundColor(GalleryPalette.title)
+                Text(companionManager.resolvedSpecies.displayName)
+                    .font(.subheadline)
+                    .foregroundColor(GalleryPalette.subtitle)
+                Button("Change Ember") {
+                    showingCompanionPicker = true
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundColor(GalleryPalette.accent)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 3)
+        )
+    }
+
+    private var equipmentCTA: some View {
+        Button {
+            showingEquipment = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "shield.fill")
+                    .foregroundColor(EmberColors.ember)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Equipment")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(GalleryPalette.title)
+                    Text("Six slots · cosmetic only")
+                        .font(.caption)
+                        .foregroundColor(GalleryPalette.subtitle)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(GalleryPalette.subtitle)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func shopSectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.headline)
+            .foregroundColor(GalleryPalette.title)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+    }
+
+    private func shopCatalogSection(title: String, items: [CosmeticShopItem]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(GalleryPalette.title)
+            ForEach(items) { item in
+                ShopCosmeticRow(
+                    item: item,
+                    isOwned: isShopOwned(item),
+                    isActive: isShopActive(item),
+                    onBuy: { buyShopItem(item) },
+                    onUse: { useShopItem(item) }
+                )
+            }
+        }
+    }
+
+    private func isShopOwned(_ item: CosmeticShopItem) -> Bool {
+        if sparksManager.isCosmeticUnlocked(item.id) { return true }
+        return companionManager.isCosmeticOwned(item.id)
+    }
+
+    private func isShopActive(_ item: CosmeticShopItem) -> Bool {
+        switch item.category {
+        case .backgrounds:
+            return companionManager.activeBackgroundId == item.id
+        case .themes:
+            return companionManager.activeThemeId == item.id
+        case .emotes:
+            return companionManager.activeEmoteId == item.id
+        case .effects:
+            return companionManager.activeEffectId == item.id
+        case .premium:
+            if item.id.hasPrefix("skin.") {
+                return companionManager.activePrestigeSkinId == item.id
+            }
+            return false
+        case .equipment, .skins:
+            return false
+        }
+    }
+
+    private func buyShopItem(_ item: CosmeticShopItem) {
+        if item.id == "glow" || item.id.hasPrefix("nameplate_") {
+            _ = sparksManager.unlockCosmetic(item.id)
+            return
+        }
+        _ = companionManager.purchaseCosmetic(item, wallet: sparksManager)
+    }
+
+    private func useShopItem(_ item: CosmeticShopItem) {
+        if item.id == "glow" {
+            sparksManager.toggleGlow()
+            return
+        }
+        if item.id.hasPrefix("nameplate_") {
+            let active = sparksManager.activeNameplateId == item.id
+            sparksManager.selectNameplate(active ? nil : item.id)
+            return
+        }
+        if item.id.hasPrefix("skin.") {
+            if companionManager.activePrestigeSkinId == item.id {
+                companionManager.clearPrestigeSkin()
+            } else {
+                companionManager.activateCosmetic(item)
+            }
+            return
+        }
+        companionManager.activateCosmetic(item)
     }
 
     private var getMoreSparksCard: some View {
@@ -376,6 +560,75 @@ struct AvatarPickerView: View {
     }
 }
 
+private struct ShopCosmeticRow: View {
+    let item: CosmeticShopItem
+    let isOwned: Bool
+    let isActive: Bool
+    let onBuy: () -> Void
+    let onUse: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: item.iconName)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(EmberColors.ember)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(Color(hex: "#FFF4EC")))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(GalleryPalette.title)
+                Text(item.detail)
+                    .font(.caption)
+                    .foregroundColor(GalleryPalette.subtitle)
+            }
+
+            Spacer(minLength: 8)
+
+            if isOwned {
+                Button(isActive ? "Active" : "Use") {
+                    onUse()
+                }
+                .font(.caption.weight(.bold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(isActive ? EmberColors.gold : EmberColors.ember))
+            } else if item.price <= 0 {
+                Button("Claim") {
+                    onBuy()
+                }
+                .font(.caption.weight(.bold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(EmberColors.ember))
+            } else {
+                Button(action: onBuy) {
+                    HStack(spacing: 4) {
+                        Image(systemName: item.currency == .crystals ? "diamond.fill" : "circle.fill")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("\(item.price)")
+                            .font(.caption.weight(.bold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(EmberColors.ember))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+        )
+    }
+}
+
 struct AvatarThumbnail: View {
     let style: AvatarStyle
     let isSelected: Bool
@@ -474,4 +727,5 @@ private struct GalleryCardPressStyle: ButtonStyle {
         .environmentObject(AvatarManager())
         .environmentObject(LevelManager())
         .environmentObject(SparksManager())
+        .environmentObject(CompanionManager())
 }

@@ -103,6 +103,9 @@ struct CharacterSheetView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var characterManager: CharacterManager
     @EnvironmentObject var levelManager: LevelManager
+    @EnvironmentObject var companionManager: CompanionManager
+    @EnvironmentObject var sparksManager: SparksManager
+    @State private var showingEquipment = false
 
     var body: some View {
         NavigationView {
@@ -112,6 +115,7 @@ struct CharacterSheetView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         CharacterSheetIdentityCard()
+                        CharacterSheetEquipmentCard(showingEquipment: $showingEquipment)
                         CharacterSheetStatsCard()
                         CharacterSheetBuildCard()
                         CharacterSheetProgressCard()
@@ -132,6 +136,12 @@ struct CharacterSheetView: View {
                         .foregroundColor(EmberColors.ember)
                 }
             }
+            .sheet(isPresented: $showingEquipment) {
+                EquipmentView()
+                    .environmentObject(companionManager)
+                    .environmentObject(sparksManager)
+                    .environmentObject(levelManager)
+            }
         }
     }
 }
@@ -140,20 +150,61 @@ private struct CharacterSheetIdentityCard: View {
     @EnvironmentObject var characterManager: CharacterManager
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var avatarManager: AvatarManager
+    @EnvironmentObject var companionManager: CompanionManager
+    @State private var nameDraft = ""
+    @State private var isEditingName = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(avatarManager.displayName)
-                .font(.title2.bold())
-                .foregroundColor(EmberColors.cream)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                CompanionAvatarView(
+                    species: companionManager.resolvedSpecies,
+                    stage: companionManager.stage(forLevel: levelManager.level),
+                    tier: companionManager.tier(forLevel: levelManager.level),
+                    size: 72,
+                    equipped: companionManager.equippedMap(),
+                    prestigeSkinId: companionManager.activePrestigeSkinId
+                )
+                .frame(width: 80, height: 88)
 
-            Text(headerLine)
-                .font(.headline)
-                .foregroundColor(EmberColors.ember)
+                VStack(alignment: .leading, spacing: 6) {
+                    if isEditingName {
+                        TextField("Name your Ember", text: $nameDraft)
+                            .font(.title3.bold())
+                            .foregroundColor(EmberColors.cream)
+                            .onSubmit {
+                                saveName()
+                            }
+                    } else {
+                        Text(avatarManager.displayName)
+                            .font(.title2.bold())
+                            .foregroundColor(EmberColors.cream)
+                    }
 
-            Text(levelManager.levelTitle)
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(EmberColors.cream.opacity(0.75))
+                    Text(headerLine)
+                        .font(.headline)
+                        .foregroundColor(EmberColors.ember)
+
+                    Text(levelManager.levelTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(EmberColors.cream.opacity(0.75))
+
+                    Text(companionManager.tier(forLevel: levelManager.level).gearLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(EmberColors.muted)
+                }
+            }
+
+            Button(isEditingName ? "Save name" : "Rename Ember") {
+                if isEditingName {
+                    saveName()
+                } else {
+                    nameDraft = avatarManager.emberName
+                    isEditingName = true
+                }
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundColor(EmberColors.ember)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,6 +214,14 @@ private struct CharacterSheetIdentityCard: View {
         )
     }
 
+    private func saveName() {
+        let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            avatarManager.emberName = trimmed
+        }
+        isEditingName = false
+    }
+
     private var headerLine: String {
         let level = levelManager.level
         let build = characterManager.buildDisplayName
@@ -170,6 +229,43 @@ private struct CharacterSheetIdentityCard: View {
             return "LVL \(level)"
         }
         return "LVL \(level) — \(build)"
+    }
+}
+
+private struct CharacterSheetEquipmentCard: View {
+    @Binding var showingEquipment: Bool
+    @EnvironmentObject var companionManager: CompanionManager
+    @EnvironmentObject var levelManager: LevelManager
+
+    var body: some View {
+        Button {
+            showingEquipment = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "shield.fill")
+                    .font(.title3)
+                    .foregroundColor(EmberColors.ember)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Equipment")
+                        .font(.headline)
+                        .foregroundColor(EmberColors.cream)
+                    Text("Cosmetic slots · \(companionManager.tier(forLevel: levelManager.level).gearLabel)")
+                        .font(.caption)
+                        .foregroundColor(EmberColors.muted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(EmberColors.muted)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(EmberColors.lightPlum)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

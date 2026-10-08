@@ -13,6 +13,7 @@ struct HomeView: View {
     @EnvironmentObject var emberTalkManager: EmberTalkManager
     @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
     @EnvironmentObject var characterManager: CharacterManager
+    @EnvironmentObject var companionManager: CompanionManager
     @Binding var selectedTab: Int
     @State private var showingGoalSettings = false
     @State private var showingGoals = false
@@ -123,12 +124,15 @@ struct HomeView: View {
                     .environmentObject(characterManager)
                     .environmentObject(levelManager)
                     .environmentObject(avatarManager)
+                    .environmentObject(companionManager)
+                    .environmentObject(sparksManager)
             }
             .sheet(isPresented: $showingAvatarPicker) {
                 AvatarPickerView()
                     .environmentObject(avatarManager)
                     .environmentObject(levelManager)
                     .environmentObject(sparksManager)
+                    .environmentObject(companionManager)
             }
             .sheet(isPresented: $showingWaterGoal) {
                 WaterGoalSettingsView(isPresented: $showingWaterGoal)
@@ -217,6 +221,7 @@ struct HomeView: View {
             workoutGoal: workoutGoalManager,
             level: levelManager.level
         )
+        companionManager.grantFreeUnlocks(level: levelManager.level)
     }
     
     private func triggerXPGainAnimation(amount: Int) {
@@ -267,6 +272,30 @@ struct HomeView: View {
         }
     }
     
+    @ViewBuilder
+    private var homeCompanion: some View {
+        let emberSize = emberSizeForLevel(levelManager.level)
+        if companionManager.hasChosenCompanion {
+            CompanionAvatarView(
+                species: companionManager.resolvedSpecies,
+                stage: companionManager.stage(forLevel: levelManager.level),
+                tier: companionManager.tier(forLevel: levelManager.level),
+                size: emberSize,
+                extraGlow: sparksManager.hasGlow,
+                equipped: companionManager.equippedMap(),
+                effectId: companionManager.activeEffectId,
+                prestigeSkinId: companionManager.activePrestigeSkinId
+            )
+        } else {
+            EmberFlameAvatar(
+                level: levelManager.level,
+                size: emberSize,
+                style: avatarManager.selectedStyle,
+                extraGlow: sparksManager.hasGlow
+            )
+        }
+    }
+
     private func emberSizeForLevel(_ level: Int) -> CGFloat {
         let minSize: CGFloat = 170
         let maxSize: CGFloat = 270
@@ -328,17 +357,12 @@ struct HomeView: View {
         
         return VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
-                EmberFlameAvatar(
-                    level: levelManager.level,
-                    size: emberSize,
-                    style: avatarManager.selectedStyle,
-                    extraGlow: sparksManager.hasGlow
-                )
-                .frame(width: emberSize, height: frameHeight)
-                .animation(.spring(response: 0.6, dampingFraction: 0.7), value: levelManager.level)
-                .onTapGesture {
-                    showingAvatarPicker = true
-                }
+                homeCompanion
+                    .frame(width: emberSize, height: frameHeight)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: levelManager.level)
+                    .onTapGesture {
+                        showingAvatarPicker = true
+                    }
                 
                 Button(action: { showingAvatarPicker = true }) {
                     Image(systemName: "pencil.circle.fill")
@@ -353,9 +377,16 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
             
             VStack(spacing: 10) {
-                Text(avatarManager.displayName)
-                    .font(.headline)
-                    .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
+                HStack(spacing: 6) {
+                    Text(avatarManager.displayName)
+                        .font(.headline)
+                        .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
+                    if let emoteIcon = homeEmoteIcon {
+                        Image(systemName: emoteIcon)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(EmberColors.ember)
+                    }
+                }
 
                 HomeLevelBuildHeader(
                     level: levelManager.level,
@@ -482,8 +513,27 @@ struct HomeView: View {
         .padding(.vertical, 20)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(EmberColors.lightPlum)
+                .fill(homeCardFill)
         )
+    }
+
+    private var homeCardFill: Color {
+        if let hex = companionManager.backgroundHex() {
+            return Color(hex: hex)
+        }
+        return EmberColors.lightPlum
+    }
+
+    private var homeEmoteIcon: String? {
+        switch companionManager.activeEmoteId {
+        case "emote.wave": return "hand.wave.fill"
+        case "emote.cheer": return "hands.clap.fill"
+        case "emote.flex": return "figure.strengthtraining.traditional"
+        case "emote.sparkle": return "sparkle"
+        case "emote.sleepy": return "moon.zzz.fill"
+        case "emote.heart": return "heart.fill"
+        default: return nil
+        }
     }
     
     private var remainingCaloriesCard: some View {

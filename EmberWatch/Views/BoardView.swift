@@ -8,6 +8,7 @@ struct BoardEntry: Identifiable {
     let xp: Int
     let isCurrentUser: Bool
     var buildName: String? = nil
+    var companionSpecies: CompanionSpecies? = nil
 }
 
 struct BoardView: View {
@@ -16,6 +17,7 @@ struct BoardView: View {
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var avatarManager: AvatarManager
     @EnvironmentObject var characterManager: CharacterManager
+    @EnvironmentObject var companionManager: CompanionManager
     
     @State private var showAddFriend = false
     @State private var showProfileSettings = false
@@ -32,7 +34,8 @@ struct BoardView: View {
             level: levelManager.level,
             xp: levelManager.totalXP,
             isCurrentUser: true,
-            buildName: characterManager.selectedBuild?.uppercaseName
+            buildName: characterManager.selectedBuild?.uppercaseName,
+            companionSpecies: companionManager.selectedSpecies
         ))
         
         // Real friends
@@ -43,7 +46,8 @@ struct BoardView: View {
                 level: friend.level,
                 xp: friend.totalXP,
                 isCurrentUser: false,
-                buildName: BuildKind.parse(friend.build)?.uppercaseName
+                buildName: BuildKind.parse(friend.build)?.uppercaseName,
+                companionSpecies: CompanionSpecies.parse(friend.companion)
             ))
         }
         
@@ -211,6 +215,9 @@ struct BoardView: View {
             ProfileSettingsView(isPresented: $showProfileSettings)
                 .environmentObject(friendsManager)
                 .environmentObject(characterManager)
+                .environmentObject(companionManager)
+                .environmentObject(avatarManager)
+                .environmentObject(levelManager)
         }
         .overlay(alignment: .top) {
             if let toast = friendsManager.toast {
@@ -354,6 +361,7 @@ struct BoardView: View {
                         xp: entry.xp,
                         isCurrentUser: entry.isCurrentUser,
                         buildName: entry.buildName,
+                        companionSpecies: entry.companionSpecies,
                         onChallenge: {
                             Task {
                                 let sent = await friendsManager.sendChallenge(to: entry.id)
@@ -386,6 +394,7 @@ struct LeaderboardRow: View {
     let xp: Int
     let isCurrentUser: Bool
     var buildName: String? = nil
+    var companionSpecies: CompanionSpecies? = nil
     var onChallenge: (() -> Void)? = nil
     
     /// Soft teal that sits against dusk/plum without reading as medal bronze.
@@ -401,6 +410,14 @@ struct LeaderboardRow: View {
     var body: some View {
         HStack(spacing: 12) {
             RankMark(rank: rank)
+
+            if let companionSpecies {
+                CompanionStageIcon(
+                    species: companionSpecies,
+                    stage: CompanionStage.current(forLevel: level),
+                    size: 28
+                )
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
