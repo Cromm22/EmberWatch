@@ -13,12 +13,15 @@ struct ContentView: View {
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
     @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
+    @EnvironmentObject var characterManager: CharacterManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var showingFeedback = false
     @State private var showFeedbackFAB = false
     @State private var showLevelUpCelebration = false
     @State private var celebrationLevel: Int = 0
+    @State private var showingBuildChoice = false
+    @State private var didOfferBuildThisSession = false
     
     var body: some View {
         ZStack {
@@ -29,6 +32,7 @@ struct ContentView: View {
                         .environmentObject(levelManager)
                         .environmentObject(friendsManager)
                         .environmentObject(healthKitManager)
+                        .environmentObject(characterManager)
                 } else {
                     mainTabs
                 }
@@ -75,6 +79,17 @@ struct ContentView: View {
                 healthKitManager.ensureAuthorization()
             }
         }
+        .onChange(of: characterManager.selectedBuild) { _, _ in
+            Task {
+                await friendsManager.updateMyProfile(
+                    name: avatarManager.emberName,
+                    avatarId: avatarManager.selectedAvatarId,
+                    totalXP: levelManager.totalXP,
+                    level: levelManager.level,
+                    build: characterManager.selectedBuild?.rawValue
+                )
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, avatarManager.hasCompletedOnboarding else { return }
             healthKitManager.ensureAuthorization()
@@ -85,7 +100,8 @@ struct ContentView: View {
                     name: avatarManager.emberName,
                     avatarId: avatarManager.selectedAvatarId,
                     totalXP: levelManager.totalXP,
-                    level: levelManager.level
+                    level: levelManager.level,
+                    build: characterManager.selectedBuild?.rawValue
                 )
             }
         }
@@ -94,6 +110,11 @@ struct ContentView: View {
             healthKitManager.ensureAuthorization()
             _ = levelManager.checkDailyOpenReward()
             syncRPGProgress()
+            offerBuildChoiceIfNeeded()
+        }
+        .sheet(isPresented: $showingBuildChoice) {
+            BuildChoiceSheet(isPresented: $showingBuildChoice, allowsSkip: true)
+                .environmentObject(characterManager)
         }
     }
     
@@ -116,6 +137,7 @@ struct ContentView: View {
                     .environmentObject(sparksManager)
                     .environmentObject(emberTalkManager)
                     .environmentObject(workoutGoalManager)
+                    .environmentObject(characterManager)
                 
                 FoodDiaryView()
                     .tabItem {
@@ -145,6 +167,7 @@ struct ContentView: View {
                     .environmentObject(sparksManager)
                     .environmentObject(friendsManager)
                     .environmentObject(avatarManager)
+                    .environmentObject(characterManager)
                 
                 ShareView()
                     .tabItem {
@@ -208,6 +231,22 @@ struct ContentView: View {
             health: healthKitManager,
             workoutGoal: workoutGoalManager
         )
+        characterManager.syncFromApp(
+            food: foodDataManager,
+            calories: calorieGoalManager,
+            water: waterManager,
+            health: healthKitManager,
+            workoutGoal: workoutGoalManager,
+            level: levelManager.level
+        )
+    }
+
+    private func offerBuildChoiceIfNeeded() {
+        guard avatarManager.hasCompletedOnboarding else { return }
+        guard !characterManager.hasChosenBuild else { return }
+        guard !didOfferBuildThisSession else { return }
+        didOfferBuildThisSession = true
+        showingBuildChoice = true
     }
 }
 

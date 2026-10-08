@@ -8,11 +8,13 @@ struct GoalsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var foodDataManager: FoodDataManager
     @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
+    @EnvironmentObject var characterManager: CharacterManager
     
     @State private var editingWeight = false
     @State private var editingWorkout = false
     @State private var editingCalories = false
     @State private var editingMacros = false
+    @State private var editingBuild = false
     
     var body: some View {
         NavigationView {
@@ -28,6 +30,7 @@ struct GoalsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 4)
                         
+                        buildCard
                         weightCard
                         workoutCard
                         calorieCard
@@ -65,11 +68,37 @@ struct GoalsView: View {
                 MacroGoalEditView(isPresented: $editingMacros)
                     .environmentObject(calorieGoalManager)
             }
+            .sheet(isPresented: $editingBuild) {
+                BuildChoiceSheet(isPresented: $editingBuild, allowsSkip: false)
+                    .environmentObject(characterManager)
+            }
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 foodDataManager.fetchTodayEntries()
             }
         }
+    }
+    
+    private var buildCard: some View {
+        let build = characterManager.selectedBuild
+        let value = build?.displayName ?? "Not set"
+        let detail = build?.goalLine ?? "Warrior, Assassin, Tank, Ranger, or Mage"
+        let caption = build?.recommendedBehaviors.joined(separator: " · ") ?? "Does not reset XP or stats"
+        let primary = build?.primaryStats ?? []
+        
+        return GoalProgressCard(
+            icon: build?.iconName ?? "shield.fill",
+            title: "Build",
+            fill: HomeQuickActionPalette.progressFill,
+            iconColor: HomeQuickActionPalette.progressIcon,
+            value: value,
+            detail: detail,
+            caption: caption,
+            progress: build == nil ? 0 : 1,
+            progressLabel: primary.isEmpty ? (build == .mage ? "ALL" : "—") : primary.map(\.shortLabel).joined(separator: " "),
+            onEdit: { editingBuild = true }
+        )
+        .accessibilityLabel("Build. \(value). \(detail). Changing build does not reset XP or stats.")
     }
     
     private var weightCard: some View {
