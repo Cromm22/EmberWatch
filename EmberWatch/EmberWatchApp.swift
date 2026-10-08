@@ -97,7 +97,7 @@ struct EmberWatchApp: App {
                 .modelContainer(sharedModelContainer)
                 .onAppear {
                     foodDataManager.setModelContext(sharedModelContainer.mainContext)
-                    // Keep Sparks ↔ Level link in case it was cleared.
+                    // Keep currency wallet ↔ Level link in case it was cleared.
                     levelManager.sparksManager = sparksManager
                 }
                 .task {

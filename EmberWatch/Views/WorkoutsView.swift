@@ -179,18 +179,18 @@ struct WorkoutsView: View {
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 updateFlamePulse()
-                syncXP()
+                observeLoggedWorkouts()
             }
             .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
                 updateFlamePulse()
-                syncXP()
+                observeLoggedWorkouts()
             }
             .onChange(of: healthKitManager.workouts.map(\.id)) { _, _ in
-                syncXP()
+                observeLoggedWorkouts()
             }
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
-                syncXP()
+                observeLoggedWorkouts()
             }
             .speechPermissionAlert(speechRecognizer)
             .onChange(of: speechRecognizer.completedTranscript) { _, spoken in
@@ -218,9 +218,9 @@ struct WorkoutsView: View {
         .navigationViewStyle(.stack)
     }
     
-    private func syncXP() {
-        _ = levelManager.processBurnedCalories(healthKitManager.totalCaloriesBurned)
-        _ = levelManager.processWorkouts(ids: healthKitManager.workouts.map { $0.id.uuidString })
+    /// Read-only XP hook after HealthKit/local workouts are already in `healthKitManager.workouts`.
+    private func observeLoggedWorkouts() {
+        levelManager.observeWorkouts(healthKitManager.workouts)
     }
     
     private func updateFlamePulse() {
@@ -588,8 +588,8 @@ struct WorkoutsView: View {
         
         // Local list only — does not write HealthKit / Active Energy.
         healthKitManager.addLocalWorkout(workout)
-        // LevelManager workout XP path (deduped by id).
-        _ = levelManager.awardWorkout(id: workout.id.uuidString)
+        // XP observer only — does not change the local workout list or HealthKit.
+        levelManager.observeWorkouts(healthKitManager.workouts)
         
         emberTalkManager.showWorkoutPhrase()
         

@@ -41,9 +41,25 @@ struct ContentView: View {
                 }
                 .safeAreaPadding(.bottom)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let banner = levelManager.xpToast ?? sparksManager.toast {
+                CelebrationToastAnchor(sitsOutsideTabView: true) {
+                    CelebrationToastCard(
+                        accent: EmberColors.gold,
+                        secondaryAccent: EmberColors.ember
+                    ) {
+                        Text(banner)
+                            .font(.headline)
+                            .foregroundColor(EmberColors.ink)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.82), value: showLevelUpCelebration)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: levelManager.xpToast)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sparksManager.toast)
         .onChange(of: levelManager.levelUpEvent) { _, newLevel in
             if let level = newLevel {
                 celebrationLevel = level
@@ -63,8 +79,7 @@ struct ContentView: View {
             guard phase == .active, avatarManager.hasCompletedOnboarding else { return }
             healthKitManager.ensureAuthorization()
             _ = levelManager.checkDailyOpenReward()
-            _ = sparksManager.earnDailyLogin()
-            // Update CloudKit profile with latest data
+            syncRPGProgress()
             Task {
                 await friendsManager.updateMyProfile(
                     name: avatarManager.emberName,
@@ -78,7 +93,7 @@ struct ContentView: View {
             guard avatarManager.hasCompletedOnboarding else { return }
             healthKitManager.ensureAuthorization()
             _ = levelManager.checkDailyOpenReward()
-            _ = sparksManager.earnDailyLogin()
+            syncRPGProgress()
         }
     }
     
@@ -183,6 +198,16 @@ struct ContentView: View {
             UITabBar.appearance().standardAppearance = appearance
             UITabBar.appearance().scrollEdgeAppearance = appearance
         }
+    }
+
+    private func syncRPGProgress() {
+        levelManager.syncFromApp(
+            food: foodDataManager,
+            calories: calorieGoalManager,
+            water: waterManager,
+            health: healthKitManager,
+            workoutGoal: workoutGoalManager
+        )
     }
 }
 

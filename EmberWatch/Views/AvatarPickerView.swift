@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared light-gallery chrome used by Avatar Gallery and Sparks Shop.
+/// Shared light-gallery chrome used by Avatar Gallery and Crystal Shop.
 enum GalleryPalette {
     static let accent = Color(hex: "#4C82F7")
     static let title = Color(hex: "#111827")
@@ -51,18 +51,12 @@ func galleryHeader(title: String, onBack: @escaping () -> Void, onDone: @escapin
 }
 
 @ViewBuilder
-func galleryBalanceBar(balance: Int, onInfo: (() -> Void)?) -> some View {
-    HStack {
-        HStack(spacing: 6) {
-            Image(systemName: "sparkle")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(EmberColors.ember)
-            Text("\(balance) Sparks")
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(GalleryPalette.title)
-        }
+func galleryBalanceBar(coins: Int, crystals: Int, onInfo: (() -> Void)?) -> some View {
+    HStack(spacing: 10) {
+        galleryCurrencyChip(icon: "circle.fill", tint: Color(hex: "#C98A12"), text: "\(XPRules.groupedNumber(max(0, coins))) Coins")
+        galleryCurrencyChip(icon: "diamond.fill", tint: EmberColors.ember, text: "\(XPRules.groupedNumber(max(0, crystals))) Crystals")
 
-        Spacer()
+        Spacer(minLength: 4)
 
         HStack(spacing: 4) {
             Text("Cosmetics only")
@@ -75,13 +69,27 @@ func galleryBalanceBar(balance: Int, onInfo: (() -> Void)?) -> some View {
                         .foregroundColor(GalleryPalette.subtitle)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("About Sparks")
+                .accessibilityLabel("About Coins and Crystals")
             } else {
                 Image(systemName: "info.circle")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(GalleryPalette.subtitle)
             }
         }
+    }
+}
+
+@ViewBuilder
+private func galleryCurrencyChip(icon: String, tint: Color, text: String) -> some View {
+    HStack(spacing: 5) {
+        Image(systemName: icon)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(tint)
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundColor(GalleryPalette.title)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
     }
 }
 
@@ -119,7 +127,8 @@ struct AvatarPickerView: View {
                 ScrollView(.vertical, showsIndicators: true) {
                     VStack(spacing: 18) {
                         galleryBalanceBar(
-                            balance: sparksManager.balance,
+                            coins: sparksManager.coins,
+                            crystals: sparksManager.balance,
                             onInfo: { showingCosmeticsInfo = true }
                         )
                         .padding(.horizontal, 20)
@@ -208,7 +217,7 @@ struct AvatarPickerView: View {
         .alert("Cosmetics only", isPresented: $showingCosmeticsInfo) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Sparks unlock companion styles and flair only. They never gate food, water, HealthKit, workouts, or calorie tracking.")
+            Text("Coins unlock standard companion styles. Crystals unlock premium flair. Neither ever gates food, water, HealthKit, workouts, or calorie tracking.")
         }
         .sheet(isPresented: $showingShop) {
             SparksShopView()
@@ -250,7 +259,7 @@ struct AvatarPickerView: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Get More Sparks")
+                Text("Get More Crystals")
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(GalleryPalette.title)
                 Text("Unlock rare companions and more!")
@@ -343,7 +352,7 @@ struct AvatarPickerView: View {
                             _ = sparksManager.unlockCosmetic(item.id)
                         } label: {
                             HStack(spacing: 4) {
-                                Image(systemName: "sparkle")
+                                Image(systemName: item.currency == .crystals ? "diamond.fill" : "circle.fill")
                                     .font(.system(size: 9, weight: .bold))
                                 Text("\(item.price)")
                                     .font(.caption.weight(.bold))
@@ -413,9 +422,9 @@ struct AvatarThumbnail: View {
                             HStack {
                                 Spacer()
                                 HStack(spacing: 2) {
-                                    Image(systemName: "sparkle")
+                                    Image(systemName: "circle.fill")
                                         .font(.system(size: 8, weight: .bold))
-                                    Text("+\(price)")
+                                    Text("\(price)")
                                         .font(.system(size: 10, weight: .bold))
                                 }
                                 .foregroundColor(.white)
@@ -446,7 +455,7 @@ struct AvatarThumbnail: View {
     private var accessibilityLabel: String {
         var parts = [style.name]
         if isSelected { parts.append("selected") }
-        if isLocked { parts.append("locked, \(price) Sparks") }
+        if isLocked { parts.append("locked, \(price) Coins") }
         return parts.joined(separator: ", ")
     }
 }

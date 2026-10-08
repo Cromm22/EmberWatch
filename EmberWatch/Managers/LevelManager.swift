@@ -2,85 +2,55 @@ import Foundation
 import SwiftUI
 import UIKit
 
-/// Central XP / leveling (1…100). Tune base awards here.
 struct XPGainEvent: Equatable {
     let amount: Int
+    let actionName: String
     let timestamp: Date
+}
+
+struct DailyQuestStatus: Equatable {
+    var title: String
+    var isComplete: Bool
 }
 
 @MainActor
 final class LevelManager: ObservableObject {
-    // MARK: - Tunable base XP (before board multiplier)
-    static let waterServingXP = 5
-    static let caloriesPerXP = 1          // 1 XP per new calorie burned
-    static let exerciseXP = 50
-    static let challengeXP = 25
-    /// Daily consecutive-open streak: base + bonus × min(streak, cap).
-    static let dailyStreakBaseXP = 20
-    static let dailyStreakBonusPerDayXP = 5
-    static let dailyStreakBonusCapDays = 30
-    /// Weight-loss weigh-in: base + per 0.1 lb lost (bonus tenths capped).
-    static let weightLossBaseXP = 30
-    static let weightLossXPPerTenthPound = 5
-    static let weightLossMaxBonusTenths = 20  // 2.0 lb → +100 bonus max
-    static let maxLevel = 100
-    
-    /// Base XP (pre board-multiplier) for a given streak day count.
-    static func dailyStreakXP(forStreak streak: Int) -> Int {
-        let days = max(1, min(streak, dailyStreakBonusCapDays))
-        return dailyStreakBaseXP + dailyStreakBonusPerDayXP * days
-    }
-    
-    /// XP required to advance from level L → L+1.
-    static func xpToAdvance(from level: Int) -> Int {
-        let L = max(1, min(level, maxLevel))
-        return 100 + (L - 1) * 25
-    }
-    
-    /// Cumulative XP required to *reach* `level` (level 1 = 0).
-    static func cumulativeXP(forLevel level: Int) -> Int {
-        let capped = max(1, min(level, maxLevel + 1))
-        var total = 0
-        if capped <= 1 { return 0 }
-        for L in 1..<(capped) {
-            total += xpToAdvance(from: L)
-        }
-        return total
-    }
-    
+    static let maxLevel = XPRules.maxLevel
+
     @Published private(set) var totalXP: Int {
         didSet { UserDefaults.standard.set(totalXP, forKey: Keys.totalXP) }
     }
-    
-    /// 1…100 derived from totalXP.
+
     @Published private(set) var level: Int = 1
-    
-    /// XP progress within the current level (0…needed), or overflow at 100.
     @Published private(set) var xpIntoLevel: Int = 0
     @Published private(set) var xpForNextLevel: Int = 100
-    
-    /// Board rank used for multiplier (1 = first). 0 / nil → ×1.0
+    @Published private(set) var levelTitle: String = XPRules.title(forLevel: 1)
+
+    /// Rank on the friends board (1 = first). No longer multiplies XP.
     @Published var boardRank: Int = 0 {
         didSet { UserDefaults.standard.set(boardRank, forKey: Keys.boardRank) }
     }
-    
+
     @Published var levelUpBanner: String? = nil
-    
-    /// XP gain notification for animations (amount, timestamp)
     @Published var xpGainEvent: XPGainEvent? = nil
-    
-    /// Level-up event for the bottom celebration toast (new level)
     @Published var levelUpEvent: Int? = nil
-    
-    /// Optional Sparks hook (set from EmberWatchApp). Flat Sparks — no board XP multiplier.
+    @Published var xpToast: String? = nil
+    @Published var streakBanner: String? = nil
+    @Published var todaysQuest: DailyQuestStatus = DailyQuestStatus(
+        title: DailyQuestKind.quest(forDayKey: XPRules.dayKey()).title,
+        isComplete: false
+    )
+
     weak var sparksManager: SparksManager?
-    
-    /// Consecutive local-calendar-day opens that earned a reward.
+
+    /// Last evaluated activity snapshot. Workout-only observers merge into this
+    /// so Food Diary / Workout screens never have to pass nutrition managers.
+    private var lastSnapshot: DailyActivitySnapshot?
+
     @Published private(set) var streakCount: Int {
         didSet { UserDefaults.standard.set(streakCount, forKey: Keys.streakCount) }
     }
-    
-    /// Start-of-day (device calendar) of the last daily-open reward.
+
     @Published private(set) var lastRewardDate: Date? {
         didSet {
             if let date = lastRewardDate {
@@ -90,60 +60,45 @@ final class LevelManager: ObservableObject {
             }
         }
     }
-    
-    /// Brief Home toast e.g. "Day 3 streak — +35 XP".
-    @Published var streakBanner: String? = nil
-    
-    /// Brief toast e.g. "Down 1.2 lb — +90 XP".
-    @Published var weightLossBanner: String? = nil
-    
-    private var awardedWorkoutIDs: Set<String> {
-        didSet {
-            UserDefaults.standard.set(Array(awardedWorkoutIDs), forKey: Keys.awardedWorkouts)
-        }
+
+    private var ledgerByDay: [String: DailyXPLedger] {
+        didSet { persistLedgers() }
     }
-    
-    private var lastAwardedBurned: Double {
-        didSet {
-            UserDefaults.standard.set(lastAwardedBurned, forKey: Keys.lastAwardedBurned)
-            UserDefaults.standard.set(Self.todayKey(), forKey: Keys.lastAwardedBurnedDay)
-        }
+
+    private var streak3Start: Date? {
+        didSet { persistOptionalDate(streak3Start, key: Keys.streak3Start) }
     }
-    
-    private var lastAwardedBurnedDay: String
-    
-    /// friendId → yyyy-MM-dd of last challenge award
-    private var challengeAwards: [String: String] {
-        didSet {
-            if let data = try? JSONEncoder().encode(challengeAwards) {
-                UserDefaults.standard.set(data, forKey: Keys.challengeAwards)
-            }
-        }
+
+    private var streak7Start: Date? {
+        didSet { persistOptionalDate(streak7Start, key: Keys.streak7Start) }
     }
-    
+
+    /// Days that already received daily-quest Coins (XP can still revoke/re-grant).
+    private var questCoinDays: Set<String> {
+        didSet { UserDefaults.standard.set(Array(questCoinDays), forKey: Keys.questCoinDays) }
+    }
+
     private enum Keys {
         static let totalXP = "levelManager.totalXP"
         static let boardRank = "levelManager.boardRank"
-        static let awardedWorkouts = "levelManager.awardedWorkoutIDs"
-        static let lastAwardedBurned = "levelManager.lastAwardedBurned"
-        static let lastAwardedBurnedDay = "levelManager.lastAwardedBurnedDay"
-        static let challengeAwards = "levelManager.challengeAwards"
         static let migrated = "levelManager.migratedFromCalorieGoal"
         static let streakCount = "levelManager.streakCount"
         static let lastRewardDate = "levelManager.lastRewardDate"
+        static let ledgers = "levelManager.xpLedger.v1"
+        static let streak3Start = "levelManager.streak3Start"
+        static let streak7Start = "levelManager.streak7Start"
+        static let questCoinDays = "levelManager.questCoinDays"
     }
-    
+
     init() {
         let defaults = UserDefaults.standard
-        
-        // One-time migrate from CalorieGoalManager stub XP if present.
+
         if !defaults.bool(forKey: Keys.migrated) {
             let oldLevel = defaults.integer(forKey: "currentLevel")
             let oldXP = defaults.integer(forKey: "currentXP")
             if oldLevel > 0 || oldXP > 0 {
                 var migrated = 0
                 let L = max(1, oldLevel == 0 ? 1 : oldLevel)
-                // Old curve: need L*100 to leave level L
                 for i in 1..<L {
                     migrated += i * 100
                 }
@@ -154,28 +109,17 @@ final class LevelManager: ObservableObject {
             }
             defaults.set(true, forKey: Keys.migrated)
         }
-        
-        self.totalXP = defaults.integer(forKey: Keys.totalXP)
+
+        self.totalXP = max(0, defaults.integer(forKey: Keys.totalXP))
         self.boardRank = defaults.integer(forKey: Keys.boardRank)
-        let ids = defaults.stringArray(forKey: Keys.awardedWorkouts) ?? []
-        self.awardedWorkoutIDs = Set(ids)
-        
-        let day = defaults.string(forKey: Keys.lastAwardedBurnedDay) ?? ""
-        self.lastAwardedBurnedDay = day
-        if day == Self.todayKey() {
-            self.lastAwardedBurned = defaults.double(forKey: Keys.lastAwardedBurned)
+
+        if let data = defaults.data(forKey: Keys.ledgers),
+           let map = try? JSONDecoder().decode([String: DailyXPLedger].self, from: data) {
+            self.ledgerByDay = map
         } else {
-            self.lastAwardedBurned = 0
-            self.lastAwardedBurnedDay = Self.todayKey()
+            self.ledgerByDay = [:]
         }
-        
-        if let data = defaults.data(forKey: Keys.challengeAwards),
-           let map = try? JSONDecoder().decode([String: String].self, from: data) {
-            self.challengeAwards = map
-        } else {
-            self.challengeAwards = [:]
-        }
-        
+
         self.streakCount = max(0, defaults.integer(forKey: Keys.streakCount))
         if defaults.object(forKey: Keys.lastRewardDate) != nil {
             let interval = defaults.double(forKey: Keys.lastRewardDate)
@@ -183,36 +127,16 @@ final class LevelManager: ObservableObject {
         } else {
             self.lastRewardDate = nil
         }
-        
+        self.streak3Start = Self.readOptionalDate(defaults, key: Keys.streak3Start)
+        self.streak7Start = Self.readOptionalDate(defaults, key: Keys.streak7Start)
+        let questDays = defaults.stringArray(forKey: Keys.questCoinDays) ?? []
+        self.questCoinDays = Set(questDays)
+
+        // Lifetime XP is kept; level is derived from the Phase 1 curve (may change vs the old 100+25*(L-1) table).
         recomputeLevel(from: totalXP, announce: false)
-    }
-    
-    // MARK: - Multiplier
-    
-    var boardMultiplier: Double {
-        switch boardRank {
-        case 1: return 1.30
-        case 2: return 1.20
-        case 3: return 1.10
-        default: return 1.0
-        }
-    }
-    
-    var boardMultiplierLabel: String? {
-        switch boardRank {
-        case 1: return "+30% XP"
-        case 2: return "+20% XP"
-        case 3: return "+10% XP"
-        default: return nil
-        }
+        refreshQuestStatus()
     }
 
-    /// Compact Home card value, e.g. "+30%" or "+0%" when there is no board-rank bonus.
-    var xpBoostPercentLabel: String {
-        let extra = Int(((boardMultiplier - 1.0) * 100).rounded())
-        return extra == 0 ? "+0%" : "+\(extra)%"
-    }
-    
     var progressFraction: Double {
         if level >= Self.maxLevel {
             return 1.0
@@ -220,196 +144,278 @@ final class LevelManager: ObservableObject {
         guard xpForNextLevel > 0 else { return 0 }
         return min(1.0, Double(xpIntoLevel) / Double(xpForNextLevel))
     }
-    
-    // MARK: - Awards
-    
-    @discardableResult
-    func awardWaterServing() -> Int {
-        award(base: Self.waterServingXP, reason: "water")
+
+    static func xpToAdvance(from level: Int) -> Int {
+        XPRules.xpToAdvance(from: level)
     }
-    
-    /// Award XP for *new* burned calories since last watermark today.
-    @discardableResult
-    func processBurnedCalories(_ currentTotal: Double) -> Int {
-        resetBurnedWatermarkIfNewDay()
-        let current = max(0, currentTotal)
-        let delta = current - lastAwardedBurned
-        guard delta >= 1 else {
-            if current < lastAwardedBurned {
-                // Day reset / HealthKit dip — don't claw back XP; realign watermark down.
-                lastAwardedBurned = current
-            }
-            return 0
-        }
-        let whole = Int(delta.rounded(.down))
-        guard whole > 0 else { return 0 }
-        lastAwardedBurned = lastAwardedBurned + Double(whole)
-        return award(base: whole * Self.caloriesPerXP, reason: "burned")
+
+    static func cumulativeXP(forLevel level: Int) -> Int {
+        XPRules.cumulativeXP(forLevel: level)
     }
-    
-    @discardableResult
-    func awardWorkout(id: String) -> Int {
-        guard !awardedWorkoutIDs.contains(id) else { return 0 }
-        awardedWorkoutIDs.insert(id)
-        return award(base: Self.exerciseXP, reason: "workout")
-    }
-    
-    /// Process a batch of HealthKit / local workout IDs.
-    @discardableResult
-    func processWorkouts(ids: [String]) -> Int {
-        var gained = 0
-        for id in ids {
-            gained += awardWorkout(id: id)
-        }
-        return gained
-    }
-    
-    /// Once per friend per calendar day.
-    @discardableResult
-    func awardChallenge(friendId: String) -> Int {
-        let today = Self.todayKey()
-        if challengeAwards[friendId] == today {
-            return 0
-        }
-        challengeAwards[friendId] = today
-        return award(base: Self.challengeXP, reason: "challenge")
-    }
-    
-    func canChallenge(friendId: String) -> Bool {
-        challengeAwards[friendId] != Self.todayKey()
-    }
-    
-    /// First open of a new local calendar day awards streak XP (board multiplier applied).
-    /// Already rewarded today → no-op. Yesterday → streak += 1; else streak = 1.
+
+    // MARK: - Daily open / streak (no daily-open XP)
+
     @discardableResult
     func checkDailyOpenReward() -> Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        
+
         if let last = lastRewardDate.map({ calendar.startOfDay(for: $0) }), last == today {
             return 0
         }
-        
+
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
         if let last = lastRewardDate.map({ calendar.startOfDay(for: $0) }), last == yesterday {
             streakCount = max(1, streakCount + 1)
         } else {
             streakCount = 1
         }
-        
+
         lastRewardDate = today
-        
-        let base = Self.dailyStreakXP(forStreak: streakCount)
-        let gained = award(base: base, reason: "dailyStreak")
-        
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let dayLabel = streakCount == 1 ? "Day 1" : "Day \(streakCount)"
-        streakBanner = "\(dayLabel) streak — +\(gained) XP"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) { [weak self] in
-            if self?.streakBanner?.contains("+\(gained) XP") == true {
-                self?.streakBanner = nil
-            }
-        }
-        return gained
+        return 0
     }
-    
-    /// Award XP when a weigh-in is lower than the previous recorded weight.
-    /// `poundsLost` must be positive (previous − new). Same/up → no-op.
-    @discardableResult
-    func awardWeightLoss(poundsLost: Double) -> Int {
-        guard poundsLost > 0.05 else { return 0 }
-        let tenths = Int((poundsLost / 0.1).rounded(.down))
-        let cappedTenths = max(0, min(tenths, Self.weightLossMaxBonusTenths))
-        let base = Self.weightLossBaseXP + cappedTenths * Self.weightLossXPPerTenthPound
-        let gained = award(base: base, reason: "weightLoss")
-        guard gained > 0 else { return 0 }
-        
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let lostLabel = WeightManager.format(poundsLost)
-        weightLossBanner = "Down \(lostLabel) lb — +\(gained) XP"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) { [weak self] in
-            if self?.weightLossBanner?.contains("+\(gained) XP") == true {
-                self?.weightLossBanner = nil
-            }
-        }
-        return gained
-    }
-    
+
     func updateBoardRank(_ rank: Int) {
         boardRank = max(0, rank)
     }
-    
-    // MARK: - Internals
-    
-    @discardableResult
-    private func award(base: Int, reason: String) -> Int {
-        guard base > 0 else { return 0 }
-        let multiplied = Int((Double(base) * boardMultiplier).rounded())
-        guard multiplied > 0 else { return 0 }
-        
-        let previousLevel = level
-        totalXP += multiplied
-        recomputeLevel(from: totalXP, announce: true)
-        
-        // Trigger XP gain animation event
-        xpGainEvent = XPGainEvent(amount: multiplied, timestamp: Date())
-        
-        if level > previousLevel {
-            let levelsGained = level - previousLevel
-            let sparks = sparksManager?.earnLevelUp(levelsGained: levelsGained) ?? 0
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            
-            // Trigger level-up celebration event
-            levelUpEvent = level
-            
-            if sparks > 0 {
-                levelUpBanner = "Level up! → \(level)  ·  +\(sparks) Sparks"
-            } else {
-                levelUpBanner = "Level up! → \(level)"
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) { [weak self] in
-                if self?.levelUpBanner?.contains("\(self?.level ?? 0)") == true {
-                    self?.levelUpBanner = nil
-                }
+
+    // MARK: - Evaluate today from live managers
+
+    func syncFromApp(
+        food: FoodDataManager,
+        calories: CalorieGoalManager,
+        water: WaterManager,
+        health: HealthKitManager,
+        workoutGoal: WorkoutGoalManager
+    ) {
+        let entries = food.todayFoodEntries
+        var breakfast = false
+        var lunch = false
+        var dinner = false
+        var consumed = 0.0
+        var protein = 0.0
+        for entry in entries {
+            consumed += entry.calories
+            protein += entry.protein
+            switch entry.resolvedMealType {
+            case MealType.breakfast.rawValue:
+                breakfast = true
+            case MealType.lunch.rawValue:
+                lunch = true
+            case MealType.dinner.rawValue:
+                dinner = true
+            default:
+                break
             }
         }
-        _ = reason
-        return multiplied
+
+        let workoutCandidates = Self.workoutCandidates(from: health.workouts)
+
+        let movementMet = XPRules.movementGoalMet(
+            minutes: workoutGoal.todayMinutes(from: health.workouts),
+            targetMinutes: workoutGoal.targetMinutes,
+            goalEnabled: workoutGoal.isEnabled,
+            exerciseMinutes: health.exerciseMinutes
+        )
+
+        let snapshot = DailyActivitySnapshot(
+            dayKey: XPRules.dayKey(),
+            breakfastLogged: breakfast,
+            lunchLogged: lunch,
+            dinnerLogged: dinner,
+            caloriesConsumed: consumed,
+            calorieGoal: calories.dailyCalorieGoal,
+            proteinConsumed: protein,
+            proteinGoal: calories.dailyProteinGoal,
+            waterGoalMet: water.progress >= 1.0,
+            movementGoalMet: movementMet,
+            workouts: workoutCandidates,
+            streakCount: streakCount
+        )
+        applyEvaluation(snapshot)
     }
-    
+
+    /// Read-only hook after workouts are already saved (Quick Add or HealthKit list).
+    /// Does not write HealthKit or the local workout list.
+    func observeWorkouts(_ workouts: [WorkoutData]) {
+        let candidates = Self.workoutCandidates(from: workouts)
+        let day = XPRules.dayKey()
+        if var cached = lastSnapshot, cached.dayKey == day {
+            cached.workouts = candidates
+            cached.streakCount = streakCount
+            applyEvaluation(cached)
+            return
+        }
+        let existing = ledgerByDay[day] ?? DailyXPLedger(dayKey: day)
+        let result = XPEngine.evaluateWorkoutsOnly(
+            candidates: candidates,
+            ledger: existing,
+            dayKey: day
+        )
+        ledgerByDay[day] = result.ledger
+        if result.xpDelta != 0 {
+            applyXPDelta(result.xpDelta, gains: result.gains)
+        }
+    }
+
+    private static func workoutCandidates(from workouts: [WorkoutData]) -> [WorkoutXPCandidate] {
+        var result: [WorkoutXPCandidate] = []
+        for workout in workouts {
+            let minutes = Int((workout.duration / 60.0).rounded(.down))
+            result.append(
+                WorkoutXPCandidate(
+                    id: workout.id.uuidString,
+                    durationMinutes: minutes,
+                    calories: workout.caloriesBurned
+                )
+            )
+        }
+        return result
+    }
+
+    // MARK: - Internals
+
+    private func applyEvaluation(_ snapshot: DailyActivitySnapshot) {
+        let start = currentStreakStart()
+        let awarded3 = datesMatch(streak3Start, start) && snapshot.streakCount >= 3
+        let awarded7 = datesMatch(streak7Start, start) && snapshot.streakCount >= 7
+        let existing = ledgerByDay[snapshot.dayKey] ?? DailyXPLedger(dayKey: snapshot.dayKey)
+
+        let result = XPEngine.evaluate(
+            snapshot: snapshot,
+            ledger: existing,
+            awardedStreak3: awarded3,
+            awardedStreak7: awarded7
+        )
+        lastSnapshot = snapshot
+        ledgerByDay[snapshot.dayKey] = result.ledger
+        todaysQuest = DailyQuestStatus(title: result.questKind.title, isComplete: result.questComplete)
+
+        if result.xpDelta != 0 {
+            applyXPDelta(result.xpDelta, gains: result.gains)
+        }
+
+        if result.questJustCompleted, !questCoinDays.contains(snapshot.dayKey) {
+            questCoinDays.insert(snapshot.dayKey)
+            _ = sparksManager?.earnCoins(XPRules.dailyQuestCoins, reason: "dailyQuest")
+        }
+
+        if snapshot.streakCount >= 3 && !awarded3 && result.ledger.amount(for: .streak3) > 0 {
+            streak3Start = start
+            _ = sparksManager?.earnCoins(XPRules.streak3Coins, reason: "streak3")
+        }
+        if snapshot.streakCount >= 7 && !awarded7 && result.ledger.amount(for: .streak7) > 0 {
+            streak7Start = start
+            _ = sparksManager?.earnCoins(XPRules.streak7Coins, reason: "streak7")
+        }
+    }
+
+    private func applyXPDelta(_ delta: Int, gains: [XPGain]) {
+        guard delta != 0 else { return }
+        let previousLevel = level
+        totalXP = max(0, totalXP + delta)
+        recomputeLevel(from: totalXP, announce: true)
+
+        if delta > 0 {
+            let names = gains.map(\.displayName)
+            let label: String
+            if names.count == 1 {
+                label = names[0]
+            } else if names.count > 1 {
+                label = names.joined(separator: " · ")
+            } else {
+                label = "XP"
+            }
+            xpGainEvent = XPGainEvent(amount: delta, actionName: label, timestamp: Date())
+            showXPToast("\(label) — +\(delta) XP")
+        }
+
+        if level > previousLevel {
+            handleLevelUp(from: previousLevel, to: level)
+        }
+    }
+
+    private func handleLevelUp(from previous: Int, to newLevel: Int) {
+        var coinsGained = 0
+        var crystalsGained = 0
+        if let sparks = sparksManager {
+            for L in (previous + 1)...newLevel {
+                coinsGained += sparks.earnLevelUpCoins(toLevel: L)
+                crystalsGained += sparks.earnMilestoneCrystals(forLevel: L)
+            }
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        levelUpEvent = newLevel
+
+        var parts = ["Level up! → \(newLevel)"]
+        if coinsGained > 0 {
+            parts.append("+\(coinsGained) Coins")
+        }
+        if crystalsGained > 0 {
+            parts.append("+\(crystalsGained) Crystals")
+        }
+        levelUpBanner = parts.joined(separator: "  ·  ")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) { [weak self] in
+            if self?.levelUpBanner?.contains("\(newLevel)") == true {
+                self?.levelUpBanner = nil
+            }
+        }
+    }
+
     private func recomputeLevel(from total: Int, announce: Bool) {
-        var remaining = max(0, total)
-        var L = 1
-        while L < Self.maxLevel {
-            let need = Self.xpToAdvance(from: L)
-            if remaining < need { break }
-            remaining -= need
-            L += 1
-        }
-        level = L
-        if L >= Self.maxLevel {
-            xpIntoLevel = remaining
-            xpForNextLevel = Self.xpToAdvance(from: Self.maxLevel) // vanity overflow denom
-        } else {
-            xpIntoLevel = remaining
-            xpForNextLevel = Self.xpToAdvance(from: L)
-        }
+        let result = XPRules.level(fromTotalXP: total)
+        level = result.level
+        xpIntoLevel = result.xpIntoLevel
+        xpForNextLevel = result.xpForNext
+        levelTitle = XPRules.title(forLevel: result.level)
         _ = announce
     }
-    
-    private func resetBurnedWatermarkIfNewDay() {
-        let today = Self.todayKey()
-        if lastAwardedBurnedDay != today {
-            lastAwardedBurnedDay = today
-            lastAwardedBurned = 0
+
+    private func showXPToast(_ message: String) {
+        xpToast = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in
+            if self?.xpToast == message {
+                self?.xpToast = nil
+            }
         }
     }
-    
-    private static func todayKey() -> String {
-        let f = DateFormatter()
-        f.calendar = Calendar.current
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
+
+    private func refreshQuestStatus() {
+        let day = XPRules.dayKey()
+        let quest = DailyQuestKind.quest(forDayKey: day)
+        let complete = (ledgerByDay[day]?.amount(for: .dailyQuest) ?? 0) > 0
+        todaysQuest = DailyQuestStatus(title: quest.title, isComplete: complete)
+    }
+
+    private func currentStreakStart() -> Date {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let days = max(1, streakCount) - 1
+        return calendar.date(byAdding: .day, value: -days, to: today) ?? today
+    }
+
+    private func datesMatch(_ lhs: Date?, _ rhs: Date) -> Bool {
+        guard let lhs else { return false }
+        return Calendar.current.isDate(lhs, inSameDayAs: rhs)
+    }
+
+    private func persistLedgers() {
+        if let data = try? JSONEncoder().encode(ledgerByDay) {
+            UserDefaults.standard.set(data, forKey: Keys.ledgers)
+        }
+    }
+
+    private func persistOptionalDate(_ date: Date?, key: String) {
+        if let date {
+            UserDefaults.standard.set(date.timeIntervalSince1970, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
+    private static func readOptionalDate(_ defaults: UserDefaults, key: String) -> Date? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return Date(timeIntervalSince1970: defaults.double(forKey: key))
     }
 }

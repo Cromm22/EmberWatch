@@ -33,7 +33,7 @@ struct OnboardingView: View {
                     nameStep.tag(1)
                     xpStep(
                         title: "Earn XP every day",
-                        bodyText: "Log water, burn calories, complete workouts, and challenge friends to fuel your Ember"
+                        bodyText: "Log meals, hit nutrition ranges, complete workouts, and keep a streak. XP comes from real-life habits — never from a shop."
                     ) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 56))
@@ -49,8 +49,8 @@ struct OnboardingView: View {
                     }
                     .tag(3)
                     xpStep(
-                        title: "Board multipliers",
-                        bodyText: "Climb the weekly Board. Top ranks boost all XP: 3rd +10%, 2nd +20%, 1st +30%."
+                        title: "XP is never sold",
+                        bodyText: "No boosters, no XP packs. Coins and Crystals are for cosmetics only — they never buy levels or health progress."
                     ) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 56))
