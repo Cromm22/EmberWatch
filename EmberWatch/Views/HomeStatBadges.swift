@@ -69,16 +69,34 @@ struct HomeStatBadgeStyle {
     )
 }
 
+/// Opaque tooltip chrome. File-level so these colors are not MainActor-isolated
+/// with the SwiftUI views. Do not use `EmberColors.cream` here — that token is
+/// near-black in the light theme and disappears on a dark popover.
+enum HomeStatTooltipPalette {
+    static let fill = Color(hex: "#1F1F24")
+    static let text = Color.white
+}
+
 /// Compact name bubble shown when a Home streak / XP badge is tapped.
+/// Solid near-black fill + white text so it stays readable on pastel cards.
+/// Presentation chrome lives here so the modifier body stays type-checker thin.
 private struct HomeStatTooltipLabel: View {
     let text: String
 
     var body: some View {
+        label
+            .presentationCompactAdaptation(.popover)
+            .presentationBackground(HomeStatTooltipPalette.fill)
+            .presentationCornerRadius(12)
+    }
+
+    private var label: some View {
         Text(text)
             .font(.system(size: 13, weight: .semibold, design: .rounded))
-            .foregroundStyle(EmberColors.cream)
+            .foregroundStyle(HomeStatTooltipPalette.text)
             .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
+            .background(HomeStatTooltipPalette.fill, ignoresSafeAreaEdges: [])
             .fixedSize()
     }
 }
@@ -99,7 +117,6 @@ private struct HomeStatTooltipModifier: ViewModifier {
         .popover(isPresented: $isPresented, arrowEdge: arrowEdge) {
             HomeStatTooltipLabel(text: text)
                 .onTapGesture { isPresented = false }
-                .presentationCompactAdaptation(.popover)
         }
         .task(id: isPresented) {
             guard isPresented else { return }
