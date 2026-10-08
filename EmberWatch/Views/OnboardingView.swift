@@ -5,11 +5,13 @@ struct OnboardingView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var healthKitManager: HealthKitManager
+    @EnvironmentObject var characterManager: CharacterManager
     
     @State private var step = 0
     @State private var nameDraft = ""
+    @State private var selectedBuild: BuildKind?
     
-    private let totalSteps = 6 // avatar, name, xp1, xp2, xp3, health
+    private let totalSteps = 7 // avatar, name, build, xp1, xp2, xp3, health
     
     var body: some View {
         ZStack {
@@ -31,6 +33,7 @@ struct OnboardingView: View {
                 TabView(selection: $step) {
                     avatarStep.tag(0)
                     nameStep.tag(1)
+                    buildStep.tag(2)
                     xpStep(
                         title: "Earn XP every day",
                         bodyText: "Log meals, hit nutrition ranges, complete workouts, and keep a streak. XP comes from real-life habits — never from a shop."
@@ -40,14 +43,14 @@ struct OnboardingView: View {
                             .foregroundColor(EmberColors.ember)
                             .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
                     }
-                    .tag(2)
+                    .tag(3)
                     xpStep(
                         title: "Level 1 → 100",
                         bodyText: "Complete daily goals to power your Ember."
                     ) {
                         EmberGrowthOutlineIcon()
                     }
-                    .tag(3)
+                    .tag(4)
                     xpStep(
                         title: "XP is never sold",
                         bodyText: "No boosters, no XP packs. Coins and Crystals are for cosmetics only — they never buy levels or health progress."
@@ -57,8 +60,8 @@ struct OnboardingView: View {
                             .foregroundColor(EmberColors.ember)
                             .shadow(color: EmberColors.ember.opacity(0.4), radius: 16)
                     }
-                    .tag(4)
-                    healthStep.tag(5)
+                    .tag(5)
+                    healthStep.tag(6)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.25), value: step)
@@ -80,6 +83,8 @@ struct OnboardingView: View {
             return !avatarManager.selectedAvatarId.isEmpty
         case 1:
             return !nameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case 2:
+            return selectedBuild != nil
         default:
             return true
         }
@@ -106,6 +111,9 @@ struct OnboardingView: View {
         if step == 1 {
             avatarManager.emberName = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         }
+        if step == 2, let selectedBuild {
+            characterManager.selectBuild(selectedBuild)
+        }
         if step >= totalSteps - 1 {
             healthKitManager.ensureAuthorization()
             avatarManager.completeOnboarding()
@@ -115,7 +123,8 @@ struct OnboardingView: View {
                     name: avatarManager.emberName,
                     avatarId: avatarManager.selectedAvatarId,
                     totalXP: levelManager.totalXP,
-                    level: levelManager.level
+                    level: levelManager.level,
+                    build: characterManager.selectedBuild?.rawValue
                 )
             }
             return
@@ -206,6 +215,31 @@ struct OnboardingView: View {
                 .padding(.horizontal, 24)
             
             Spacer()
+        }
+    }
+    
+    private var buildStep: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Choose your build")
+                    .font(.title.bold())
+                    .foregroundColor(EmberColors.cream)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 8)
+                
+                Text("This is your playstyle. You can change it later — XP and stats stay.")
+                    .font(.subheadline)
+                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 8)
+                
+                BuildPickerView(selected: selectedBuild) { build in
+                    selectedBuild = build
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
         }
     }
     

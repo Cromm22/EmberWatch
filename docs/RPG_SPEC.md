@@ -4,8 +4,8 @@ Source of truth for the game-layer overhaul. Implement in **three separate PRs**
 
 | Phase | Scope | This repo |
 | --- | --- | --- |
-| **1** | XP economy, 1–100 level curve, titles, currencies (XP / Coins / Crystals), daily quest, remove XP boosters | **This PR** |
-| **2** | Builds onboarding, stats (STR END VIT AGI REC), `LVL N - BUILD` UI | Later agent |
+| **1** | XP economy, 1–100 level curve, titles, currencies (XP / Coins / Crystals), daily quest, remove XP boosters | **Merged** (PR #81) |
+| **2** | Builds onboarding, stats (STR END VIT AGI REC), `LVL N — BUILD` UI | **This PR** |
 | **3** | Character progression visuals, equipment slots/rarities, companions/evolution, shop pricing polish | Later agent |
 
 XP is a **status currency**. It is earned only from real-world healthy behavior. It is never spent, never purchasable, and never boosted.
@@ -31,7 +31,7 @@ Builds, stats, and companion/equipment work (Phases 2–3) must not violate this
 
 ## Builds (Phase 2)
 
-Chosen at onboarding. **“Choose your build”** replaces **“What are your fitness goals?”**.
+Chosen at onboarding. **“Choose your build”** is a card-style picker (icon, goal line, primary-stat chips, recommended behaviors).
 
 | Build | Goal | Nutrition / training | Primary stats | Recommended |
 | --- | --- | --- | --- | --- |
@@ -41,7 +41,11 @@ Chosen at onboarding. **“Choose your build”** replaces **“What are your fi
 | **Ranger** | Endurance | Cardio-forward | END, AGI | Cardio, steps, recovery, nutrition |
 | **Mage** | General health | Mobility, sleep/recovery, moderate training | All stats develop relatively evenly | Replaces the old “Balanced” build |
 
-Phase 1 does **not** add build picker UI. Persist nothing new for builds until Phase 2.
+- **New users** pick a build during onboarding (required to continue).
+- **Existing users** with no build see a **non-blocking sheet** on the next launch (can dismiss with Later; it returns next launch until completed).
+- Users can **change build later** from Profile and Goals. Changing build does **not** reset XP, level, or earned stats.
+- Selection is persisted in UserDefaults (`characterManager.build`).
+- CloudKit `UserProfile.build` is **optional**. Core profile save still writes name / avatar / XP / level first; `build` is a second save that is ignored if the schema does not have the field.
 
 ---
 
@@ -69,7 +73,7 @@ The per-level table in `XPRules` is generated from these checkpoints, is **stric
 
 ### Level titles
 
-A few named tiers. Phase 1 shows the title on Home (XP bar / subtitle). Phase 2 prefixes with build: `LVL 37 - WARRIOR`.
+A few named tiers. Phase 1 showed the title on Home (XP bar / subtitle). Phase 2 prefixes with build: `LVL 37 — WARRIOR`. The named title lives on the Character sheet.
 
 | Levels | Title |
 | --- | --- |
@@ -154,16 +158,19 @@ XP is **never multiplied**. Rank on the Board does not boost XP. There are no XP
 | Stat | Fed by |
 | --- | --- |
 | STR | Strength workouts |
-| END | Running / cardio |
-| VIT | Nutrition consistency |
+| END | Running / cardio / movement goal (steps proxy — step count is not a HealthKit read) |
+| VIT | Nutrition consistency (all meals logged + calorie and protein in range) |
 | AGI | Mobility / yoga / stretching |
-| REC | Sleep / rest / recovery |
+| REC | Recovery goal (water), rest days, recovery-type workouts. HealthKit sleep is **not** already read, so Phase 2 does not add a sleep permission |
 
-Build **primary stats** gain a bonus multiplier. Display like:
+- Same **safety** as XP: no stat gains from extreme deficits, extreme workouts, or skipped meals (VIT requires all three meals and a non-extreme intake).
+- **Daily cap** per stat after the build multiplier (`StatRules.dailyCap` ≈ 0.70). Growth is slow so a typical L37 lands around **20–45** per stat.
+- Build **primary stats** get **1.5×**. **Mage** grows all stats at **1.0×** (evenly).
+- Existing users are **backfilled** once: level-based baseline, raised by recent food-history VIT when `FoodDataManager.entries(from:to:)` has data. New L1 users start at the floor (5).
+- Changing build does not rewind earned stats; the multiplier applies going forward.
+- Display: Home compact panel (`STR` / value / small bar; primaries highlighted). Tap opens the Character sheet (stats, build, recommended behaviors, level title, XP to next level).
 
-`LVL 37 - WARRIOR` with `STR 42  END 28  VIT 35  AGI 23  REC 31`
-
-Phase 1 does not persist or show stats.
+`LVL 37 — WARRIOR` with `STR 42  END 28  VIT 35  AGI 23  REC 31`
 
 ---
 
@@ -282,6 +289,24 @@ Use the existing **bottom toast** chrome (`CelebrationToast`).
 
 ---
 
+## Phase 2 implementation map
+
+| Piece | Where |
+| --- | --- |
+| Build catalog (goal, icons, primary stats, recommended) | `EmberWatch/Managers/RPGBuild.swift` |
+| Stat rules, workout family, daily evaluate, daily caps | `EmberWatch/Managers/StatEngine.swift` |
+| Persist build + stats + daily ledger + one-time backfill | `EmberWatch/Managers/CharacterManager.swift` |
+| Card picker (onboarding, sheet, Goals, Profile) | `EmberWatch/Views/BuildPickerView.swift` |
+| Home `LVL N — BUILD` + compact bars + Character sheet | `EmberWatch/Views/CharacterSheetView.swift`, `HomeView.swift` |
+| Existing-user non-blocking sheet | `ContentView` (`BuildChoiceSheet`, once per launch until chosen) |
+| Change build later | `GoalsView`, `ProfileSettingsView` |
+| Optional CloudKit `build` + Board subtitle | `FriendsManager`, `BoardView` |
+| Food / workout / search screens | **Unchanged** — stats observe Home / `ContentView` the same way XP does |
+
+Phase 2 does **not** edit Food Diary, food search, serving pickers, the Workout tab, `FoodEntry`, `WorkoutData`, `FoodDataManager`, or `HealthKitManager`.
+
+---
+
 ## Phase 1 implementation map
 
 | Piece | Where |
@@ -308,7 +333,6 @@ Use the existing **bottom toast** chrome (`CelebrationToast`).
 
 ### Out of scope until later phases
 
-- Build picker / replacing onboarding fitness goals
-- Stat numbers and `LVL N - BUILD` chrome
 - Equipment slots, rarities, companion evolution, prestige auras
 - Sex-specific calorie floors (generic 1200 until profile sex exists)
+- HealthKit sleep permission (not already read; REC uses water + rest days)

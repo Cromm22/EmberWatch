@@ -12,9 +12,11 @@ struct HomeView: View {
     @EnvironmentObject var weightManager: WeightManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
     @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
+    @EnvironmentObject var characterManager: CharacterManager
     @Binding var selectedTab: Int
     @State private var showingGoalSettings = false
     @State private var showingGoals = false
+    @State private var showingCharacterSheet = false
     @State private var showingAvatarPicker = false
     @State private var showingWaterGoal = false
     @State private var showingWeightSettings = false
@@ -114,6 +116,13 @@ struct HomeView: View {
                     .environmentObject(healthKitManager)
                     .environmentObject(foodDataManager)
                     .environmentObject(workoutGoalManager)
+                    .environmentObject(characterManager)
+            }
+            .sheet(isPresented: $showingCharacterSheet) {
+                CharacterSheetView(isPresented: $showingCharacterSheet)
+                    .environmentObject(characterManager)
+                    .environmentObject(levelManager)
+                    .environmentObject(avatarManager)
             }
             .sheet(isPresented: $showingAvatarPicker) {
                 AvatarPickerView()
@@ -199,6 +208,14 @@ struct HomeView: View {
             water: waterManager,
             health: healthKitManager,
             workoutGoal: workoutGoalManager
+        )
+        characterManager.syncFromApp(
+            food: foodDataManager,
+            calories: calorieGoalManager,
+            water: waterManager,
+            health: healthKitManager,
+            workoutGoal: workoutGoalManager,
+            level: levelManager.level
         )
     }
     
@@ -340,11 +357,17 @@ struct HomeView: View {
                     .font(.headline)
                     .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
 
-                Text(levelManager.level >= LevelManager.maxLevel
-                     ? levelManager.levelTitle
-                     : "Lv \(levelManager.level) · \(levelManager.levelTitle)")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(EmberColors.cream.opacity(0.7))
+                HomeLevelBuildHeader(
+                    level: levelManager.level,
+                    buildName: characterManager.buildDisplayName
+                )
+
+                HomeCompactStatsPanel(
+                    stats: characterManager.stats,
+                    build: characterManager.selectedBuild,
+                    onTap: { showingCharacterSheet = true }
+                )
+                .padding(.horizontal, 16)
 
                 HomeStatBadgeRow(
                     streak: levelManager.streakCount,

@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileSettingsView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var friendsManager: FriendsManager
+    @EnvironmentObject var characterManager: CharacterManager
     
     @AppStorage("profile.email") private var savedEmail: String = ""
     @AppStorage("profile.phone") private var savedPhone: String = ""
@@ -10,6 +11,7 @@ struct ProfileSettingsView: View {
     @State private var emailInput: String = ""
     @State private var phoneInput: String = ""
     @State private var isSaving: Bool = false
+    @State private var showingBuildPicker = false
     
     var body: some View {
         NavigationView {
@@ -36,6 +38,39 @@ struct ProfileSettingsView: View {
                                 .padding(.horizontal)
                         }
                         .padding(.top, 12)
+                        
+                        Button {
+                            showingBuildPicker = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: characterManager.selectedBuild?.iconName ?? "shield.fill")
+                                    .font(.title3)
+                                    .foregroundColor(EmberColors.ember)
+                                    .frame(width: 28)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Build")
+                                        .font(.headline)
+                                        .foregroundColor(EmberColors.cream)
+                                    Text(characterManager.selectedBuild?.displayName ?? "Choose your build")
+                                        .font(.subheadline)
+                                        .foregroundColor(EmberColors.cream.opacity(0.7))
+                                }
+                                
+                                Spacer()
+                                
+                                Text("Change")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(EmberColors.ember)
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(EmberColors.lightPlum)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal)
                         
                         // Email field
                         VStack(alignment: .leading, spacing: 8) {
@@ -133,6 +168,10 @@ struct ProfileSettingsView: View {
             .onAppear {
                 emailInput = savedEmail
                 phoneInput = savedPhone
+            }
+            .sheet(isPresented: $showingBuildPicker) {
+                BuildChoiceSheet(isPresented: $showingBuildPicker, allowsSkip: false)
+                    .environmentObject(characterManager)
             }
         }
     }

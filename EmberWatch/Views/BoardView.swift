@@ -7,6 +7,7 @@ struct BoardEntry: Identifiable {
     let level: Int
     let xp: Int
     let isCurrentUser: Bool
+    var buildName: String? = nil
 }
 
 struct BoardView: View {
@@ -14,6 +15,7 @@ struct BoardView: View {
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var avatarManager: AvatarManager
+    @EnvironmentObject var characterManager: CharacterManager
     
     @State private var showAddFriend = false
     @State private var showProfileSettings = false
@@ -24,11 +26,25 @@ struct BoardView: View {
         
         // Current user
         let userName = avatarManager.emberName.isEmpty ? "You" : avatarManager.emberName
-        entries.append(BoardEntry(id: "you", name: userName, level: levelManager.level, xp: levelManager.totalXP, isCurrentUser: true))
+        entries.append(BoardEntry(
+            id: "you",
+            name: userName,
+            level: levelManager.level,
+            xp: levelManager.totalXP,
+            isCurrentUser: true,
+            buildName: characterManager.selectedBuild?.uppercaseName
+        ))
         
         // Real friends
         for friend in friendsManager.friends {
-            entries.append(BoardEntry(id: friend.id, name: friend.name, level: friend.level, xp: friend.totalXP, isCurrentUser: false))
+            entries.append(BoardEntry(
+                id: friend.id,
+                name: friend.name,
+                level: friend.level,
+                xp: friend.totalXP,
+                isCurrentUser: false,
+                buildName: BuildKind.parse(friend.build)?.uppercaseName
+            ))
         }
         
         return entries
@@ -194,6 +210,7 @@ struct BoardView: View {
         .sheet(isPresented: $showProfileSettings) {
             ProfileSettingsView(isPresented: $showProfileSettings)
                 .environmentObject(friendsManager)
+                .environmentObject(characterManager)
         }
         .overlay(alignment: .top) {
             if let toast = friendsManager.toast {
@@ -336,6 +353,7 @@ struct BoardView: View {
                         level: entry.level,
                         xp: entry.xp,
                         isCurrentUser: entry.isCurrentUser,
+                        buildName: entry.buildName,
                         onChallenge: {
                             Task {
                                 let sent = await friendsManager.sendChallenge(to: entry.id)
@@ -367,10 +385,18 @@ struct LeaderboardRow: View {
     let level: Int
     let xp: Int
     let isCurrentUser: Bool
+    var buildName: String? = nil
     var onChallenge: (() -> Void)? = nil
     
     /// Soft teal that sits against dusk/plum without reading as medal bronze.
     private static let teal = Color(hex: "#5EC8C0")
+    
+    private var levelLine: String {
+        if let buildName, !buildName.isEmpty {
+            return "LVL \(level) · \(buildName)"
+        }
+        return "Level \(level)"
+    }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -390,7 +416,7 @@ struct LeaderboardRow: View {
                 }
                 
                 HStack(spacing: 12) {
-                    Label("Level \(level)", systemImage: "flame.fill")
+                    Text(levelLine)
                         .font(.subheadline)
                         .foregroundColor(EmberColors.cream.opacity(0.7))
                     
