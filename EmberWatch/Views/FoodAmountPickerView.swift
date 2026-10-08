@@ -7,6 +7,7 @@ struct FoodAmountPickerView: View {
     @Binding var quantity: Double
     let servingSizeGrams: Double
     let gramsPerCup: Double
+    var gramsPerCupIsEstimated: Bool = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -98,7 +99,10 @@ struct FoodAmountPickerView: View {
         case .grams:
             return "Nutrition scales with gram weight"
         case .cup, .halfCup:
-            return "1 cup ≈ \(Int(gramsPerCup.rounded())) g"
+            return FoodCupWeight.pickerCaption(
+                gramsPerCup: gramsPerCup,
+                isEstimated: gramsPerCupIsEstimated
+            )
         }
     }
 }

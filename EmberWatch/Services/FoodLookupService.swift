@@ -12,8 +12,10 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
     /// Milligrams per 100g. Missing API values decode as 0.
     let sodiumPer100g: Double
     let servingSizeGrams: Double?
-    /// Gram weight of 1 cup when FatSecret/OFF list a cup serving; nil means use fallback.
+    /// Gram weight of 1 cup when known from servings, USDA, or the density table.
     let gramsPerCup: Double?
+    /// True only when `gramsPerCup` is the generic 240 g fallback.
+    let gramsPerCupIsEstimated: Bool
     let brand: String?
     let source: FoodSource
     
@@ -38,7 +40,8 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
         brand: String?,
         source: FoodSource,
         sodiumPer100g: Double = 0,
-        gramsPerCup: Double? = nil
+        gramsPerCup: Double? = nil,
+        gramsPerCupIsEstimated: Bool = false
     ) {
         self.id = UUID()
         self.barcode = barcode
@@ -51,18 +54,34 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
         self.sodiumPer100g = sodiumPer100g
         self.servingSizeGrams = servingSizeGrams
         self.gramsPerCup = gramsPerCup
+        self.gramsPerCupIsEstimated = gramsPerCupIsEstimated
         self.brand = brand?.foodDisplayName
         self.source = source
     }
     
-    var resolvedGramsPerCup: Double {
-        FoodCupWeight.resolvedGramsPerCup(
-            explicit: gramsPerCup,
+    var resolvedCupWeight: ResolvedCupWeight {
+        FoodCupWeight.resolve(
+            cacheKey: barcode,
+            foodName: name,
+            explicitGrams: gramsPerCup,
+            isExplicitEstimated: gramsPerCupIsEstimated,
             servingSizeText: servingSize
         )
     }
     
+    var resolvedGramsPerCup: Double {
+        resolvedCupWeight.grams
+    }
+    
+    var resolvedGramsPerCupIsEstimated: Bool {
+        resolvedCupWeight.isEstimated
+    }
+    
     func withGramsPerCup(_ value: Double?) -> FoodProduct {
+        withCupWeight(value, isEstimated: false)
+    }
+    
+    func withCupWeight(_ value: Double?, isEstimated: Bool) -> FoodProduct {
         FoodProduct(
             barcode: barcode,
             name: name,
@@ -75,7 +94,8 @@ struct FoodProduct: Identifiable, Equatable, Sendable {
             brand: brand,
             source: source,
             sodiumPer100g: sodiumPer100g,
-            gramsPerCup: value ?? gramsPerCup
+            gramsPerCup: value ?? gramsPerCup,
+            gramsPerCupIsEstimated: value != nil ? isEstimated : gramsPerCupIsEstimated
         )
     }
     
@@ -445,7 +465,12 @@ class FoodLookupService: ObservableObject {
                         return .success(detailed)
                     }
                     if product.hasValidMacros {
-                        return .success(product.withGramsPerCup(product.resolvedGramsPerCup))
+                        return .success(
+                            product.withCupWeight(
+                                product.resolvedGramsPerCup,
+                                isEstimated: product.resolvedGramsPerCupIsEstimated
+                            )
+                        )
                     }
                 }
                 
@@ -790,10 +815,15 @@ class FoodLookupService: ObservableObject {
         
         let brand = product.brands?.trimmingCharacters(in: .whitespacesAndNewlines)
         let servingText = product.servingSize ?? "100g"
-        let cupGrams = FoodCupWeight.gramsPerCup(fromServingSizeText: servingText)
+        let barcode = product.code ?? fallbackBarcode
+        let resolved = FoodCupWeight.resolve(
+            cacheKey: barcode,
+            foodName: name,
+            servingSizeText: servingText
+        )
         
         return FoodProduct(
-            barcode: product.code ?? fallbackBarcode,
+            barcode: barcode,
             name: name,
             servingSize: servingText,
             caloriesPer100g: calories,
@@ -804,7 +834,8 @@ class FoodLookupService: ObservableObject {
             brand: brand,
             source: .openFoodFacts,
             sodiumPer100g: sodium,
-            gramsPerCup: cupGrams
+            gramsPerCup: resolved.grams,
+            gramsPerCupIsEstimated: resolved.isEstimated
         )
     }
     
@@ -817,8 +848,18 @@ class FoodLookupService: ObservableObject {
         let sodium = nutrients.first(where: { $0.resolvedId == 1093 })?.value ?? 0
         guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
         let servingSize = food.servingSize ?? 100
+        let barcode = "usda-\(food.fdcId ?? 0)"
+        let resolved = FoodCupWeight.resolve(
+            cacheKey: barcode,
+            foodName: food.description,
+            servingSizeText: "\(Int(servingSize))g",
+            usdaPortions: usdaPortionInputs(from: food.foodPortions),
+            usdaHouseholdText: food.householdServingFullText,
+            usdaServingGrams: food.servingSize,
+            usdaServingUnit: food.servingSizeUnit
+        )
         return FoodProduct(
-            barcode: "usda-\(food.fdcId ?? 0)",
+            barcode: barcode,
             name: food.description,
             servingSize: "\(Int(servingSize))g",
             caloriesPer100g: calories,
@@ -828,7 +869,9 @@ class FoodLookupService: ObservableObject {
             servingSizeGrams: servingSize,
             brand: nil,
             source: .usda,
-            sodiumPer100g: sodium
+            sodiumPer100g: sodium,
+            gramsPerCup: resolved.grams,
+            gramsPerCupIsEstimated: resolved.isEstimated
         )
     }
     
@@ -841,8 +884,18 @@ class FoodLookupService: ObservableObject {
         let sodium = nutrients.first(where: { $0.nutrient?.id == 1093 })?.amount ?? 0
         guard calories > 0 || protein > 0 || carbs > 0 || fat > 0 else { return nil }
         let servingSize = detail.servingSize ?? 100
+        let barcode = "usda-\(detail.fdcId)"
+        let resolved = FoodCupWeight.resolve(
+            cacheKey: barcode,
+            foodName: detail.description,
+            servingSizeText: "\(Int(servingSize))g",
+            usdaPortions: usdaPortionInputs(from: detail.foodPortions),
+            usdaHouseholdText: detail.householdServingFullText,
+            usdaServingGrams: detail.servingSize,
+            usdaServingUnit: detail.servingSizeUnit
+        )
         return FoodProduct(
-            barcode: "usda-\(detail.fdcId)",
+            barcode: barcode,
             name: detail.description,
             servingSize: "\(Int(servingSize))g",
             caloriesPer100g: calories,
@@ -852,7 +905,9 @@ class FoodLookupService: ObservableObject {
             servingSizeGrams: servingSize,
             brand: nil,
             source: .usda,
-            sodiumPer100g: sodium
+            sodiumPer100g: sodium,
+            gramsPerCup: resolved.grams,
+            gramsPerCupIsEstimated: resolved.isEstimated
         )
     }
     
@@ -922,11 +977,16 @@ class FoodLookupService: ObservableObject {
         let name = item.food_name ?? "Unknown"
         let brand = item.brand_name?.trimmingCharacters(in: .whitespaces)
         let servingSize = "\(Int(servingGrams))g"
-        let cupGrams = gramsPerCup(fromFatSecretServings: item.servings?.allServings ?? [])
-            ?? FoodCupWeight.gramsPerCup(fromServingSizeText: description)
+        let barcode = "fs-\(item.food_id ?? "")"
+        let resolved = FoodCupWeight.resolve(
+            cacheKey: barcode,
+            foodName: name,
+            servingSizeText: description,
+            servings: cupServingInputs(from: item.servings?.allServings ?? [])
+        )
         
         return FoodProduct(
-            barcode: "fs-\(item.food_id ?? "")",
+            barcode: barcode,
             name: name,
             servingSize: servingSize,
             caloriesPer100g: cal100,
@@ -937,33 +997,45 @@ class FoodLookupService: ObservableObject {
             brand: brand,
             source: .fatSecret,
             sodiumPer100g: sodium100,
-            gramsPerCup: cupGrams
+            gramsPerCup: resolved.grams,
+            gramsPerCupIsEstimated: resolved.isEstimated
         )
     }
     
-    nonisolated private static func gramsPerCup(fromFatSecretServings servings: [FatSecretServing]) -> Double? {
-        var bestGrams: Double?
-        var bestDistance = Double.greatestFiniteMagnitude
+    nonisolated private static func cupServingInputs(from servings: [FatSecretServing]) -> [FoodCupWeight.ServingInput] {
+        var inputs: [FoodCupWeight.ServingInput] = []
         for serving in servings {
-            let description = serving.servingDescription ?? ""
-            let measurement = serving.measurementDescription ?? ""
-            guard let grams = FoodCupWeight.gramsPerCup(
-                description: serving.servingDescription,
-                measurement: serving.measurementDescription,
-                metricAmount: serving.metricServingAmount?.value,
-                metricUnit: serving.metricServingUnit,
-                numberOfUnits: serving.numberOfUnits?.value
-            ) else {
-                continue
-            }
-            let cups = FoodCupWeight.parseCupCount(in: description.isEmpty ? measurement : description) ?? 1
-            let distance = abs(cups - 1)
-            if distance < bestDistance {
-                bestDistance = distance
-                bestGrams = grams
-            }
+            inputs.append(
+                FoodCupWeight.ServingInput(
+                    description: serving.servingDescription,
+                    measurement: serving.measurementDescription,
+                    metricAmount: serving.metricServingAmount?.value,
+                    metricUnit: serving.metricServingUnit,
+                    numberOfUnits: serving.numberOfUnits?.value
+                )
+            )
         }
-        return bestGrams
+        return inputs
+    }
+    
+    nonisolated private static func usdaPortionInputs(from portions: [USDAFoodPortion]?) -> [FoodCupWeight.USDAPortionInput] {
+        guard let portions else { return [] }
+        var inputs: [FoodCupWeight.USDAPortionInput] = []
+        for portion in portions {
+            guard let grams = portion.gramWeight?.value, grams > 0 else { continue }
+            let unitName = portion.measureUnit?.name ?? portion.measureUnit?.abbreviation ?? ""
+            let modifier = portion.modifier ?? ""
+            let amount = portion.amount?.value ?? 0
+            let measureText = "\(unitName) \(modifier)".trimmingCharacters(in: .whitespaces)
+            inputs.append(
+                FoodCupWeight.USDAPortionInput(
+                    gramWeight: grams,
+                    amount: amount,
+                    measureText: measureText
+                )
+            )
+        }
+        return inputs
     }
     
     nonisolated private static func fatSecretBearerToken() async -> String? {
@@ -996,11 +1068,14 @@ class FoodLookupService: ObservableObject {
         
         let data = try await fetchOK(request: request)
         let response = try JSONDecoder().decode(FatSecretFoodGetResponse.self, from: data)
-        let servings = response.food?.servings?.allServings ?? []
-        let cupGrams = gramsPerCup(fromFatSecretServings: servings)
-            ?? FoodCupWeight.gramsPerCup(fromServingSizeText: base.servingSize)
-            ?? FoodCupWeight.fallbackGramsPerCup
-        return base.withGramsPerCup(cupGrams)
+        let servings = cupServingInputs(from: response.food?.servings?.allServings ?? [])
+        let resolved = FoodCupWeight.resolve(
+            cacheKey: base.barcode,
+            foodName: base.name,
+            servingSizeText: base.servingSize,
+            servings: servings
+        )
+        return base.withCupWeight(resolved.grams, isEstimated: resolved.isEstimated)
     }
     
     nonisolated private static func extractNumber(from text: String) -> Double? {
@@ -1111,7 +1186,10 @@ struct USDAFood: Codable, Sendable {
     let fdcId: Int?
     let description: String
     let servingSize: Double?
+    let servingSizeUnit: String?
+    let householdServingFullText: String?
     let foodNutrients: [USDANutrient]
+    let foodPortions: [USDAFoodPortion]?
 }
 
 struct USDANutrient: Codable, Sendable {
@@ -1136,7 +1214,22 @@ struct USDAFoodDetail: Codable, Sendable {
     let fdcId: Int
     let description: String
     let servingSize: Double?
+    let servingSizeUnit: String?
+    let householdServingFullText: String?
     let foodNutrients: [USDANutrient]
+    let foodPortions: [USDAFoodPortion]?
+}
+
+struct USDAFoodPortion: Codable, Sendable {
+    let gramWeight: FlexibleDouble?
+    let amount: FlexibleDouble?
+    let modifier: String?
+    let measureUnit: USDAMeasureUnit?
+}
+
+struct USDAMeasureUnit: Codable, Sendable {
+    let name: String?
+    let abbreviation: String?
 }
 
 // MARK: - FatSecret DTOs

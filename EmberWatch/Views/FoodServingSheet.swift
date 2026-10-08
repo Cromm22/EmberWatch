@@ -279,7 +279,8 @@ struct FoodServingSheet: View {
             unit: $selectedUnit,
             quantity: $selectedQuantity,
             servingSizeGrams: currentProduct.servingSizeGrams ?? 0,
-            gramsPerCup: currentProduct.resolvedGramsPerCup
+            gramsPerCup: currentProduct.resolvedGramsPerCup,
+            gramsPerCupIsEstimated: currentProduct.resolvedGramsPerCupIsEstimated
         )
     }
     
@@ -316,7 +317,7 @@ struct FoodServingSheet: View {
     }
     
     private func confirmServing() {
-        let cupGrams = currentProduct.resolvedGramsPerCup
+        let cupWeight = currentProduct.resolvedCupWeight
         let entry = FoodEntry(
             name: currentProduct.name,
             calories: calculatedCalories,
@@ -334,7 +335,8 @@ struct FoodServingSheet: View {
             servingSizeGrams: currentProduct.servingSizeGrams ?? 0,
             amountUnit: selectedUnit.rawValue,
             amountQuantity: selectedQuantity,
-            gramsPerCup: cupGrams
+            gramsPerCup: cupWeight.grams,
+            gramsPerCupIsEstimated: cupWeight.isEstimated
         )
         
         onConfirm(entry)

@@ -208,7 +208,8 @@ class FoodDataManager: ObservableObject {
                     servingSizeGrams: source.servingSizeGrams,
                     amountUnit: source.amountUnit,
                     amountQuantity: source.amountQuantity,
-                    gramsPerCup: source.gramsPerCup
+                    gramsPerCup: source.gramsPerCup,
+                    gramsPerCupIsEstimated: source.gramsPerCupIsEstimated
                 )
                 modelContext.insert(copy)
             }
