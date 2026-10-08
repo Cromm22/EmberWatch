@@ -10,11 +10,12 @@ enum FoodAmountUnit: String, CaseIterable, Identifiable, Hashable, Sendable {
 
     var id: String { rawValue }
 
+    /// Segmented-control labels only. Diary rows use `FoodAmountMath.displayLabel`.
     var pickerTitle: String {
         switch self {
         case .servings: return "Servings"
         case .grams: return "Grams"
-        case .cup: return "1 cup"
+        case .cup: return "Cups"
         case .halfCup: return "½ cup"
         }
     }
