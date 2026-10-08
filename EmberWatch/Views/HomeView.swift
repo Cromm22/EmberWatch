@@ -148,6 +148,9 @@ struct HomeView: View {
                 startWaveAnimation()
                 checkAndShowDailyGreeting()
             }
+            .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
+                syncRPGProgress()
+            }
             .onChange(of: healthKitManager.workouts.map(\.id)) { _, _ in
                 syncRPGProgress()
             }

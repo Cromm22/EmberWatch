@@ -126,9 +126,6 @@ struct ContentView: View {
                     .environmentObject(healthKitManager)
                     .environmentObject(calorieGoalManager)
                     .environmentObject(emberTalkManager)
-                    .environmentObject(levelManager)
-                    .environmentObject(waterManager)
-                    .environmentObject(workoutGoalManager)
                 
                 WorkoutsView()
                     .tabItem {
@@ -138,10 +135,6 @@ struct ContentView: View {
                     .environmentObject(healthKitManager)
                     .environmentObject(levelManager)
                     .environmentObject(emberTalkManager)
-                    .environmentObject(foodDataManager)
-                    .environmentObject(calorieGoalManager)
-                    .environmentObject(waterManager)
-                    .environmentObject(workoutGoalManager)
                 
                 BoardView()
                     .tabItem {

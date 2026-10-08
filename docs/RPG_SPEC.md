@@ -12,6 +12,23 @@ XP is a **status currency**. It is earned only from real-world healthy behavior.
 
 ---
 
+## Frozen tracking surfaces (all phases)
+
+Nutrition tracking, exercise / workout logging, and food search stay **exactly as they are** (UI, flows, data, behavior) across Phases 1–3.
+
+That includes Food Diary, food search, barcode, serving/amount pickers, voice food/workout entry, Quick Add, workout edit, and HealthKit sync (`fetchTodayWorkouts`, Active Energy, Exercise minutes, observers). **Do not** restyle, reflow, rename, or change models for those screens.
+
+RPG code may only **observe** a successful log:
+
+- Read-only listeners on already-published state (e.g. Home / `ContentView` watching today’s food entries or workout IDs).
+- A single call **after** a successful log returns (same pattern as the old `awardWorkout(id:)` hook), without changing what was saved.
+
+Do **not** inject extra environment objects, `onAppear` fetches, or new `onChange` handlers into Food Diary, food search, serving pickers, or the Workout tab beyond replacing that post-log XP call. Do **not** change SwiftData / `FoodEntry` / `WorkoutData` / `FoodDataManager` / `HealthKitManager` for the game layer.
+
+Builds, stats, and companion/equipment work (Phases 2–3) must not violate this. If a later phase needs a new signal, add an observer at the call site of an existing successful log — never by editing those tracking UIs.
+
+---
+
 ## Builds (Phase 2)
 
 Chosen at onboarding. **“Choose your build”** replaces **“What are your fitness goals?”**.
@@ -275,6 +292,8 @@ Use the existing **bottom toast** chrome (`CelebrationToast`).
 | Crystals + Coins wallet, IAP packs, shop prices | `EmberWatch/Managers/SparksManager.swift` (class name kept; UI says Crystals) |
 | StoreKit | `EmberWatch/Managers/SparksShopStore.swift` |
 | Home badges, daily quest card | `EmberWatch/Views/HomeStatBadges.swift`, `HomeView.swift` |
+| Workout XP hook (post-log only) | `LevelManager.observeWorkouts` after existing Quick Add / HealthKit list updates |
+| Food XP hook | Home / `ContentView` observers on already-published `FoodDataManager` totals — **Food Diary is unmodified** |
 
 ### Intentionally removed in Phase 1
 

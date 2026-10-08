@@ -159,6 +159,42 @@ enum XPEngine: Sendable {
         )
     }
 
+    /// Updates only workout XP rows so a Workout-tab hook cannot zero meal awards.
+    static func evaluateWorkoutsOnly(
+        candidates: [WorkoutXPCandidate],
+        ledger existing: DailyXPLedger,
+        dayKey: String
+    ) -> XPEvaluation {
+        var ledger = existing
+        if ledger.dayKey != dayKey {
+            ledger = DailyXPLedger(dayKey: dayKey)
+        }
+        let workoutPlan = selectWorkouts(
+            candidates: candidates,
+            previouslyAwarded: ledger.workoutIDs
+        )
+        ledger.workoutIDs = workoutPlan.ids
+        let want = min(workoutPlan.xp, XPRules.exerciseXPDailyCap)
+        let have = ledger.amount(for: .workout)
+        let change = want - have
+        var gains: [XPGain] = []
+        if change != 0 {
+            ledger.actionXP[XPAction.workout.rawValue] = want
+            if change > 0 {
+                gains.append(XPGain(action: .workout, amount: change, displayName: XPAction.workout.displayName))
+            }
+        }
+        let quest = DailyQuestKind.quest(forDayKey: dayKey)
+        return XPEvaluation(
+            ledger: ledger,
+            xpDelta: change,
+            gains: gains,
+            questKind: quest,
+            questComplete: ledger.amount(for: .dailyQuest) > 0,
+            questJustCompleted: false
+        )
+    }
+
     private static func selectWorkouts(
         candidates: [WorkoutXPCandidate],
         previouslyAwarded: [String]

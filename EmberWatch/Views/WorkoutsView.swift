@@ -60,10 +60,6 @@ struct WorkoutsView: View {
     @EnvironmentObject var healthKitManager: HealthKitManager
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var emberTalkManager: EmberTalkManager
-    @EnvironmentObject var foodDataManager: FoodDataManager
-    @EnvironmentObject var calorieGoalManager: CalorieGoalManager
-    @EnvironmentObject var waterManager: WaterManager
-    @EnvironmentObject var workoutGoalManager: WorkoutGoalManager
     @State private var flamePulse = false
     @StateObject private var speechRecognizer = SpeechRecognizer()
     
@@ -183,20 +179,18 @@ struct WorkoutsView: View {
             .onAppear {
                 healthKitManager.fetchTodayWorkouts()
                 updateFlamePulse()
-                syncRPGProgress()
+                observeLoggedWorkouts()
             }
             .onChange(of: healthKitManager.totalCaloriesBurned) { _, _ in
                 updateFlamePulse()
+                observeLoggedWorkouts()
             }
             .onChange(of: healthKitManager.workouts.map(\.id)) { _, _ in
-                syncRPGProgress()
-            }
-            .onChange(of: healthKitManager.exerciseMinutes) { _, _ in
-                syncRPGProgress()
+                observeLoggedWorkouts()
             }
             .refreshable {
                 healthKitManager.fetchTodayWorkouts()
-                syncRPGProgress()
+                observeLoggedWorkouts()
             }
             .speechPermissionAlert(speechRecognizer)
             .onChange(of: speechRecognizer.completedTranscript) { _, spoken in
@@ -224,14 +218,9 @@ struct WorkoutsView: View {
         .navigationViewStyle(.stack)
     }
     
-    private func syncRPGProgress() {
-        levelManager.syncFromApp(
-            food: foodDataManager,
-            calories: calorieGoalManager,
-            water: waterManager,
-            health: healthKitManager,
-            workoutGoal: workoutGoalManager
-        )
+    /// Read-only XP hook after HealthKit/local workouts are already in `healthKitManager.workouts`.
+    private func observeLoggedWorkouts() {
+        levelManager.observeWorkouts(healthKitManager.workouts)
     }
     
     private func updateFlamePulse() {
@@ -599,7 +588,8 @@ struct WorkoutsView: View {
         
         // Local list only — does not write HealthKit / Active Energy.
         healthKitManager.addLocalWorkout(workout)
-        syncRPGProgress()
+        // XP observer only — does not change the local workout list or HealthKit.
+        levelManager.observeWorkouts(healthKitManager.workouts)
         
         emberTalkManager.showWorkoutPhrase()
         

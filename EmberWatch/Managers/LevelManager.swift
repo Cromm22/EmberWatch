@@ -43,6 +43,10 @@ final class LevelManager: ObservableObject {
 
     weak var sparksManager: SparksManager?
 
+    /// Last evaluated activity snapshot. Workout-only observers merge into this
+    /// so Food Diary / Workout screens never have to pass nutrition managers.
+    private var lastSnapshot: DailyActivitySnapshot?
+
     @Published private(set) var streakCount: Int {
         didSet { UserDefaults.standard.set(streakCount, forKey: Keys.streakCount) }
     }
@@ -206,17 +210,7 @@ final class LevelManager: ObservableObject {
             }
         }
 
-        var workoutCandidates: [WorkoutXPCandidate] = []
-        for workout in health.workouts {
-            let minutes = Int((workout.duration / 60.0).rounded(.down))
-            workoutCandidates.append(
-                WorkoutXPCandidate(
-                    id: workout.id.uuidString,
-                    durationMinutes: minutes,
-                    calories: workout.caloriesBurned
-                )
-            )
-        }
+        let workoutCandidates = Self.workoutCandidates(from: health.workouts)
 
         let movementMet = XPRules.movementGoalMet(
             minutes: workoutGoal.todayMinutes(from: health.workouts),
@@ -242,6 +236,44 @@ final class LevelManager: ObservableObject {
         applyEvaluation(snapshot)
     }
 
+    /// Read-only hook after workouts are already saved (Quick Add or HealthKit list).
+    /// Does not write HealthKit or the local workout list.
+    func observeWorkouts(_ workouts: [WorkoutData]) {
+        let candidates = Self.workoutCandidates(from: workouts)
+        let day = XPRules.dayKey()
+        if var cached = lastSnapshot, cached.dayKey == day {
+            cached.workouts = candidates
+            cached.streakCount = streakCount
+            applyEvaluation(cached)
+            return
+        }
+        let existing = ledgerByDay[day] ?? DailyXPLedger(dayKey: day)
+        let result = XPEngine.evaluateWorkoutsOnly(
+            candidates: candidates,
+            ledger: existing,
+            dayKey: day
+        )
+        ledgerByDay[day] = result.ledger
+        if result.xpDelta != 0 {
+            applyXPDelta(result.xpDelta, gains: result.gains)
+        }
+    }
+
+    private static func workoutCandidates(from workouts: [WorkoutData]) -> [WorkoutXPCandidate] {
+        var result: [WorkoutXPCandidate] = []
+        for workout in workouts {
+            let minutes = Int((workout.duration / 60.0).rounded(.down))
+            result.append(
+                WorkoutXPCandidate(
+                    id: workout.id.uuidString,
+                    durationMinutes: minutes,
+                    calories: workout.caloriesBurned
+                )
+            )
+        }
+        return result
+    }
+
     // MARK: - Internals
 
     private func applyEvaluation(_ snapshot: DailyActivitySnapshot) {
@@ -256,6 +288,7 @@ final class LevelManager: ObservableObject {
             awardedStreak3: awarded3,
             awardedStreak7: awarded7
         )
+        lastSnapshot = snapshot
         ledgerByDay[snapshot.dayKey] = result.ledger
         todaysQuest = DailyQuestStatus(title: result.questKind.title, isComplete: result.questComplete)
 
