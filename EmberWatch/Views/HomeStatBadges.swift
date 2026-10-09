@@ -838,6 +838,9 @@ struct HomeDailyQuestCard: View {
         .padding(.bottom, 12)
         .padding(.leading, 12)
         .background(HomeDailyQuestChrome())
+        .clipShape(
+            RoundedRectangle(cornerRadius: HomeDailyQuestMetrics.cardCorner, style: .continuous)
+        )
     }
 }
 
@@ -992,7 +995,6 @@ struct HomeXPProgressBar: View {
         .frame(height: 60)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(levelLabel)
-        .accessibilityAddTraits(.isButton)
     }
 
     private var levelLabel: String {
