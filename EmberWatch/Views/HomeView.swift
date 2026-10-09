@@ -101,11 +101,6 @@ struct HomeView: View {
             .toolbarColorScheme(.light, for: .navigationBar)
             .toolbarBackground(EmberColors.dusk, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    DailyStreakPill(streak: levelManager.streakCount)
-                }
-            }
             .sheet(isPresented: $showingGoalSettings) {
                 GoalSettingsView(isPresented: $showingGoalSettings)
                     .environmentObject(calorieGoalManager)
@@ -384,14 +379,21 @@ struct HomeView: View {
                 Button {
                     showingCharacterSheet = true
                 } label: {
-                    HomeLevelBuildHeader(
+                    HomeXPProgressBar(
                         level: levelManager.level,
-                        buildName: characterManager.buildDisplayName
+                        progressFraction: levelManager.progressFraction,
+                        barScale: xpBarScale,
+                        wavePhase: wavePhase,
+                        showXPGain: showXPGain,
+                        xpGainAmount: xpGainAmount,
+                        xpGainOffset: xpGainOffset,
+                        xpGainOpacity: xpGainOpacity
                     )
                 }
                 .buttonStyle(.plain)
                 .contentShape(Rectangle())
                 .accessibilityHint("Opens your character sheet")
+                .padding(.horizontal, 16)
 
                 HomeStatBadgeRow(
                     streak: levelManager.streakCount,
@@ -402,105 +404,9 @@ struct HomeView: View {
                 )
                 .padding(.horizontal, 16)
 
-                HomeDailyQuestCard(
-                    title: levelManager.todaysQuest.title,
-                    isComplete: levelManager.todaysQuest.isComplete
-                )
-                .padding(.horizontal, 16)
+                homeDailyQuestCard
+                    .padding(.horizontal, 16)
             }
-            
-            // XP Progress Bar with level label inside
-            ZStack {
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        // Background bar
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(EmberColors.darkPlum)
-                            .frame(height: 36)
-                        
-                        // Progress fill with gradient
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            EmberColors.ember,
-                                            EmberColors.emberAccent,
-                                            Color.orange.opacity(0.9)
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: geometry.size.width * levelManager.progressFraction, height: 36)
-                                .scaleEffect(x: xpBarScale, y: xpBarScale, anchor: .leading)
-                            
-                            // Wave animation overlay
-                            if levelManager.progressFraction > 0 {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0),
-                                                Color.white.opacity(0.3),
-                                                Color.white.opacity(0),
-                                            ],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .frame(width: 60, height: 36)
-                                    .offset(x: wavePhase * geometry.size.width * levelManager.progressFraction - 30)
-                                    .mask(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .frame(width: geometry.size.width * levelManager.progressFraction, height: 36)
-                                    )
-                            }
-                        }
-                        
-                        // Level label inside the bar - always visible with shadow for contrast
-                        HStack {
-                            Spacer()
-                            Text(levelManager.level >= LevelManager.maxLevel ? "Max Lv" : "Lv \(levelManager.level)")
-                                .font(.subheadline.weight(.bold))
-                                .foregroundColor(.black)
-                                .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
-                                .shadow(color: EmberColors.cream.opacity(0.2), radius: 1, x: 0, y: 0)
-                            Spacer()
-                        }
-                        .frame(height: 36)
-                        .allowsHitTesting(false)
-                    }
-                }
-                .frame(height: 36)
-                
-                // Floating +XP animation
-                if showXPGain {
-                    HStack {
-                        Spacer()
-                        HStack(spacing: 4) {
-                            Image(systemName: "sparkle")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(EmberColors.ember)
-                            Text("+\(xpGainAmount)")
-                                .font(.headline.weight(.bold))
-                                .foregroundColor(EmberColors.ember)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(EmberColors.cream)
-                                .shadow(color: EmberColors.ember.opacity(0.4), radius: 8, y: 2)
-                        )
-                        .offset(y: xpGainOffset)
-                        .opacity(xpGainOpacity)
-                        Spacer()
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 60)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
@@ -526,6 +432,39 @@ struct HomeView: View {
         case "emote.sleepy": return "moon.zzz.fill"
         case "emote.heart": return "heart.fill"
         default: return nil
+        }
+    }
+
+    private var homeDailyQuestCard: some View {
+        let kind = DailyQuestKind.quest(forDayKey: XPRules.dayKey())
+        return HomeDailyQuestCard(
+            title: levelManager.todaysQuest.title,
+            subtitle: HomeDailyQuestCopy.subtitle(for: kind),
+            isComplete: levelManager.todaysQuest.isComplete,
+            steps: HomeDailyQuestCopy.steps(
+                kind: kind,
+                breakfast: mealLogged(.breakfast),
+                lunch: mealLogged(.lunch),
+                dinner: mealLogged(.dinner),
+                isComplete: levelManager.todaysQuest.isComplete
+            ),
+            buttonTitle: HomeDailyQuestCopy.buttonTitle(for: kind),
+            onAction: { applyHomeDailyQuestAction(kind) }
+        )
+    }
+
+    private func mealLogged(_ meal: MealType) -> Bool {
+        foodDataManager.todayFoodEntries.contains { $0.resolvedMealType == meal.rawValue }
+    }
+
+    private func applyHomeDailyQuestAction(_ kind: DailyQuestKind) {
+        switch kind {
+        case .proteinRange, .logThreeMeals, .calorieRange:
+            selectedTab = 1
+        case .movementGoal:
+            selectedTab = 2
+        case .recoveryGoal:
+            showingWaterGoal = true
         }
     }
     

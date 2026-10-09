@@ -12,60 +12,59 @@ enum HomeStatBadgePalette {
 /// MainActor-isolated with the SwiftUI views.
 enum HomeStatBadgeMetrics {
     static let rowSpacing: CGFloat = 10
-    static let cardHeight: CGFloat = 72
+    static let cardHeight: CGFloat = 58
     static let cardCornerRadius: CGFloat = 16
-    static let cardPadding: CGFloat = 12
-    static let iconSize: CGFloat = 28
-    static let iconTextSpacing: CGFloat = 8
-    static let textStackSpacing: CGFloat = 2
-    static let valueChevronSpacing: CGFloat = 3
+    static let cardPadding: CGFloat = 10
+    static let iconSize: CGFloat = 36
+    static let iconTextSpacing: CGFloat = 6
+    static let textStackSpacing: CGFloat = 1
+    static let valueChevronSpacing: CGFloat = 2
     static let valueSize: CGFloat = 20
-    static let labelSize: CGFloat = 13
+    static let labelSize: CGFloat = 8
+    static let labelTracking: CGFloat = 0.55
     static let chevronSize: CGFloat = 11
-    static let textMinimumScale: CGFloat = 0.7
+    static let textMinimumScale: CGFloat = 0.5
+    static let rimWidth: CGFloat = 1.35
+    static let glowRadius: CGFloat = 5
 }
 
-/// Visual tokens for one Home stat card. Sampled from the design mock PNG.
+/// Visual tokens for one Home stat card. Sampled from docs/mocks/badges-v3.png.
 struct HomeStatBadgeStyle {
-    let fill: Color
-    let iconName: String
-    let iconTop: Color
-    let iconBottom: Color
-    let valueColor: Color
-    let labelColor: Color
-    let chevronColor: Color
+    let assetName: String
+    let edge: Color
+    let mid: Color
+    let highlight: Color
+    let rim: Color
+    let glow: Color
 
-    /// Pale peach fill, orange-to-red-orange flame.
+    /// Deep red-orange: dark edges to a brighter center bloom.
     static let streak = HomeStatBadgeStyle(
-        fill: Color(hex: "#FED7BF"),
-        iconName: "flame.fill",
-        iconTop: Color(hex: "#FF7A18"),
-        iconBottom: Color(hex: "#FD3D00"),
-        valueColor: Color(hex: "#1A1A1A"),
-        labelColor: Color(hex: "#855F49"),
-        chevronColor: Color(hex: "#9A9A9A")
+        assetName: "BadgeFlame",
+        edge: Color(hex: "#8E1F0E"),
+        mid: Color(hex: "#C43316"),
+        highlight: Color(hex: "#E8501A"),
+        rim: Color(hex: "#F6B07A"),
+        glow: Color(hex: "#E8501A")
     )
 
-    /// Pale periwinkle fill, crystal diamond.
+    /// Royal blue with a light-blue rim.
     static let crystals = HomeStatBadgeStyle(
-        fill: Color(hex: "#BDD5FD"),
-        iconName: "diamond.fill",
-        iconTop: Color(hex: "#2F5BEA"),
-        iconBottom: Color(hex: "#2F5BEA"),
-        valueColor: Color(hex: "#1A1A1A"),
-        labelColor: Color(hex: "#5D78B2"),
-        chevronColor: Color(hex: "#9A9A9A")
+        assetName: "BadgeCrystal",
+        edge: Color(hex: "#1E3FA8"),
+        mid: Color(hex: "#2B55C8"),
+        highlight: Color(hex: "#3E6FE8"),
+        rim: Color(hex: "#A8C8FF"),
+        glow: Color(hex: "#3E6FE8")
     )
 
-    /// Pale butter-yellow fill, gold coin.
+    /// Gold / amber with a golden rim.
     static let coins = HomeStatBadgeStyle(
-        fill: Color(hex: "#FEE5A5"),
-        iconName: "circle.fill",
-        iconTop: Color(hex: "#E8B923"),
-        iconBottom: Color(hex: "#C98A12"),
-        valueColor: Color(hex: "#1A1A1A"),
-        labelColor: Color(hex: "#A57A22"),
-        chevronColor: Color(hex: "#9A9A9A")
+        assetName: "BadgeCoins",
+        edge: Color(hex: "#8A5A12"),
+        mid: Color(hex: "#B87A22"),
+        highlight: Color(hex: "#D9A23A"),
+        rim: Color(hex: "#F3D27A"),
+        glow: Color(hex: "#D9A23A")
     )
 }
 
@@ -167,37 +166,108 @@ struct DailyStreakPill: View {
     }
 }
 
-/// Large left icon for a Home stat card. Always a two-stop vertical gradient
-/// (solid icons use the same color twice) so the type checker sees one path.
+/// Catalog icon cropped from docs/mocks/badges-v3.png (BadgeFlame / Crystal / Coins).
 private struct HomeStatBadgeIcon: View {
-    let name: String
-    let topColor: Color
-    let bottomColor: Color
+    let assetName: String
 
     var body: some View {
-        Image(systemName: name)
-            .font(.system(size: HomeStatBadgeMetrics.iconSize, weight: .semibold))
-            .symbolRenderingMode(.monochrome)
-            .foregroundStyle(fill)
+        Image(assetName)
+            .resizable()
+            .scaledToFit()
             .frame(width: HomeStatBadgeMetrics.iconSize, height: HomeStatBadgeMetrics.iconSize)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Diagonal card wash plus a brighter center bloom. Split so the type checker
+/// does not have to solve one giant gradient expression.
+private struct HomeStatBadgeFill: View {
+    let style: HomeStatBadgeStyle
+
+    var body: some View {
+        ZStack {
+            diagonal
+            bloom
+        }
     }
 
-    private var fill: LinearGradient {
+    private var diagonal: some View {
         LinearGradient(
-            colors: [topColor, bottomColor],
+            colors: [style.edge, style.mid, style.highlight, style.mid, style.edge],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var bloom: some View {
+        RadialGradient(
+            colors: [style.highlight.opacity(0.9), style.highlight.opacity(0)],
+            center: UnitPoint(x: 0.46, y: 0.40),
+            startRadius: 2,
+            endRadius: 56
+        )
+    }
+}
+
+/// Lighter glowing inner rim on top of the filled card.
+private struct HomeStatBadgeRim: View {
+    let style: HomeStatBadgeStyle
+
+    var body: some View {
+        ZStack {
+            outer
+            inner
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var outer: some View {
+        RoundedRectangle(cornerRadius: HomeStatBadgeMetrics.cardCornerRadius, style: .continuous)
+            .strokeBorder(outerGradient, lineWidth: HomeStatBadgeMetrics.rimWidth)
+    }
+
+    private var inner: some View {
+        RoundedRectangle(
+            cornerRadius: HomeStatBadgeMetrics.cardCornerRadius - 1.2,
+            style: .continuous
+        )
+        .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.7)
+        .padding(1.4)
+    }
+
+    private var outerGradient: LinearGradient {
+        LinearGradient(
+            colors: [style.rim.opacity(0.95), style.rim.opacity(0.38), style.rim.opacity(0.78)],
             startPoint: .top,
             endPoint: .bottom
         )
     }
 }
 
-/// Value + gray chevron on the first line, label on the second.
+private struct HomeStatBadgeChrome: View {
+    let style: HomeStatBadgeStyle
+
+    var body: some View {
+        HomeStatBadgeFill(style: style)
+            .clipShape(cardShape)
+            .overlay(HomeStatBadgeRim(style: style))
+            .shadow(
+                color: style.glow.opacity(0.42),
+                radius: HomeStatBadgeMetrics.glowRadius,
+                x: 0,
+                y: 2
+            )
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: HomeStatBadgeMetrics.cardCornerRadius, style: .continuous)
+    }
+}
+
+/// Big white value + chevron on the first line, uppercase tracked label under it.
 private struct HomeStatBadgeTexts: View {
     let value: String
     let label: String
-    let valueColor: Color
-    let labelColor: Color
-    let chevronColor: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: HomeStatBadgeMetrics.textStackSpacing) {
@@ -211,23 +281,25 @@ private struct HomeStatBadgeTexts: View {
         HStack(spacing: HomeStatBadgeMetrics.valueChevronSpacing) {
             Text(value)
                 .font(.system(size: HomeStatBadgeMetrics.valueSize, weight: .bold, design: .rounded))
-                .foregroundStyle(valueColor)
+                .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .minimumScaleFactor(HomeStatBadgeMetrics.textMinimumScale)
                 .monospacedDigit()
                 .frame(minWidth: 0.0, alignment: .leading)
 
             Image(systemName: "chevron.right")
-                .font(.system(size: HomeStatBadgeMetrics.chevronSize, weight: .semibold))
-                .foregroundStyle(chevronColor)
+                .font(.system(size: HomeStatBadgeMetrics.chevronSize, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.92))
                 .fixedSize()
         }
     }
 
     private var labelText: some View {
         Text(label)
-            .font(.system(size: HomeStatBadgeMetrics.labelSize, weight: .medium))
-            .foregroundStyle(labelColor)
+            .font(.system(size: HomeStatBadgeMetrics.labelSize, weight: .semibold))
+            .tracking(HomeStatBadgeMetrics.labelTracking)
+            .foregroundStyle(Color.white.opacity(0.92))
+            .textCase(.uppercase)
             .lineLimit(1)
             .minimumScaleFactor(HomeStatBadgeMetrics.textMinimumScale)
             .frame(minWidth: 0.0, maxWidth: .infinity, alignment: .leading)
@@ -272,18 +344,8 @@ struct HomeStatBadgeCard: View {
 
     private var cardContent: some View {
         HStack(spacing: HomeStatBadgeMetrics.iconTextSpacing) {
-            HomeStatBadgeIcon(
-                name: style.iconName,
-                topColor: style.iconTop,
-                bottomColor: style.iconBottom
-            )
-            HomeStatBadgeTexts(
-                value: value,
-                label: label,
-                valueColor: style.valueColor,
-                labelColor: style.labelColor,
-                chevronColor: style.chevronColor
-            )
+            HomeStatBadgeIcon(assetName: style.assetName)
+            HomeStatBadgeTexts(value: value, label: label)
         }
         .padding(.horizontal, HomeStatBadgeMetrics.cardPadding)
         .frame(
@@ -292,12 +354,7 @@ struct HomeStatBadgeCard: View {
             maxHeight: HomeStatBadgeMetrics.cardHeight,
             alignment: .leading
         )
-        .background(cardFill)
-    }
-
-    private var cardFill: some View {
-        RoundedRectangle(cornerRadius: HomeStatBadgeMetrics.cardCornerRadius, style: .continuous)
-            .fill(style.fill)
+        .background(HomeStatBadgeChrome(style: style))
     }
 }
 
@@ -346,44 +403,605 @@ struct HomeStatBadgeRow: View {
     }
 }
 
-/// Compact Home card for the rotating daily quest.
-struct HomeDailyQuestCard: View {
-    let title: String
+// MARK: - Daily quest card
+
+enum HomeDailyQuestPalette {
+    static let fill = Color(hex: "#FFF1E8")
+    static let border = Color(hex: "#F3C2A0")
+    static let title = Color(hex: "#1A1A1A")
+    static let subtitle = Color(hex: "#8A8580")
+    static let ribbonTop = Color(hex: "#F28A3C")
+    static let ribbonBottom = Color(hex: "#E8641E")
+    static let xp = Color(hex: "#F07820")
+    static let stepTrack = Color(hex: "#E8E4DF")
+    static let stepIdle = Color(hex: "#F4F1ED")
+    static let stepDone = Color(hex: "#F28A3C")
+    static let sun = Color(hex: "#F5A623")
+    static let burgerTop = Color(hex: "#E0A36A")
+    static let burgerPatty = Color(hex: "#8B5A32")
+    static let moon = Color(hex: "#7B6FE0")
+}
+
+enum HomeDailyQuestMetrics {
+    static let cardCorner: CGFloat = 22
+    static let ribbonWidth: CGFloat = 62
+    static let ribbonHeight: CGFloat = 96
+    static let stepSize: CGFloat = 28
+}
+
+enum HomeDailyQuestGlyph: Equatable {
+    case sun
+    case burger
+    case moon
+    case symbol(String)
+}
+
+struct HomeDailyQuestStep: Equatable {
+    let glyph: HomeDailyQuestGlyph
+    let label: String
+    let isComplete: Bool
+}
+
+/// Display-only copy and step layout for today's quest. Does not change quest logic.
+enum HomeDailyQuestCopy {
+    static func subtitle(for kind: DailyQuestKind) -> String {
+        switch kind {
+        case .logThreeMeals:
+            return "Track breakfast, lunch, and dinner"
+        case .proteinRange:
+            return "Stay in today's protein target"
+        case .movementGoal:
+            return "Hit today's movement minutes"
+        case .calorieRange:
+            return "Stay in today's calorie range"
+        case .recoveryGoal:
+            return "Hit today's water goal"
+        }
+    }
+
+    static func buttonTitle(for kind: DailyQuestKind) -> String {
+        switch kind {
+        case .logThreeMeals, .proteinRange, .calorieRange:
+            return "Log Meal"
+        case .movementGoal:
+            return "Log Workout"
+        case .recoveryGoal:
+            return "Log Water"
+        }
+    }
+
+    static func steps(
+        kind: DailyQuestKind,
+        breakfast: Bool,
+        lunch: Bool,
+        dinner: Bool,
+        isComplete: Bool
+    ) -> [HomeDailyQuestStep] {
+        switch kind {
+        case .logThreeMeals:
+            return [
+                HomeDailyQuestStep(glyph: .sun, label: "Breakfast", isComplete: breakfast),
+                HomeDailyQuestStep(glyph: .burger, label: "Lunch", isComplete: lunch),
+                HomeDailyQuestStep(glyph: .moon, label: "Dinner", isComplete: dinner)
+            ]
+        case .proteinRange:
+            return [HomeDailyQuestStep(glyph: .symbol("leaf.fill"), label: "Protein", isComplete: isComplete)]
+        case .movementGoal:
+            return [HomeDailyQuestStep(glyph: .symbol("figure.run"), label: "Move", isComplete: isComplete)]
+        case .calorieRange:
+            return [HomeDailyQuestStep(glyph: .symbol("fork.knife"), label: "Calories", isComplete: isComplete)]
+        case .recoveryGoal:
+            return [HomeDailyQuestStep(glyph: .symbol("drop.fill"), label: "Water", isComplete: isComplete)]
+        }
+    }
+}
+
+private struct HomeDailyQuestRibbonShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let notch = min(12.0, rect.height * 0.14)
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: rect.maxX, y: 0))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - notch))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: 0, y: rect.maxY - notch))
+        path.closeSubpath()
+        return path
+    }
+}
+
+enum HomeDailyQuestRibbonFill {
+    static var paint: LinearGradient {
+        LinearGradient(
+            colors: [HomeDailyQuestPalette.ribbonTop, HomeDailyQuestPalette.ribbonBottom],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+}
+
+private struct HomeDailyQuestRibbon: View {
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "flag.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .padding(.top, 12)
+            Text("DAILY\nQUEST")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.center)
+                .tracking(0.65)
+                .lineSpacing(1)
+            Spacer(minLength: 0)
+        }
+        .frame(width: HomeDailyQuestMetrics.ribbonWidth, height: HomeDailyQuestMetrics.ribbonHeight)
+        .background(ribbonBackground)
+    }
+
+    private var ribbonBackground: some View {
+        HomeDailyQuestRibbonShape()
+            .fill(HomeDailyQuestRibbonFill.paint)
+    }
+}
+
+private struct HomeQuestBurgerGlyph: View {
+    var body: some View {
+        VStack(spacing: 1.1) {
+            Capsule()
+                .fill(HomeDailyQuestPalette.burgerTop)
+                .frame(width: 13, height: 4)
+            Capsule()
+                .fill(HomeDailyQuestPalette.burgerPatty)
+                .frame(width: 13, height: 2.4)
+            Capsule()
+                .fill(HomeDailyQuestPalette.burgerTop)
+                .frame(width: 13, height: 3.4)
+        }
+        .frame(width: 14, height: 12)
+    }
+}
+
+private struct HomeDailyQuestStepGlyph: View {
+    let glyph: HomeDailyQuestGlyph
     let isComplete: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: isComplete ? "checkmark.circle.fill" : "flag.fill")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(isComplete ? Color(hex: "#2FA36A") : EmberColors.ember)
-                .frame(width: 28, height: 28)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Daily Quest")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#855F49"))
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color(hex: "#1A1A1A"))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-            }
-
-            Spacer(minLength: 8)
-
-            Text(isComplete ? "Done" : "+\(XPRules.dailyQuestXP) XP")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(isComplete ? Color(hex: "#2FA36A") : EmberColors.ember)
+        switch glyph {
+        case .sun:
+            Image(systemName: "sun.max.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(HomeDailyQuestPalette.sun)
+        case .burger:
+            HomeQuestBurgerGlyph()
+        case .moon:
+            Image(systemName: "moon.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(HomeDailyQuestPalette.moon)
+        case .symbol(let name):
+            Image(systemName: name)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(isComplete ? HomeDailyQuestPalette.stepDone : HomeDailyQuestPalette.subtitle)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+    }
+}
+
+private struct HomeDailyQuestStepDot: View {
+    let step: HomeDailyQuestStep
+
+    var body: some View {
+        VStack(spacing: 4) {
+            ZStack {
+                Circle()
+                    .fill(step.isComplete ? HomeDailyQuestPalette.stepDone.opacity(0.18) : HomeDailyQuestPalette.stepIdle)
+                    .overlay(circleStroke)
+                    .frame(width: HomeDailyQuestMetrics.stepSize, height: HomeDailyQuestMetrics.stepSize)
+                HomeDailyQuestStepGlyph(glyph: step.glyph, isComplete: step.isComplete)
+            }
+            Text(step.label)
+                .font(.system(size: 9, weight: .regular))
+                .foregroundStyle(HomeDailyQuestPalette.subtitle)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(minWidth: 34)
+    }
+
+    private var circleStroke: some View {
+        Circle()
+            .strokeBorder(
+                step.isComplete ? HomeDailyQuestPalette.stepDone : HomeDailyQuestPalette.stepTrack,
+                lineWidth: 1
+            )
+    }
+}
+
+private struct HomeDailyQuestStepConnector: View {
+    let isLit: Bool
+
+    var body: some View {
+        Rectangle()
+            .fill(isLit ? HomeDailyQuestPalette.stepDone.opacity(0.55) : HomeDailyQuestPalette.stepTrack)
+            .frame(height: 2)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 13)
+    }
+}
+
+private struct HomeDailyQuestStepTrack: View {
+    let steps: [HomeDailyQuestStep]
+
+    var body: some View {
+        if steps.count <= 1 {
+            single
+        } else {
+            multi
+        }
+    }
+
+    @ViewBuilder
+    private var single: some View {
+        if let step = steps.first {
+            HomeDailyQuestStepDot(step: step)
+        }
+    }
+
+    private var multi: some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                if index > 0 {
+                    HomeDailyQuestStepConnector(isLit: steps[index - 1].isComplete)
+                }
+                HomeDailyQuestStepDot(step: step)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct HomeDailyQuestMain: View {
+    let title: String
+    let subtitle: String
+    let steps: [HomeDailyQuestStep]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            texts
+            HomeDailyQuestStepTrack(steps: steps)
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(hex: "#FFE4D2"))
+        .padding(.top, 12)
+    }
+
+    private var texts: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(HomeDailyQuestPalette.title)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+            Text(subtitle)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(HomeDailyQuestPalette.subtitle)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+        }
+    }
+}
+
+enum HomeDailyQuestActionGradient {
+    static var paint: LinearGradient {
+        LinearGradient(
+            colors: [Color(hex: "#F28A3C"), Color(hex: "#E8641E")],
+            startPoint: .leading,
+            endPoint: .trailing
         )
+    }
+}
+
+private struct HomeDailyQuestXPBadge: View {
+    var body: some View {
+        ZStack {
+            Image(systemName: "hexagon.fill")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(HomeDailyQuestPalette.xp)
+            Text("XP")
+                .font(.system(size: 6, weight: .heavy))
+                .foregroundStyle(Color.white)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct HomeDailyQuestXPLabel: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("+\(XPRules.dailyQuestXP)")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(HomeDailyQuestPalette.xp)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            HomeDailyQuestXPBadge()
+        }
+    }
+}
+
+private struct HomeDailyQuestActionFill: View {
+    var body: some View {
+        Capsule()
+            .fill(HomeDailyQuestActionGradient.paint)
+    }
+}
+
+private struct HomeDailyQuestActionButton: View {
+    let title: String
+    var onAction: (() -> Void)?
+
+    var body: some View {
+        Button {
+            onAction?()
+        } label: {
+            label
+        }
+        .buttonStyle(.plain)
+        .disabled(onAction == nil)
+        .accessibilityLabel(title)
+    }
+
+    private var label: some View {
+        HStack(spacing: 3) {
+            Text(title)
+                .font(.system(size: 13, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .bold))
+        }
+        .foregroundStyle(Color.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(HomeDailyQuestActionFill())
+    }
+}
+
+private struct HomeDailyQuestReward: View {
+    let isComplete: Bool
+    let buttonTitle: String
+    var onAction: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 10) {
+            HomeDailyQuestXPLabel()
+            HomeDailyQuestActionButton(
+                title: isComplete ? "Done" : buttonTitle,
+                onAction: onAction
+            )
+        }
+        .frame(minWidth: 96, alignment: .trailing)
+        .padding(.top, 12)
+        .padding(.trailing, 12)
+    }
+}
+
+private struct HomeDailyQuestChrome: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: HomeDailyQuestMetrics.cardCorner, style: .continuous)
+            .fill(HomeDailyQuestPalette.fill)
+            .overlay(border)
+    }
+
+    private var border: some View {
+        RoundedRectangle(cornerRadius: HomeDailyQuestMetrics.cardCorner, style: .continuous)
+            .strokeBorder(HomeDailyQuestPalette.border, lineWidth: 1.2)
+    }
+}
+
+/// Home Daily Quest card. Bound to existing quest title / completion; steps and
+/// the action button adapt per `DailyQuestKind` without changing quest logic.
+struct HomeDailyQuestCard: View {
+    let title: String
+    let subtitle: String
+    let isComplete: Bool
+    let steps: [HomeDailyQuestStep]
+    let buttonTitle: String
+    var onAction: (() -> Void)? = nil
+
+    var body: some View {
+        content
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText)
+            .accessibilityAddTraits(onAction == nil ? [] : .isButton)
+            .accessibilityHint(onAction == nil ? "" : "Opens \(buttonTitle)")
+            .accessibilityAction {
+                onAction?()
+            }
+    }
+
+    private var accessibilityText: String {
+        let stepBits = steps
+            .map { $0.isComplete ? "\($0.label) done" : $0.label }
+            .joined(separator: ", ")
+        let state = isComplete ? "complete" : "+\(XPRules.dailyQuestXP) XP"
+        return "Daily quest, \(title), \(state), \(stepBits)"
+    }
+
+    private var content: some View {
+        HStack(alignment: .top, spacing: 8) {
+            HomeDailyQuestRibbon()
+            HomeDailyQuestMain(title: title, subtitle: subtitle, steps: steps)
+            HomeDailyQuestReward(
+                isComplete: isComplete,
+                buttonTitle: buttonTitle,
+                onAction: onAction
+            )
+        }
+        .padding(.bottom, 12)
+        .padding(.leading, 12)
+        .background(HomeDailyQuestChrome())
+        .clipShape(
+            RoundedRectangle(cornerRadius: HomeDailyQuestMetrics.cardCorner, style: .continuous)
+        )
+    }
+}
+
+// MARK: - Home XP bar
+
+enum HomeXPBarGradient {
+    static var fill: LinearGradient {
+        LinearGradient(
+            colors: [
+                EmberColors.ember,
+                EmberColors.emberAccent,
+                Color.orange.opacity(0.9)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    static var wave: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0),
+                Color.white.opacity(0.3),
+                Color.white.opacity(0)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
+
+private struct HomeXPGainToast: View {
+    let amount: Int
+    let offset: CGFloat
+    let opacity: Double
+
+    var body: some View {
+        HStack {
+            Spacer()
+            HStack(spacing: 4) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(EmberColors.ember)
+                Text("+\(amount)")
+                    .font(.headline.weight(.bold))
+                    .foregroundColor(EmberColors.ember)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(toastFill)
+            .offset(y: offset)
+            .opacity(opacity)
+            Spacer()
+        }
+    }
+
+    private var toastFill: some View {
+        Capsule()
+            .fill(EmberColors.cream)
+            .shadow(color: EmberColors.ember.opacity(0.4), radius: 8, y: 2)
+    }
+}
+
+private struct HomeXPProgressTrack: View {
+    let width: CGFloat
+    let fraction: Double
+    let level: Int
+    let barScale: CGFloat
+    let wavePhase: CGFloat
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(EmberColors.darkPlum)
+                .frame(height: 36)
+            fillLayer
+            levelLabel
+        }
+    }
+
+    private var fillWidth: CGFloat {
+        width * CGFloat(min(1, max(0, fraction)))
+    }
+
+    private var fillLayer: some View {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(HomeXPBarGradient.fill)
+                .frame(width: fillWidth, height: 36)
+                .scaleEffect(x: barScale, y: barScale, anchor: .leading)
+            if fraction > 0 {
+                wave
+            }
+        }
+    }
+
+    private var wave: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(HomeXPBarGradient.wave)
+            .frame(width: 60, height: 36)
+            .offset(x: wavePhase * fillWidth - 30)
+            .mask(
+                RoundedRectangle(cornerRadius: 10)
+                    .frame(width: fillWidth, height: 36)
+            )
+    }
+
+    private var levelLabel: some View {
+        HStack {
+            Spacer()
+            Text(level >= LevelManager.maxLevel ? "Max Lv" : "Lv \(level)")
+                .font(.subheadline.weight(.bold))
+                .foregroundColor(.black)
+                .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
+                .shadow(color: EmberColors.cream.opacity(0.2), radius: 1, x: 0, y: 0)
+            Spacer()
+        }
+        .frame(height: 36)
+        .allowsHitTesting(false)
+    }
+}
+
+/// Existing Home XP bar (level + progress to next). Extracted so HomeView can
+/// place it under the hero and wrap it in a Character-sheet button.
+struct HomeXPProgressBar: View {
+    let level: Int
+    let progressFraction: Double
+    var barScale: CGFloat = 1
+    var wavePhase: CGFloat = 0
+    var showXPGain: Bool = false
+    var xpGainAmount: Int = 0
+    var xpGainOffset: CGFloat = 0
+    var xpGainOpacity: Double = 0
+
+    var body: some View {
+        ZStack {
+            GeometryReader { geometry in
+                HomeXPProgressTrack(
+                    width: geometry.size.width,
+                    fraction: progressFraction,
+                    level: level,
+                    barScale: barScale,
+                    wavePhase: wavePhase
+                )
+            }
+            .frame(height: 36)
+
+            if showXPGain {
+                HomeXPGainToast(amount: xpGainAmount, offset: xpGainOffset, opacity: xpGainOpacity)
+            }
+        }
+        .frame(height: 60)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Daily quest, \(title), \(isComplete ? "complete" : "+\(XPRules.dailyQuestXP) XP")")
+        .accessibilityLabel(levelLabel)
+    }
+
+    private var levelLabel: String {
+        if level >= LevelManager.maxLevel {
+            return "Max level"
+        }
+        return "Level \(level), experience progress"
     }
 }
 
@@ -493,9 +1111,28 @@ struct HomeQuickActionRow: View {
 }
 
 #Preview("Stat cards") {
-    HomeStatBadgeRow(streak: 20, crystals: 805, coins: 1250)
+    HomeStatBadgeRow(streak: 23, crystals: 1000, coins: 215)
         .padding()
         .background(Color.white)
+}
+
+#Preview("Daily quest") {
+    HomeDailyQuestCard(
+        title: "Log all 3 meals",
+        subtitle: "Track breakfast, lunch, and dinner",
+        isComplete: false,
+        steps: HomeDailyQuestCopy.steps(
+            kind: .logThreeMeals,
+            breakfast: true,
+            lunch: false,
+            dinner: false,
+            isComplete: false
+        ),
+        buttonTitle: "Log Meal",
+        onAction: {}
+    )
+    .padding()
+    .background(Color.white)
 }
 
 #Preview("Quick actions") {
