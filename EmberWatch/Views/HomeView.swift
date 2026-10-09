@@ -374,9 +374,6 @@ struct HomeView: View {
             
             VStack(spacing: 10) {
                 HStack(spacing: 6) {
-                    Text(avatarManager.displayName)
-                        .font(.headline)
-                        .foregroundColor(sparksManager.nameplateColor ?? EmberColors.cream.opacity(0.9))
                     if let emoteIcon = homeEmoteIcon {
                         Image(systemName: emoteIcon)
                             .font(.subheadline.weight(.semibold))
