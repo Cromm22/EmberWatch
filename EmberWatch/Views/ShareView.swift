@@ -262,7 +262,6 @@ struct ShareCard: View {
             BuildHeroPortrait(
                 imageName: heroImageName,
                 width: 160,
-                height: 220,
                 accessibilityName: heroAccessibilityName
             )
         } else if let companionSpecies {
