@@ -157,15 +157,8 @@ private struct CharacterSheetIdentityCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 12) {
-                CompanionAvatarView(
-                    species: companionManager.resolvedSpecies,
-                    stage: companionManager.stage(forLevel: levelManager.level),
-                    tier: companionManager.tier(forLevel: levelManager.level),
-                    size: 72,
-                    equipped: companionManager.equippedMap(),
-                    prestigeSkinId: companionManager.activePrestigeSkinId
-                )
-                .frame(width: 80, height: 88)
+                identityPortrait
+                    .frame(width: 80, height: 88)
 
                 VStack(alignment: .leading, spacing: 6) {
                     if isEditingName {
@@ -212,6 +205,29 @@ private struct CharacterSheetIdentityCard: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(EmberColors.lightPlum)
         )
+    }
+
+    @ViewBuilder
+    private var identityPortrait: some View {
+        if let build = characterManager.selectedBuild, let heroName = build.heroImageName {
+            BuildHeroPortrait(
+                imageName: heroName,
+                width: 80,
+                height: 88,
+                cornerRadius: 12,
+                alignment: .top,
+                accessibilityName: build.displayName
+            )
+        } else {
+            CompanionAvatarView(
+                species: companionManager.resolvedSpecies,
+                stage: companionManager.stage(forLevel: levelManager.level),
+                tier: companionManager.tier(forLevel: levelManager.level),
+                size: 72,
+                equipped: companionManager.equippedMap(),
+                prestigeSkinId: companionManager.activePrestigeSkinId
+            )
+        }
     }
 
     private func saveName() {

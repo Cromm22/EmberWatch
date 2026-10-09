@@ -275,25 +275,21 @@ struct HomeView: View {
     @ViewBuilder
     private var homeCompanion: some View {
         let emberSize = emberSizeForLevel(levelManager.level)
-        if companionManager.hasChosenCompanion {
-            CompanionAvatarView(
-                species: companionManager.resolvedSpecies,
-                stage: companionManager.stage(forLevel: levelManager.level),
-                tier: companionManager.tier(forLevel: levelManager.level),
-                size: emberSize,
-                extraGlow: sparksManager.hasGlow,
-                equipped: companionManager.equippedMap(),
-                effectId: companionManager.activeEffectId,
-                prestigeSkinId: companionManager.activePrestigeSkinId
-            )
-        } else {
-            EmberFlameAvatar(
-                level: levelManager.level,
-                size: emberSize,
-                style: avatarManager.selectedStyle,
-                extraGlow: sparksManager.hasGlow
-            )
-        }
+        PlayerPortraitView(
+            heroImageName: characterManager.selectedBuild?.heroImageName,
+            heroAccessibilityName: characterManager.selectedBuild?.displayName ?? "Hero",
+            size: emberSize,
+            extraGlow: sparksManager.hasGlow,
+            hasChosenCompanion: companionManager.hasChosenCompanion,
+            species: companionManager.resolvedSpecies,
+            stage: companionManager.stage(forLevel: levelManager.level),
+            tier: companionManager.tier(forLevel: levelManager.level),
+            equipped: companionManager.equippedMap(),
+            effectId: companionManager.activeEffectId,
+            prestigeSkinId: companionManager.activePrestigeSkinId,
+            level: levelManager.level,
+            style: avatarManager.selectedStyle
+        )
     }
 
     private func emberSizeForLevel(_ level: Int) -> CGFloat {
@@ -353,7 +349,8 @@ struct HomeView: View {
     
     private var emberAvatarCard: some View {
         let emberSize = emberSizeForLevel(levelManager.level)
-        let frameHeight = emberSize * 1.15
+        let usesHeroArt = characterManager.selectedBuild?.heroImageName != nil
+        let frameHeight = emberSize * (usesHeroArt ? 1.55 : 1.15)
         
         return VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {

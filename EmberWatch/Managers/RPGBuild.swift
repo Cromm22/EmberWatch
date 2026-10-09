@@ -61,6 +61,18 @@ enum BuildKind: String, CaseIterable, Codable, Sendable, Identifiable {
         }
     }
 
+    /// Asset catalog name for this build's hero portrait. `nil` falls back to
+    /// the Ember flame or chosen companion. Extra builds can ship art later.
+    var heroImageName: String? {
+        switch self {
+        case .warrior: return "WarriorHero"
+        case .assassin: return "AssassinHero"
+        case .tank: return "TankHero"
+        case .ranger: return "RangerHero"
+        case .mage: return "MageHero"
+        }
+    }
+
     /// Primary stats receive the build bonus multiplier. Mage has none (even growth).
     var primaryStats: [CharacterStat] {
         switch self {

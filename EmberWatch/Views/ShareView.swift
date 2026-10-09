@@ -10,6 +10,7 @@ struct ShareView: View {
     @EnvironmentObject var friendsManager: FriendsManager
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var companionManager: CompanionManager
+    @EnvironmentObject var characterManager: CharacterManager
     
     @State private var challengeToast: String?
     
@@ -69,7 +70,9 @@ struct ShareView: View {
             avatarStyle: avatarManager.selectedStyle,
             companionSpecies: companionManager.selectedSpecies,
             companionStage: companionManager.stage(forLevel: levelManager.level),
-            companionTier: companionManager.tier(forLevel: levelManager.level)
+            companionTier: companionManager.tier(forLevel: levelManager.level),
+            heroImageName: characterManager.selectedBuild?.heroImageName,
+            heroAccessibilityName: characterManager.selectedBuild?.displayName ?? "Hero"
         )
     }
     
@@ -182,6 +185,8 @@ struct ShareCard: View {
     var companionSpecies: CompanionSpecies? = nil
     var companionStage: CompanionStage = .baby
     var companionTier: ProgressionTier = .basic
+    var heroImageName: String? = nil
+    var heroAccessibilityName: String = "Hero"
     
     var body: some View {
         VStack(spacing: 24) {
@@ -253,7 +258,14 @@ struct ShareCard: View {
 
     @ViewBuilder
     private var shareCompanion: some View {
-        if let companionSpecies {
+        if let heroImageName {
+            BuildHeroPortrait(
+                imageName: heroImageName,
+                width: 160,
+                height: 220,
+                accessibilityName: heroAccessibilityName
+            )
+        } else if let companionSpecies {
             CompanionAvatarView(
                 species: companionSpecies,
                 stage: companionStage,

@@ -216,6 +216,7 @@ struct ContentView: View {
                     .environmentObject(friendsManager)
                     .environmentObject(sparksManager)
                     .environmentObject(companionManager)
+                    .environmentObject(characterManager)
             }
             .tint(EmberColors.ember)
             
