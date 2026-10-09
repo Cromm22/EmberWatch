@@ -11,21 +11,24 @@ enum HomeStatBadgePalette {
 /// Layout tokens for the three Home stat cards. File-level so these are not
 /// MainActor-isolated with the SwiftUI views.
 enum HomeStatBadgeMetrics {
-    static let rowSpacing: CGFloat = 10
-    static let cardHeight: CGFloat = 58
-    static let cardCornerRadius: CGFloat = 16
-    static let cardPadding: CGFloat = 10
-    static let iconSize: CGFloat = 36
-    static let iconTextSpacing: CGFloat = 6
+    static let rowSpacing: CGFloat = 8
+    static let cardHeight: CGFloat = 74
+    static let cardCornerRadius: CGFloat = 18
+    static let cardPadding: CGFloat = 8
+    /// Icon sits on the left and overlaps this inset so it matches the mock.
+    static let iconLeading: CGFloat = 2
+    /// ~76% of card height; drawn at this height so the glyph fills the slot.
+    static let iconSize: CGFloat = 56
+    static let iconTextSpacing: CGFloat = 2
     static let textStackSpacing: CGFloat = 1
     static let valueChevronSpacing: CGFloat = 2
-    static let valueSize: CGFloat = 20
+    static let valueSize: CGFloat = 23
     static let labelSize: CGFloat = 8
     static let labelTracking: CGFloat = 0.55
-    static let chevronSize: CGFloat = 11
+    static let chevronSize: CGFloat = 12
     static let textMinimumScale: CGFloat = 0.5
     static let rimWidth: CGFloat = 1.35
-    static let glowRadius: CGFloat = 5
+    static let glowRadius: CGFloat = 6
 }
 
 /// Visual tokens for one Home stat card. Sampled from docs/mocks/badges-v3.png.
@@ -166,7 +169,8 @@ struct DailyStreakPill: View {
     }
 }
 
-/// Catalog icon cropped from docs/mocks/badges-v3.png (BadgeFlame / Crystal / Coins).
+/// Catalog icon from docs/mocks/badges-v3.png (BadgeFlame / Crystal / Coins).
+/// Square slot is ~76% of card height; `scaledToFit` keeps the full glyph.
 private struct HomeStatBadgeIcon: View {
     let assetName: String
 
@@ -347,14 +351,20 @@ struct HomeStatBadgeCard: View {
             HomeStatBadgeIcon(assetName: style.assetName)
             HomeStatBadgeTexts(value: value, label: label)
         }
-        .padding(.horizontal, HomeStatBadgeMetrics.cardPadding)
+        .padding(.leading, HomeStatBadgeMetrics.iconLeading)
+        .padding(.trailing, HomeStatBadgeMetrics.cardPadding)
         .frame(
             maxWidth: .infinity,
             minHeight: HomeStatBadgeMetrics.cardHeight,
             maxHeight: HomeStatBadgeMetrics.cardHeight,
             alignment: .leading
         )
+        .clipShape(cardShape)
         .background(HomeStatBadgeChrome(style: style))
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: HomeStatBadgeMetrics.cardCornerRadius, style: .continuous)
     }
 }
 
