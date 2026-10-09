@@ -346,26 +346,14 @@ struct HomeView: View {
         let emberSize = emberSizeForLevel(levelManager.level)
 
         return VStack(spacing: 12) {
-            ZStack(alignment: .topTrailing) {
-                homeCompanion
-                    .frame(width: emberSize)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: levelManager.level)
-                    .onTapGesture {
-                        showingAvatarPicker = true
-                    }
-                
-                Button(action: { showingAvatarPicker = true }) {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 30))
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(EmberColors.ember, EmberColors.dusk)
-                        .shadow(color: EmberColors.ember.opacity(0.35), radius: 8)
+            homeCompanion
+                .frame(width: emberSize)
+                .fixedSize(horizontal: false, vertical: true)
+                .animation(.spring(response: 0.6, dampingFraction: 0.7), value: levelManager.level)
+                .onTapGesture {
+                    showingAvatarPicker = true
                 }
-                .accessibilityLabel("Edit avatar")
-                .offset(x: 6, y: -2)
-            }
-            .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity)
             
             VStack(spacing: 10) {
                 HStack(spacing: 6) {
@@ -414,9 +402,24 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(homeCardFill)
         )
+        .overlay(alignment: .topTrailing) {
+            Button(action: { showingAvatarPicker = true }) {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 30))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(EmberColors.ember, EmberColors.dusk)
+                    .shadow(color: EmberColors.ember.opacity(0.35), radius: 8)
+            }
+            .accessibilityLabel("Edit avatar")
+            .padding(.top, 12)
+            .padding(.trailing, 12)
+        }
     }
 
     private var homeCardFill: Color {
+        if companionManager.activeBackgroundId == ShopCatalog.noneBackgroundId {
+            return .clear
+        }
         if let hex = companionManager.backgroundHex() {
             return Color(hex: hex)
         }

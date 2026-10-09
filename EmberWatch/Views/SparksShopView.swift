@@ -21,8 +21,7 @@ struct SparksShopView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         galleryBalanceBar(
                             coins: sparksManager.coins,
-                            crystals: sparksManager.balance,
-                            onInfo: nil
+                            crystals: sparksManager.balance
                         )
 
                         VStack(alignment: .leading, spacing: 6) {

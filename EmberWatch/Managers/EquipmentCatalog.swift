@@ -566,7 +566,7 @@ enum EquipmentCatalog: Sendable {
             slot: .accessory,
             rarity: .common,
             iconName: "hare.fill",
-            detail: "A tiny token. Cosmetic only.",
+            detail: "A tiny token.",
             freeAtLevel: nil,
             price: 50,
             currency: .coins

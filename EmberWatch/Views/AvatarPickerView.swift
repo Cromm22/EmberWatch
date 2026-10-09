@@ -51,31 +51,11 @@ func galleryHeader(title: String, onBack: @escaping () -> Void, onDone: @escapin
 }
 
 @ViewBuilder
-func galleryBalanceBar(coins: Int, crystals: Int, onInfo: (() -> Void)?) -> some View {
+func galleryBalanceBar(coins: Int, crystals: Int) -> some View {
     HStack(spacing: 10) {
         galleryCurrencyChip(icon: "circle.fill", tint: Color(hex: "#C98A12"), text: "\(XPRules.groupedNumber(max(0, coins))) Coins")
         galleryCurrencyChip(icon: "diamond.fill", tint: EmberColors.ember, text: "\(XPRules.groupedNumber(max(0, crystals))) Crystals")
-
         Spacer(minLength: 4)
-
-        HStack(spacing: 4) {
-            Text("Cosmetics only")
-                .font(.caption)
-                .foregroundColor(GalleryPalette.subtitle)
-            if let onInfo {
-                Button(action: onInfo) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(GalleryPalette.subtitle)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("About Coins and Crystals")
-            } else {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(GalleryPalette.subtitle)
-            }
-        }
     }
 }
 
@@ -101,9 +81,10 @@ struct AvatarPickerView: View {
     @EnvironmentObject var companionManager: CompanionManager
 
     @State private var showingShop = false
-    @State private var showingCosmeticsInfo = false
     @State private var showingEquipment = false
     @State private var showingCompanionPicker = false
+    @State private var showingRename = false
+    @State private var nameDraft = ""
 
     let columns = [
         GridItem(.flexible(), spacing: 10),
@@ -131,21 +112,8 @@ struct AvatarPickerView: View {
                     VStack(spacing: 18) {
                         galleryBalanceBar(
                             coins: sparksManager.coins,
-                            crystals: sparksManager.balance,
-                            onInfo: { showingCosmeticsInfo = true }
+                            crystals: sparksManager.balance
                         )
-                        .padding(.horizontal, 20)
-
-                        VStack(spacing: 6) {
-                            Text("Cosmetics only")
-                                .font(.title2.weight(.bold))
-                                .foregroundColor(GalleryPalette.title)
-                                .multilineTextAlignment(.center)
-                            Text("Coins and Crystals never buy XP, levels, workouts, or boosters.")
-                                .font(.subheadline)
-                                .foregroundColor(GalleryPalette.subtitle)
-                                .multilineTextAlignment(.center)
-                        }
                         .padding(.horizontal, 20)
 
                         shopPreview
@@ -162,7 +130,6 @@ struct AvatarPickerView: View {
                                 AvatarThumbnail(
                                     style: style,
                                     isSelected: avatarManager.selectedAvatarId == style.id,
-                                    level: levelManager.level,
                                     isLocked: !unlocked,
                                     price: SparksManager.avatarUnlockPrice
                                 ) {
@@ -240,10 +207,12 @@ struct AvatarPickerView: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sparksManager.toast)
-        .alert("Cosmetics only", isPresented: $showingCosmeticsInfo) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Coins unlock standard companion styles. Crystals unlock premium flair. Neither ever gates food, water, HealthKit, workouts, or calorie tracking.")
+        .alert("Rename Ember", isPresented: $showingRename) {
+            TextField("Name your Ember", text: $nameDraft)
+            Button("Save") {
+                saveCompanionName()
+            }
+            Button("Cancel", role: .cancel) {}
         }
         .sheet(isPresented: $showingShop) {
             SparksShopView()
@@ -278,9 +247,21 @@ struct AvatarPickerView: View {
             .frame(width: 96, height: 108)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(avatarManager.displayName)
-                    .font(.headline)
-                    .foregroundColor(GalleryPalette.title)
+                HStack(spacing: 6) {
+                    Text(avatarManager.displayName)
+                        .font(.headline)
+                        .foregroundColor(GalleryPalette.title)
+                    Button {
+                        nameDraft = avatarManager.emberName
+                        showingRename = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(GalleryPalette.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Rename Ember")
+                }
                 Text(companionManager.resolvedSpecies.displayName)
                     .font(.subheadline)
                     .foregroundColor(GalleryPalette.subtitle)
@@ -311,7 +292,7 @@ struct AvatarPickerView: View {
                     Text("Equipment")
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(GalleryPalette.title)
-                    Text("Six slots · cosmetic only")
+                    Text("Six slots")
                         .font(.caption)
                         .foregroundColor(GalleryPalette.subtitle)
                 }
@@ -407,6 +388,13 @@ struct AvatarPickerView: View {
             return
         }
         companionManager.activateCosmetic(item)
+    }
+
+    private func saveCompanionName() {
+        let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            avatarManager.emberName = trimmed
+        }
     }
 
     private var getMoreSparksCard: some View {
@@ -632,7 +620,6 @@ private struct ShopCosmeticRow: View {
 struct AvatarThumbnail: View {
     let style: AvatarStyle
     let isSelected: Bool
-    let level: Int
     var isLocked: Bool = false
     var price: Int = 100
     let onTap: () -> Void
@@ -653,7 +640,7 @@ struct AvatarThumbnail: View {
                             y: 2
                         )
 
-                    EmberFlameAvatar(level: level, size: 56, style: style)
+                    CompanionRobotImage(size: 56)
 
                     if isSelected && !isLocked {
                         VStack {
