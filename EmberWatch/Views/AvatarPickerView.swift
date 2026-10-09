@@ -50,26 +50,310 @@ func galleryHeader(title: String, onBack: @escaping () -> Void, onDone: @escapin
     .padding(.bottom, 6)
 }
 
-@ViewBuilder
+/// Shop wallet pills (Coins / Crystals). File-level so these tokens are not
+/// MainActor-isolated with the SwiftUI views.
+private enum GalleryBalancePalette {
+    static let ink = Color(hex: "#1F1F24")
+
+    static let coinFillTop = Color(hex: "#FFF6DC")
+    static let coinFillBottom = Color(hex: "#FDEBC0")
+    static let coinBorder = Color(hex: "#F3D58A")
+    static let coinGlow = Color(hex: "#F3D58A")
+    static let coinRim = Color(hex: "#C07A10")
+    static let coinMetalTop = Color(hex: "#F9C94A")
+    static let coinMetalBottom = Color(hex: "#E39A17")
+    static let coinStarTop = Color(hex: "#FFF6C4")
+    static let coinStarBottom = Color(hex: "#E8B830")
+
+    static let crystalFillTop = Color(hex: "#F6EEFF")
+    static let crystalFillBottom = Color(hex: "#EBDDFD")
+    static let crystalBorder = Color(hex: "#D9C3F7")
+    static let crystalGlow = Color(hex: "#D9C3F7")
+    static let gemOrange = Color(hex: "#FFB36B")
+    static let gemPink = Color(hex: "#F2557A")
+    static let gemMagenta = Color(hex: "#C04BD8")
+}
+
+private enum GalleryBalanceMetrics {
+    static let pillHeight: CGFloat = 44
+    static let horizontalPadding: CGFloat = 10
+    static let iconTextSpacing: CGFloat = 8
+    static let pillSpacing: CGFloat = 12
+    static let iconSize: CGFloat = 24
+    static let textSize: CGFloat = 15
+    static let borderWidth: CGFloat = 1
+}
+
+private enum GalleryCurrencyKind {
+    case coins
+    case crystals
+}
+
+/// Live Coins + Crystals wallet. Two capsule pills, centered as a pair.
 func galleryBalanceBar(coins: Int, crystals: Int) -> some View {
-    HStack(spacing: 10) {
-        galleryCurrencyChip(icon: "circle.fill", tint: Color(hex: "#C98A12"), text: "\(XPRules.groupedNumber(max(0, coins))) Coins")
-        galleryCurrencyChip(icon: "diamond.fill", tint: EmberColors.ember, text: "\(XPRules.groupedNumber(max(0, crystals))) Crystals")
-        Spacer(minLength: 4)
+    HStack(spacing: GalleryBalanceMetrics.pillSpacing) {
+        Spacer(minLength: 0)
+        GalleryCurrencyPill(
+            amountText: XPRules.groupedNumber(max(0, coins)),
+            unitText: "Coins",
+            kind: .coins
+        )
+        GalleryCurrencyPill(
+            amountText: XPRules.groupedNumber(max(0, crystals)),
+            unitText: "Crystals",
+            kind: .crystals
+        )
+        Spacer(minLength: 0)
     }
 }
 
-@ViewBuilder
-private func galleryCurrencyChip(icon: String, tint: Color, text: String) -> some View {
-    HStack(spacing: 5) {
-        Image(systemName: icon)
-            .font(.system(size: 12, weight: .bold))
-            .foregroundColor(tint)
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundColor(GalleryPalette.title)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
+private struct GalleryCurrencyPill: View {
+    let amountText: String
+    let unitText: String
+    let kind: GalleryCurrencyKind
+
+    var body: some View {
+        HStack(spacing: GalleryBalanceMetrics.iconTextSpacing) {
+            icon
+            GalleryCurrencyPillLabel(amountText: amountText, unitText: unitText)
+        }
+        .padding(.horizontal, GalleryBalanceMetrics.horizontalPadding)
+        .frame(height: GalleryBalanceMetrics.pillHeight)
+        .background(GalleryCurrencyPillChrome(kind: kind))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(amountText) \(unitText)")
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        switch kind {
+        case .coins:
+            GalleryCoinIcon()
+        case .crystals:
+            GalleryCrystalIcon()
+        }
+    }
+}
+
+private struct GalleryCurrencyPillLabel: View {
+    let amountText: String
+    let unitText: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(amountText)
+                .font(.system(size: GalleryBalanceMetrics.textSize, weight: .bold))
+                .monospacedDigit()
+            Text(unitText)
+                .font(.system(size: GalleryBalanceMetrics.textSize, weight: .semibold))
+        }
+        .foregroundStyle(GalleryBalancePalette.ink)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+    }
+}
+
+private struct GalleryCurrencyPillChrome: View {
+    let kind: GalleryCurrencyKind
+
+    var body: some View {
+        Capsule()
+            .fill(fill)
+            .overlay(border)
+            .shadow(color: glow, radius: 8, y: 1)
+    }
+
+    private var fill: LinearGradient {
+        switch kind {
+        case .coins:
+            return LinearGradient(
+                colors: [
+                    GalleryBalancePalette.coinFillTop,
+                    GalleryBalancePalette.coinFillBottom
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        case .crystals:
+            return LinearGradient(
+                colors: [
+                    GalleryBalancePalette.crystalFillTop,
+                    GalleryBalancePalette.crystalFillBottom
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+
+    private var border: some View {
+        Capsule()
+            .strokeBorder(borderColor, lineWidth: GalleryBalanceMetrics.borderWidth)
+    }
+
+    private var borderColor: Color {
+        switch kind {
+        case .coins:
+            return GalleryBalancePalette.coinBorder
+        case .crystals:
+            return GalleryBalancePalette.crystalBorder
+        }
+    }
+
+    private var glow: Color {
+        switch kind {
+        case .coins:
+            return GalleryBalancePalette.coinGlow.opacity(0.55)
+        case .crystals:
+            return GalleryBalancePalette.crystalGlow.opacity(0.45)
+        }
+    }
+}
+
+/// Glossy 3D gold coin with an embossed star.
+private struct GalleryCoinIcon: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(GalleryBalancePalette.coinRim)
+            Circle()
+                .fill(metal)
+                .padding(1.8)
+            gloss
+            Image(systemName: "star.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(starFill)
+                .shadow(color: Color.black.opacity(0.22), radius: 0.4, y: 0.5)
+        }
+        .frame(width: GalleryBalanceMetrics.iconSize, height: GalleryBalanceMetrics.iconSize)
+        .accessibilityHidden(true)
+    }
+
+    private var metal: LinearGradient {
+        LinearGradient(
+            colors: [
+                GalleryBalancePalette.coinMetalTop,
+                GalleryBalancePalette.coinMetalBottom
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var starFill: LinearGradient {
+        LinearGradient(
+            colors: [
+                GalleryBalancePalette.coinStarTop,
+                GalleryBalancePalette.coinStarBottom
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var gloss: some View {
+        Ellipse()
+            .fill(Color.white.opacity(0.48))
+            .frame(width: 11, height: 5)
+            .offset(x: -1.2, y: -5)
+    }
+}
+
+/// Faceted orange → pink → magenta gem with white sparkles.
+private struct GalleryCrystalIcon: View {
+    var body: some View {
+        ZStack {
+            gemBody
+            gemSheen
+            facets
+            GalleryCrystalSparkles()
+        }
+        .frame(width: GalleryBalanceMetrics.iconSize, height: GalleryBalanceMetrics.iconSize)
+        .accessibilityHidden(true)
+    }
+
+    private var gemBody: some View {
+        GalleryCrystalGemShape()
+            .fill(gemFill)
+            .shadow(color: Color.black.opacity(0.14), radius: 0.6, y: 0.6)
+    }
+
+    private var gemSheen: some View {
+        GalleryCrystalGemShape()
+            .fill(sheen)
+    }
+
+    private var facets: some View {
+        GalleryCrystalFacetLines()
+            .stroke(Color.white.opacity(0.38), lineWidth: 0.7)
+    }
+
+    private var gemFill: LinearGradient {
+        LinearGradient(
+            colors: [
+                GalleryBalancePalette.gemOrange,
+                GalleryBalancePalette.gemPink,
+                GalleryBalancePalette.gemMagenta
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var sheen: LinearGradient {
+        LinearGradient(
+            colors: [Color.white.opacity(0.42), Color.white.opacity(0)],
+            startPoint: .top,
+            endPoint: .center
+        )
+    }
+}
+
+private struct GalleryCrystalGemShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        path.move(to: CGPoint(x: width * 0.50, y: 0))
+        path.addLine(to: CGPoint(x: width, y: height * 0.38))
+        path.addLine(to: CGPoint(x: width * 0.50, y: height))
+        path.addLine(to: CGPoint(x: 0, y: height * 0.38))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct GalleryCrystalFacetLines: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        let girdleY = height * 0.38
+        path.move(to: CGPoint(x: 0, y: girdleY))
+        path.addLine(to: CGPoint(x: width, y: girdleY))
+        path.move(to: CGPoint(x: width * 0.50, y: 0))
+        path.addLine(to: CGPoint(x: width * 0.50, y: height))
+        path.move(to: CGPoint(x: width * 0.50, y: 0))
+        path.addLine(to: CGPoint(x: width * 0.28, y: girdleY))
+        path.move(to: CGPoint(x: width * 0.50, y: 0))
+        path.addLine(to: CGPoint(x: width * 0.72, y: girdleY))
+        return path
+    }
+}
+
+private struct GalleryCrystalSparkles: View {
+    var body: some View {
+        ZStack {
+            Image(systemName: "sparkle")
+                .font(.system(size: 5, weight: .bold))
+                .foregroundStyle(Color.white)
+                .offset(x: 8, y: -8)
+            Image(systemName: "sparkle")
+                .font(.system(size: 3.5, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .offset(x: -7, y: 6)
+        }
+        .accessibilityHidden(true)
     }
 }
 
