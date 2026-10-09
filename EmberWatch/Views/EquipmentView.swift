@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Inventory by slot. Equip / unequip is cosmetic only.
+/// Inventory by slot.
 struct EquipmentView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var companionManager: CompanionManager
@@ -22,8 +22,7 @@ struct EquipmentView: View {
 
                 galleryBalanceBar(
                     coins: sparksManager.coins,
-                    crystals: sparksManager.balance,
-                    onInfo: nil
+                    crystals: sparksManager.balance
                 )
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -74,12 +73,6 @@ struct EquipmentView: View {
             .frame(width: 104, height: 116)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Cosmetic only")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(GalleryPalette.subtitle)
-                Text("No XP, stats, or health bonuses.")
-                    .font(.caption)
-                    .foregroundColor(GalleryPalette.subtitle)
                 Text(companionManager.tier(forLevel: levelManager.level).gearLabel)
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(GalleryPalette.title)

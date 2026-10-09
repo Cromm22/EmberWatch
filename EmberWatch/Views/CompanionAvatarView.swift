@@ -69,7 +69,6 @@ struct CompanionStageIcon: View {
     var size: CGFloat = 28
 
     var body: some View {
-        let iconSize = size * 0.46
         ZStack {
             Circle()
                 .fill(Color(hex: species.auraHex).opacity(0.22))
@@ -77,9 +76,7 @@ struct CompanionStageIcon: View {
             Circle()
                 .strokeBorder(Color(hex: species.auraHex).opacity(0.55), lineWidth: 1)
                 .frame(width: size, height: size)
-            Image(systemName: species.iconName)
-                .font(.system(size: iconSize, weight: .semibold))
-                .foregroundColor(Color(hex: species.auraHex))
+            stageGlyph
         }
         .overlay(alignment: .bottomTrailing) {
             Text("\(stage.rank + 1)")
@@ -90,6 +87,17 @@ struct CompanionStageIcon: View {
                 .offset(x: 2, y: 2)
         }
         .accessibilityLabel("\(species.displayName) \(stage.shortLabel)")
+    }
+
+    @ViewBuilder
+    private var stageGlyph: some View {
+        if species == .robot {
+            CompanionRobotImage(size: size * 0.72)
+        } else {
+            Image(systemName: species.iconName)
+                .font(.system(size: size * 0.46, weight: .semibold))
+                .foregroundColor(Color(hex: species.auraHex))
+        }
     }
 }
 

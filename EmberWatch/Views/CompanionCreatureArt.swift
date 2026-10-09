@@ -15,7 +15,7 @@ struct CompanionCreatureLayer: View {
             case .babyDragon:
                 DragonCreature(size: scaled, stage: stage, palette: palette)
             case .robot:
-                RobotCreature(size: scaled, stage: stage, palette: palette)
+                CompanionRobotImage(size: scaled)
             case .wolf:
                 WolfCreature(size: scaled, stage: stage, palette: palette)
             case .slime:
@@ -128,67 +128,15 @@ private struct DragonHorn: View {
 
 // MARK: - Robot
 
-private struct RobotCreature: View {
-    let size: CGFloat
-    let stage: CompanionStage
-    let palette: CompanionPalette
+struct CompanionRobotImage: View {
+    var size: CGFloat
 
     var body: some View {
-        ZStack {
-            if stage >= .adult {
-                RobotPanel(size: size, hex: palette.accent, isLeft: true)
-                RobotPanel(size: size, hex: palette.accent, isLeft: false)
-            }
-            RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(hex: palette.belly), Color(hex: palette.body)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: size * 0.58, height: size * 0.62)
-            RoundedRectangle(cornerRadius: size * 0.08, style: .continuous)
-                .fill(Color(hex: palette.accent).opacity(0.35))
-                .frame(width: size * 0.36, height: size * 0.16)
-                .offset(y: -size * 0.04)
-            CompanionFace(
-                size: size,
-                eyeY: -size * 0.04,
-                mouthY: size * 0.12,
-                eyeSpread: size * 0.11
-            )
-            if stage >= .juvenile {
-                Capsule()
-                    .fill(Color(hex: palette.accent))
-                    .frame(width: size * 0.035, height: size * 0.16)
-                    .offset(y: -size * 0.40)
-                Circle()
-                    .fill(Color(hex: palette.aura))
-                    .frame(width: size * 0.08, height: size * 0.08)
-                    .offset(y: -size * 0.50)
-            }
-            if stage >= .elite {
-                Image(systemName: "antenna.radiowaves.left.and.right")
-                    .font(.system(size: size * 0.14, weight: .bold))
-                    .foregroundColor(Color(hex: palette.aura))
-                    .offset(y: -size * 0.56)
-            }
-        }
-    }
-}
-
-private struct RobotPanel: View {
-    let size: CGFloat
-    let hex: String
-    let isLeft: Bool
-
-    var body: some View {
-        let xOff = isLeft ? -size * 0.34 : size * 0.34
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(Color(hex: hex).opacity(0.55))
-            .frame(width: size * 0.12, height: size * 0.28)
-            .offset(x: xOff, y: size * 0.04)
+        Image("CompanionRobot")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
     }
 }
 

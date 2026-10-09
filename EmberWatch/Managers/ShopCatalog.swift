@@ -60,7 +60,10 @@ struct CosmeticShopItem: Identifiable, Hashable, Sendable {
 }
 
 enum ShopCatalog: Sendable {
+    static let noneBackgroundId = "bg.none"
+
     static let backgrounds: [CosmeticShopItem] = [
+        CosmeticShopItem(id: noneBackgroundId, name: "No background", detail: "Clear card, default backdrop", category: .backgrounds, price: 0, currency: .coins, iconName: "rectangle.dashed"),
         CosmeticShopItem(id: "bg.dawn", name: "Dawn Sky", detail: "Soft morning wash", category: .backgrounds, price: 80, currency: .coins, iconName: "sunrise.fill"),
         CosmeticShopItem(id: "bg.forest", name: "Forest Glade", detail: "Quiet green backdrop", category: .backgrounds, price: 80, currency: .coins, iconName: "leaf.fill"),
         CosmeticShopItem(id: "bg.city", name: "Night City", detail: "Cool dusk skyline", category: .backgrounds, price: 100, currency: .coins, iconName: "building.2.fill"),

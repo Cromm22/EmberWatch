@@ -103,6 +103,9 @@ final class CompanionManager: ObservableObject {
         if ownedCosmeticIds.contains("theme.classic") == false {
             ownedCosmeticIds.insert("theme.classic")
         }
+        if ownedCosmeticIds.contains(ShopCatalog.noneBackgroundId) == false {
+            ownedCosmeticIds.insert(ShopCatalog.noneBackgroundId)
+        }
     }
 
     var hasChosenCompanion: Bool {
@@ -149,7 +152,8 @@ final class CompanionManager: ObservableObject {
     }
 
     func isCosmeticOwned(_ id: String) -> Bool {
-        ownedCosmeticIds.contains(id)
+        if id == ShopCatalog.noneBackgroundId { return true }
+        return ownedCosmeticIds.contains(id)
     }
 
     func isEquipped(_ id: String) -> Bool {
@@ -274,6 +278,8 @@ final class CompanionManager: ObservableObject {
 
     func backgroundHex() -> String? {
         switch activeBackgroundId {
+        case ShopCatalog.noneBackgroundId:
+            return nil
         case "bg.dawn": return "#FFE4C8"
         case "bg.forest": return "#DCFCE7"
         case "bg.city": return "#DBEAFE"
