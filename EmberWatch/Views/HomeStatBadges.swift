@@ -929,6 +929,11 @@ private struct HomeXPProgressTrack: View {
             fillLayer
             levelLabel
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(hex: "#E8641E").opacity(0.7), lineWidth: 2)
+                .frame(height: 36)
+        )
     }
 
     private var fillWidth: CGFloat {
