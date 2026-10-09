@@ -518,17 +518,11 @@ struct AvatarPickerView: View {
 
     private var shopPreview: some View {
         HStack(spacing: 12) {
-            CompanionAvatarView(
-                species: companionManager.resolvedSpecies,
-                stage: companionManager.stage(forLevel: levelManager.level),
-                tier: companionManager.tier(forLevel: levelManager.level),
-                size: 88,
-                extraGlow: sparksManager.hasGlow,
-                equipped: companionManager.equippedMap(),
-                effectId: companionManager.activeEffectId,
-                prestigeSkinId: companionManager.activePrestigeSkinId
-            )
-            .frame(width: 96, height: 108)
+            Image("CompanionRobot")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 110, height: 110)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
@@ -549,11 +543,12 @@ struct AvatarPickerView: View {
                 Text(companionManager.resolvedSpecies.displayName)
                     .font(.subheadline)
                     .foregroundColor(GalleryPalette.subtitle)
-                Button("Change Ember") {
+                Button("Change Companion") {
                     showingCompanionPicker = true
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundColor(GalleryPalette.accent)
+                .accessibilityLabel("Change Companion")
             }
             Spacer(minLength: 0)
         }
