@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Home header: `LVL 37 — WARRIOR` plus a compact five-stat panel.
+/// Home header: `LVL 37 — WARRIOR`.
 /// Kept in this file so HomeView stays type-checker thin.
 struct HomeLevelBuildHeader: View {
     let level: Int
@@ -20,81 +20,6 @@ struct HomeLevelBuildHeader: View {
             return "LVL \(level)"
         }
         return "LVL \(level) — \(buildName)"
-    }
-}
-
-struct HomeCompactStatsPanel: View {
-    let stats: CharacterStats
-    let build: BuildKind?
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 8) {
-                ForEach(CharacterStat.allCases) { stat in
-                    HomeCompactStatRow(
-                        stat: stat,
-                        value: stats.displayed(stat),
-                        fraction: barFraction(stat),
-                        isPrimary: isPrimary(stat)
-                    )
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(EmberColors.dusk)
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Character stats")
-        .accessibilityHint("Opens your character sheet")
-    }
-
-    private func isPrimary(_ stat: CharacterStat) -> Bool {
-        guard let build else { return false }
-        return build.isPrimary(stat)
-    }
-
-    private func barFraction(_ stat: CharacterStat) -> Double {
-        let value = stats.value(for: stat)
-        return min(1.0, max(0, value / StatRules.displayCap))
-    }
-}
-
-private struct HomeCompactStatRow: View {
-    let stat: CharacterStat
-    let value: Int
-    let fraction: Double
-    let isPrimary: Bool
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(stat.shortLabel)
-                .font(.caption.weight(isPrimary ? .bold : .semibold))
-                .foregroundColor(isPrimary ? EmberColors.ember : EmberColors.cream.opacity(0.7))
-                .frame(width: 32, alignment: .leading)
-
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(EmberColors.lightPlum)
-                        .frame(height: 6)
-                    Capsule()
-                        .fill(isPrimary ? EmberColors.ember : EmberColors.cream.opacity(0.35))
-                        .frame(width: max(0, geometry.size.width * fraction), height: 6)
-                }
-            }
-            .frame(height: 6)
-
-            Text("\(value)")
-                .font(.caption.weight(.semibold).monospacedDigit())
-                .foregroundColor(isPrimary ? EmberColors.cream : EmberColors.cream.opacity(0.7))
-                .frame(width: 28, alignment: .trailing)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(stat.fullName) \(value)")
     }
 }
 
@@ -156,9 +81,8 @@ private struct CharacterSheetIdentityCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 identityPortrait
-                    .frame(width: 80, height: 88)
 
                 VStack(alignment: .leading, spacing: 6) {
                     if isEditingName {
@@ -212,10 +136,8 @@ private struct CharacterSheetIdentityCard: View {
         if let build = characterManager.selectedBuild, let heroName = build.heroImageName {
             BuildHeroPortrait(
                 imageName: heroName,
-                width: 80,
-                height: 88,
+                width: 88,
                 cornerRadius: 12,
-                alignment: .top,
                 accessibilityName: build.displayName
             )
         } else {

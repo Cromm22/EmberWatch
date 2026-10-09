@@ -349,13 +349,12 @@ struct HomeView: View {
     
     private var emberAvatarCard: some View {
         let emberSize = emberSizeForLevel(levelManager.level)
-        let usesHeroArt = characterManager.selectedBuild?.heroImageName != nil
-        let frameHeight = emberSize * (usesHeroArt ? 1.55 : 1.15)
-        
+
         return VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
                 homeCompanion
-                    .frame(width: emberSize, height: frameHeight)
+                    .frame(width: emberSize)
+                    .fixedSize(horizontal: false, vertical: true)
                     .animation(.spring(response: 0.6, dampingFraction: 0.7), value: levelManager.level)
                     .onTapGesture {
                         showingAvatarPicker = true
@@ -385,17 +384,17 @@ struct HomeView: View {
                     }
                 }
 
-                HomeLevelBuildHeader(
-                    level: levelManager.level,
-                    buildName: characterManager.buildDisplayName
-                )
-
-                HomeCompactStatsPanel(
-                    stats: characterManager.stats,
-                    build: characterManager.selectedBuild,
-                    onTap: { showingCharacterSheet = true }
-                )
-                .padding(.horizontal, 16)
+                Button {
+                    showingCharacterSheet = true
+                } label: {
+                    HomeLevelBuildHeader(
+                        level: levelManager.level,
+                        buildName: characterManager.buildDisplayName
+                    )
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .accessibilityHint("Opens your character sheet")
 
                 HomeStatBadgeRow(
                     streak: levelManager.streakCount,

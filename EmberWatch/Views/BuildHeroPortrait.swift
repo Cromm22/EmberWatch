@@ -1,22 +1,33 @@
 import SwiftUI
+import UIKit
 
-/// Rounded build portrait. Crops with aspect-fill so the character stays framed.
+/// Rounded build portrait. Uses aspect-fit in a frame that matches the
+/// image's ratio so the full figure and companion stay in view.
 struct BuildHeroPortrait: View {
     let imageName: String
     var width: CGFloat
-    var height: CGFloat
     var cornerRadius: CGFloat = 16
-    var alignment: Alignment = .bottom
     var accessibilityName: String
 
     var body: some View {
         Image(imageName)
             .resizable()
-            .scaledToFill()
-            .frame(width: width, height: height, alignment: alignment)
-            .clipped()
+            .scaledToFit()
+            .frame(width: width, height: portraitHeight)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .accessibilityLabel(accessibilityName)
+    }
+
+    private var portraitHeight: CGFloat {
+        width / max(imageAspectRatio, 0.01)
+    }
+
+    private var imageAspectRatio: CGFloat {
+        let fallback: CGFloat = 0.41
+        guard let image = UIImage(named: imageName) else { return fallback }
+        let size = image.size
+        guard size.height > 0 else { return fallback }
+        return size.width / size.height
     }
 }
 
@@ -25,9 +36,7 @@ struct PlayerPortraitView: View {
     var heroImageName: String?
     var heroAccessibilityName: String
     var size: CGFloat
-    var heroHeight: CGFloat? = nil
     var heroCornerRadius: CGFloat = 16
-    var heroAlignment: Alignment = .bottom
     var extraGlow: Bool = false
     var hasChosenCompanion: Bool
     var species: CompanionSpecies
@@ -49,9 +58,7 @@ struct PlayerPortraitView: View {
             BuildHeroPortrait(
                 imageName: heroImageName,
                 width: size,
-                height: heroHeight ?? size * 1.55,
                 cornerRadius: heroCornerRadius,
-                alignment: heroAlignment,
                 accessibilityName: heroAccessibilityName
             )
         } else if hasChosenCompanion {
