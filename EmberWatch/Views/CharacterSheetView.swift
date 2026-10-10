@@ -30,6 +30,7 @@ struct CharacterSheetView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var companionManager: CompanionManager
     @EnvironmentObject var sparksManager: SparksManager
+    @EnvironmentObject var avatarManager: AvatarManager
     @State private var showingEquipment = false
 
     var body: some View {
@@ -66,6 +67,8 @@ struct CharacterSheetView: View {
                     .environmentObject(companionManager)
                     .environmentObject(sparksManager)
                     .environmentObject(levelManager)
+                    .environmentObject(avatarManager)
+                    .environmentObject(characterManager)
             }
         }
     }

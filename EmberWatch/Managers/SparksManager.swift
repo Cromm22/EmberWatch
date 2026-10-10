@@ -153,14 +153,8 @@ final class SparksManager: ObservableObject {
     }
 
     var nameplateColor: Color? {
-        switch activeNameplateId {
-        case "nameplate_gold" where isCosmeticUnlocked("nameplate_gold"):
-            return EmberColors.gold
-        case "nameplate_aurora" where isCosmeticUnlocked("nameplate_aurora"):
-            return Color(hex: "#34d399")
-        default:
-            return nil
-        }
+        guard let id = activeNameplateId, isCosmeticUnlocked(id) else { return nil }
+        return ShopLookTokens.nameplateColor(for: id)
     }
 
     func canChallenge(friendId: String) -> Bool {
