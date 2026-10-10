@@ -1,73 +1,51 @@
 import SwiftUI
 
-/// Compact header-pill colors. Separate from the three Home cards so restyling
+/// Compact header-pill colors. Separate from the Home currency cards so restyling
 /// the cards does not retint the top-right streak capsule.
 enum HomeStatBadgePalette {
     static let streakFill = Color(hex: "#FFD2B3")
     static let streakIcon = Color(hex: "#FF5314")
     static let streakInk = Color(hex: "#6B2410")
+
+    static let valueInk = Color(hex: "#1A1A1A")
+    static let labelInk = Color(hex: "#6B6B70")
+    static let chevron = Color(hex: "#6B6B70")
 }
 
-/// Layout tokens for the three Home stat cards. File-level so these are not
+/// Layout tokens for the two Home currency cards. File-level so these are not
 /// MainActor-isolated with the SwiftUI views.
 enum HomeStatBadgeMetrics {
-    static let rowSpacing: CGFloat = 8
-    static let cardHeight: CGFloat = 74
-    static let cardCornerRadius: CGFloat = 18
-    static let cardPadding: CGFloat = 8
-    /// Icon sits on the left and overlaps this inset so it matches the mock.
-    static let iconLeading: CGFloat = 2
-    /// ~76% of card height; drawn at this height so the glyph fills the slot.
-    static let iconSize: CGFloat = 56
-    static let iconTextSpacing: CGFloat = 2
+    static let rowSpacing: CGFloat = 12
+    static let cardHeight: CGFloat = 76
+    static let cardCornerRadius: CGFloat = 16
+    static let cardPadding: CGFloat = 14
+    static let iconLeading: CGFloat = 14
+    static let iconSize: CGFloat = 44
+    static let iconTextSpacing: CGFloat = 10
     static let textStackSpacing: CGFloat = 1
-    static let valueChevronSpacing: CGFloat = 2
-    static let valueSize: CGFloat = 23
-    static let labelSize: CGFloat = 8
-    static let labelTracking: CGFloat = 0.55
-    static let chevronSize: CGFloat = 12
+    static let valueChevronSpacing: CGFloat = 6
+    static let valueSize: CGFloat = 24
+    static let labelSize: CGFloat = 15
+    static let chevronSize: CGFloat = 13
     static let textMinimumScale: CGFloat = 0.5
-    static let rimWidth: CGFloat = 1.35
-    static let glowRadius: CGFloat = 6
 }
 
-/// Visual tokens for one Home stat card. Sampled from docs/mocks/badges-v3.png.
+/// Visual tokens for one Home currency card. Sampled from
+/// docs/mocks/currency-badges-v4.png.
 struct HomeStatBadgeStyle {
     let assetName: String
-    let edge: Color
-    let mid: Color
-    let highlight: Color
-    let rim: Color
-    let glow: Color
+    let fill: Color
 
-    /// Deep red-orange: dark edges to a brighter center bloom.
-    static let streak = HomeStatBadgeStyle(
-        assetName: "BadgeFlame",
-        edge: Color(hex: "#8E1F0E"),
-        mid: Color(hex: "#C43316"),
-        highlight: Color(hex: "#E8501A"),
-        rim: Color(hex: "#F6B07A"),
-        glow: Color(hex: "#E8501A")
-    )
-
-    /// Royal blue with a light-blue rim.
+    /// Light periwinkle, flat — no gradient or rim.
     static let crystals = HomeStatBadgeStyle(
-        assetName: "BadgeCrystal",
-        edge: Color(hex: "#1E3FA8"),
-        mid: Color(hex: "#2B55C8"),
-        highlight: Color(hex: "#3E6FE8"),
-        rim: Color(hex: "#A8C8FF"),
-        glow: Color(hex: "#3E6FE8")
+        assetName: "BadgeCrystalV4",
+        fill: Color(hex: "#D6E2FB")
     )
 
-    /// Gold / amber with a golden rim.
+    /// Light butter yellow, flat — no gradient or rim.
     static let coins = HomeStatBadgeStyle(
-        assetName: "BadgeCoins",
-        edge: Color(hex: "#8A5A12"),
-        mid: Color(hex: "#B87A22"),
-        highlight: Color(hex: "#D9A23A"),
-        rim: Color(hex: "#F3D27A"),
-        glow: Color(hex: "#D9A23A")
+        assetName: "BadgeCoinsV4",
+        fill: Color(hex: "#FBEBC0")
     )
 }
 
@@ -169,8 +147,9 @@ struct DailyStreakPill: View {
     }
 }
 
-/// Catalog icon from docs/mocks/badges-v3.png (BadgeFlame / Crystal / Coins).
-/// Square slot is ~76% of card height; `scaledToFit` keeps the full glyph.
+/// Catalog icon cropped from docs/mocks/currency-badges-v4.png
+/// (BadgeCrystalV4 / BadgeCoinsV4). Square slot is ~44pt; `scaledToFit`
+/// keeps the full glyph.
 private struct HomeStatBadgeIcon: View {
     let assetName: String
 
@@ -183,92 +162,18 @@ private struct HomeStatBadgeIcon: View {
     }
 }
 
-/// Diagonal card wash plus a brighter center bloom. Split so the type checker
-/// does not have to solve one giant gradient expression.
-private struct HomeStatBadgeFill: View {
-    let style: HomeStatBadgeStyle
-
-    var body: some View {
-        ZStack {
-            diagonal
-            bloom
-        }
-    }
-
-    private var diagonal: some View {
-        LinearGradient(
-            colors: [style.edge, style.mid, style.highlight, style.mid, style.edge],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var bloom: some View {
-        RadialGradient(
-            colors: [style.highlight.opacity(0.9), style.highlight.opacity(0)],
-            center: UnitPoint(x: 0.46, y: 0.40),
-            startRadius: 2,
-            endRadius: 56
-        )
-    }
-}
-
-/// Lighter glowing inner rim on top of the filled card.
-private struct HomeStatBadgeRim: View {
-    let style: HomeStatBadgeStyle
-
-    var body: some View {
-        ZStack {
-            outer
-            inner
-        }
-        .allowsHitTesting(false)
-    }
-
-    private var outer: some View {
-        RoundedRectangle(cornerRadius: HomeStatBadgeMetrics.cardCornerRadius, style: .continuous)
-            .strokeBorder(outerGradient, lineWidth: HomeStatBadgeMetrics.rimWidth)
-    }
-
-    private var inner: some View {
-        RoundedRectangle(
-            cornerRadius: HomeStatBadgeMetrics.cardCornerRadius - 1.2,
-            style: .continuous
-        )
-        .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.7)
-        .padding(1.4)
-    }
-
-    private var outerGradient: LinearGradient {
-        LinearGradient(
-            colors: [style.rim.opacity(0.95), style.rim.opacity(0.38), style.rim.opacity(0.78)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-}
-
+/// Flat pastel card fill. No gradient, glow, or rim.
 private struct HomeStatBadgeChrome: View {
-    let style: HomeStatBadgeStyle
+    let fill: Color
 
     var body: some View {
-        HomeStatBadgeFill(style: style)
-            .clipShape(cardShape)
-            .overlay(HomeStatBadgeRim(style: style))
-            .shadow(
-                color: style.glow.opacity(0.42),
-                radius: HomeStatBadgeMetrics.glowRadius,
-                x: 0,
-                y: 2
-            )
-    }
-
-    private var cardShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: HomeStatBadgeMetrics.cardCornerRadius, style: .continuous)
+            .fill(fill)
     }
 }
 
-/// Big white value + chevron on the first line, uppercase tracked label under it.
+/// Bold near-black value with a gray chevron on the right; Title-case
+/// gray-dark label beneath. Split so the type checker stays thin.
 private struct HomeStatBadgeTexts: View {
     let value: String
     let label: String
@@ -284,33 +189,31 @@ private struct HomeStatBadgeTexts: View {
     private var valueRow: some View {
         HStack(spacing: HomeStatBadgeMetrics.valueChevronSpacing) {
             Text(value)
-                .font(.system(size: HomeStatBadgeMetrics.valueSize, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.white)
+                .font(.system(size: HomeStatBadgeMetrics.valueSize, weight: .bold))
+                .foregroundStyle(HomeStatBadgePalette.valueInk)
                 .lineLimit(1)
                 .minimumScaleFactor(HomeStatBadgeMetrics.textMinimumScale)
                 .monospacedDigit()
                 .frame(minWidth: 0.0, alignment: .leading)
 
             Image(systemName: "chevron.right")
-                .font(.system(size: HomeStatBadgeMetrics.chevronSize, weight: .bold))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .font(.system(size: HomeStatBadgeMetrics.chevronSize, weight: .medium))
+                .foregroundStyle(HomeStatBadgePalette.chevron)
                 .fixedSize()
         }
     }
 
     private var labelText: some View {
         Text(label)
-            .font(.system(size: HomeStatBadgeMetrics.labelSize, weight: .semibold))
-            .tracking(HomeStatBadgeMetrics.labelTracking)
-            .foregroundStyle(Color.white.opacity(0.92))
-            .textCase(.uppercase)
+            .font(.system(size: HomeStatBadgeMetrics.labelSize, weight: .regular))
+            .foregroundStyle(HomeStatBadgePalette.labelInk)
             .lineLimit(1)
             .minimumScaleFactor(HomeStatBadgeMetrics.textMinimumScale)
             .frame(minWidth: 0.0, maxWidth: .infinity, alignment: .leading)
     }
 }
 
-/// One of the three equal Home stat cards (Daily Streak / Crystals / Coins).
+/// One equal-width Home currency card (Crystals / Coins).
 struct HomeStatBadgeCard: View {
     let value: String
     let label: String
@@ -359,8 +262,8 @@ struct HomeStatBadgeCard: View {
             maxHeight: HomeStatBadgeMetrics.cardHeight,
             alignment: .leading
         )
+        .background(HomeStatBadgeChrome(fill: style.fill))
         .clipShape(cardShape)
-        .background(HomeStatBadgeChrome(style: style))
     }
 
     private var cardShape: RoundedRectangle {
@@ -368,13 +271,28 @@ struct HomeStatBadgeCard: View {
     }
 }
 
-/// Horizontal row of the three Home stat cards, bound to live streak / crystals / coins.
+/// Horizontal row of the two Home currency cards, bound to live crystals / coins.
+/// `streak` stays on the initializer so Home call sites do not change; Daily
+/// Streak is not shown in this row.
 struct HomeStatBadgeRow: View {
-    let streak: Int
     let crystals: Int
     let coins: Int
     var onCrystalsTap: (() -> Void)? = nil
     var onCoinsTap: (() -> Void)? = nil
+
+    init(
+        streak: Int = 0,
+        crystals: Int,
+        coins: Int,
+        onCrystalsTap: (() -> Void)? = nil,
+        onCoinsTap: (() -> Void)? = nil
+    ) {
+        self.crystals = crystals
+        self.coins = coins
+        self.onCrystalsTap = onCrystalsTap
+        self.onCoinsTap = onCoinsTap
+        _ = streak
+    }
 
     var body: some View {
         HStack(spacing: HomeStatBadgeMetrics.rowSpacing) {
@@ -382,15 +300,6 @@ struct HomeStatBadgeRow: View {
             coinsCard
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var streakCard: some View {
-        HomeStatBadgeCard(
-            value: "\(max(0, streak))d",
-            label: "Daily Streak",
-            style: HomeStatBadgeStyle.streak,
-            tooltip: "Daily Streak"
-        )
     }
 
     private var crystalsCard: some View {
