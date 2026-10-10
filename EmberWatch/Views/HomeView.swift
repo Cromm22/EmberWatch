@@ -440,19 +440,20 @@ struct HomeView: View {
 
     private var homeDailyQuestCard: some View {
         let kind = DailyQuestKind.quest(forDayKey: XPRules.dayKey())
+        let complete = levelManager.todaysQuest.isComplete
         return HomeDailyQuestCard(
             title: levelManager.todaysQuest.title,
             subtitle: HomeDailyQuestCopy.subtitle(for: kind),
-            isComplete: levelManager.todaysQuest.isComplete,
+            isComplete: complete,
             steps: HomeDailyQuestCopy.steps(
                 kind: kind,
                 breakfast: mealLogged(.breakfast),
                 lunch: mealLogged(.lunch),
                 dinner: mealLogged(.dinner),
-                isComplete: levelManager.todaysQuest.isComplete
+                isComplete: complete
             ),
             buttonTitle: HomeDailyQuestCopy.buttonTitle(for: kind),
-            onAction: { applyHomeDailyQuestAction(kind) }
+            onAction: homeDailyQuestAction(for: kind)
         )
     }
 
@@ -460,7 +461,13 @@ struct HomeView: View {
         foodDataManager.todayFoodEntries.contains { $0.resolvedMealType == meal.rawValue }
     }
 
+    private func homeDailyQuestAction(for kind: DailyQuestKind) -> (() -> Void)? {
+        guard !levelManager.todaysQuest.isComplete else { return nil }
+        return { applyHomeDailyQuestAction(kind) }
+    }
+
     private func applyHomeDailyQuestAction(_ kind: DailyQuestKind) {
+        guard !levelManager.todaysQuest.isComplete else { return }
         switch kind {
         case .proteinRange, .logThreeMeals, .calorieRange:
             selectedTab = 1

@@ -430,6 +430,8 @@ enum HomeDailyQuestPalette {
     static let burgerTop = Color(hex: "#E0A36A")
     static let burgerPatty = Color(hex: "#8B5A32")
     static let moon = Color(hex: "#7B6FE0")
+    static let completedFill = Color(hex: "#D8EEDD")
+    static let completedInk = Color(hex: "#2F8A4A")
 }
 
 enum HomeDailyQuestMetrics {
@@ -450,6 +452,10 @@ struct HomeDailyQuestStep: Equatable {
     let glyph: HomeDailyQuestGlyph
     let label: String
     let isComplete: Bool
+
+    func markingComplete() -> HomeDailyQuestStep {
+        HomeDailyQuestStep(glyph: glyph, label: label, isComplete: true)
+    }
 }
 
 /// Display-only copy and step layout for today's quest. Does not change quest logic.
@@ -490,9 +496,9 @@ enum HomeDailyQuestCopy {
         switch kind {
         case .logThreeMeals:
             return [
-                HomeDailyQuestStep(glyph: .sun, label: "Breakfast", isComplete: breakfast),
-                HomeDailyQuestStep(glyph: .burger, label: "Lunch", isComplete: lunch),
-                HomeDailyQuestStep(glyph: .moon, label: "Dinner", isComplete: dinner)
+                HomeDailyQuestStep(glyph: .sun, label: "Breakfast", isComplete: isComplete || breakfast),
+                HomeDailyQuestStep(glyph: .burger, label: "Lunch", isComplete: isComplete || lunch),
+                HomeDailyQuestStep(glyph: .moon, label: "Dinner", isComplete: isComplete || dinner)
             ]
         case .proteinRange:
             return [HomeDailyQuestStep(glyph: .symbol("leaf.fill"), label: "Protein", isComplete: isComplete)]
@@ -774,6 +780,50 @@ private struct HomeDailyQuestActionButton: View {
     }
 }
 
+private struct HomeDailyQuestCompletedFill: View {
+    var body: some View {
+        Capsule()
+            .fill(HomeDailyQuestPalette.completedFill)
+    }
+}
+
+/// Non-interactive success chip. Not a Button — no chevron, no navigation.
+private struct HomeDailyQuestCompletedPill: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+            Text("Completed")
+                .font(.system(size: 13, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+        }
+        .foregroundStyle(HomeDailyQuestPalette.completedInk)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(HomeDailyQuestCompletedFill())
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct HomeDailyQuestRewardControl: View {
+    let isComplete: Bool
+    let buttonTitle: String
+    var onAction: (() -> Void)?
+
+    var body: some View {
+        if isComplete {
+            HomeDailyQuestCompletedPill()
+        } else {
+            HomeDailyQuestActionButton(
+                title: buttonTitle,
+                onAction: onAction
+            )
+        }
+    }
+}
+
 private struct HomeDailyQuestReward: View {
     let isComplete: Bool
     let buttonTitle: String
@@ -782,12 +832,13 @@ private struct HomeDailyQuestReward: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 10) {
             HomeDailyQuestXPLabel()
-            HomeDailyQuestActionButton(
-                title: isComplete ? "Done" : buttonTitle,
+            HomeDailyQuestRewardControl(
+                isComplete: isComplete,
+                buttonTitle: buttonTitle,
                 onAction: onAction
             )
         }
-        .frame(minWidth: 96, alignment: .trailing)
+        .frame(minWidth: 108, alignment: .trailing)
         .padding(.top, 12)
         .padding(.trailing, 12)
     }
@@ -806,8 +857,31 @@ private struct HomeDailyQuestChrome: View {
     }
 }
 
+/// VoiceOver activation only while the quest is still open. Completed cards
+/// stay static — no button trait and no accessibility action.
+private struct HomeDailyQuestAccess: ViewModifier {
+    let isInteractive: Bool
+    let buttonTitle: String
+    var onAction: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if isInteractive {
+            content
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Opens \(buttonTitle)")
+                .accessibilityAction {
+                    onAction?()
+                }
+        } else {
+            content
+        }
+    }
+}
+
 /// Home Daily Quest card. Bound to existing quest title / completion; steps and
 /// the action button adapt per `DailyQuestKind` without changing quest logic.
+/// When `isComplete` is true the card is static: all steps show done, the
+/// action is a Completed pill, and taps / VoiceOver do not route anywhere.
 struct HomeDailyQuestCard: View {
     let title: String
     let subtitle: String
@@ -817,32 +891,15 @@ struct HomeDailyQuestCard: View {
     var onAction: (() -> Void)? = nil
 
     var body: some View {
-        content
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityText)
-            .accessibilityAddTraits(onAction == nil ? [] : .isButton)
-            .accessibilityHint(onAction == nil ? "" : "Opens \(buttonTitle)")
-            .accessibilityAction {
-                onAction?()
-            }
-    }
-
-    private var accessibilityText: String {
-        let stepBits = steps
-            .map { $0.isComplete ? "\($0.label) done" : $0.label }
-            .joined(separator: ", ")
-        let state = isComplete ? "complete" : "+\(XPRules.dailyQuestXP) XP"
-        return "Daily quest, \(title), \(state), \(stepBits)"
-    }
-
-    private var content: some View {
-        HStack(alignment: .top, spacing: 8) {
+        let interactive = !isComplete && onAction != nil
+        let track = displayedSteps
+        return HStack(alignment: .top, spacing: 8) {
             HomeDailyQuestRibbon()
-            HomeDailyQuestMain(title: title, subtitle: subtitle, steps: steps)
+            HomeDailyQuestMain(title: title, subtitle: subtitle, steps: track)
             HomeDailyQuestReward(
                 isComplete: isComplete,
                 buttonTitle: buttonTitle,
-                onAction: onAction
+                onAction: interactive ? onAction : nil
             )
         }
         .padding(.bottom, 12)
@@ -851,6 +908,28 @@ struct HomeDailyQuestCard: View {
         .clipShape(
             RoundedRectangle(cornerRadius: HomeDailyQuestMetrics.cardCorner, style: .continuous)
         )
+        .allowsHitTesting(interactive)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText(for: track))
+        .modifier(
+            HomeDailyQuestAccess(
+                isInteractive: interactive,
+                buttonTitle: buttonTitle,
+                onAction: onAction
+            )
+        )
+    }
+
+    private var displayedSteps: [HomeDailyQuestStep] {
+        isComplete ? steps.map { $0.markingComplete() } : steps
+    }
+
+    private func accessibilityText(for track: [HomeDailyQuestStep]) -> String {
+        let stepBits = track
+            .map { $0.isComplete ? "\($0.label) done" : $0.label }
+            .joined(separator: ", ")
+        let state = isComplete ? "complete" : "+\(XPRules.dailyQuestXP) XP"
+        return "Daily quest, \(title), \(state), \(stepBits)"
     }
 }
 
@@ -1142,6 +1221,25 @@ struct HomeQuickActionRow: View {
             lunch: false,
             dinner: false,
             isComplete: false
+        ),
+        buttonTitle: "Log Meal",
+        onAction: {}
+    )
+    .padding()
+    .background(Color.white)
+}
+
+#Preview("Daily quest complete") {
+    HomeDailyQuestCard(
+        title: "Log all 3 meals",
+        subtitle: "Track breakfast, lunch, and dinner",
+        isComplete: true,
+        steps: HomeDailyQuestCopy.steps(
+            kind: .logThreeMeals,
+            breakfast: true,
+            lunch: true,
+            dinner: false,
+            isComplete: true
         ),
         buttonTitle: "Log Meal",
         onAction: {}
