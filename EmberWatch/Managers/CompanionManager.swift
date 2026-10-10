@@ -277,17 +277,7 @@ final class CompanionManager: ObservableObject {
     }
 
     func backgroundHex() -> String? {
-        switch activeBackgroundId {
-        case ShopCatalog.noneBackgroundId:
-            return nil
-        case "bg.dawn": return "#FFE4C8"
-        case "bg.forest": return "#DCFCE7"
-        case "bg.city": return "#DBEAFE"
-        case "bg.hearth": return "#FFEDD5"
-        case "bg.glacier": return "#E0F2FE"
-        case "bg.studio": return "#F5F5F4"
-        default: return nil
-        }
+        ShopLookTokens.backgroundHex(for: activeBackgroundId)
     }
 
     // MARK: - Internals

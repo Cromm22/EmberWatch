@@ -128,6 +128,7 @@ struct HomeView: View {
                     .environmentObject(levelManager)
                     .environmentObject(sparksManager)
                     .environmentObject(companionManager)
+                    .environmentObject(characterManager)
             }
             .sheet(isPresented: $showingWaterGoal) {
                 WaterGoalSettingsView(isPresented: $showingWaterGoal)
@@ -427,15 +428,7 @@ struct HomeView: View {
     }
 
     private var homeEmoteIcon: String? {
-        switch companionManager.activeEmoteId {
-        case "emote.wave": return "hand.wave.fill"
-        case "emote.cheer": return "hands.clap.fill"
-        case "emote.flex": return "figure.strengthtraining.traditional"
-        case "emote.sparkle": return "sparkle"
-        case "emote.sleepy": return "moon.zzz.fill"
-        case "emote.heart": return "heart.fill"
-        default: return nil
-        }
+        ShopLookTokens.emoteIconName(for: companionManager.activeEmoteId)
     }
 
     private var homeDailyQuestCard: some View {

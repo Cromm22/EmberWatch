@@ -68,6 +68,8 @@
 		COMPSPEC0000000000000002 /* CompanionSpecies.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPSPEC0000000000000001 /* CompanionSpecies.swift */; };
 		EQCAT0000000000000000002 /* EquipmentCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EQCAT0000000000000000001 /* EquipmentCatalog.swift */; };
 		SHOPCAT00000000000000002 /* ShopCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = SHOPCAT00000000000000001 /* ShopCatalog.swift */; };
+		SHOPPREV0000000000000002 /* ShopPreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = SHOPPREV0000000000000001 /* ShopPreviewSupport.swift */; };
+		SHOPSHET0000000000000002 /* ShopItemPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = SHOPSHET0000000000000001 /* ShopItemPreviewSheet.swift */; };
 		COMPMGR00000000000000002 /* CompanionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPMGR00000000000000001 /* CompanionManager.swift */; };
 		COMPAV000000000000000002 /* CompanionAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = COMPAV000000000000000001 /* CompanionAvatarView.swift */; };
 		HEROPORTRAIT000000000002 /* BuildHeroPortrait.swift in Sources */ = {isa = PBXBuildFile; fileRef = HEROPORTRAIT000000000001 /* BuildHeroPortrait.swift */; };
@@ -143,6 +145,8 @@
 		COMPSPEC0000000000000001 /* CompanionSpecies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionSpecies.swift; sourceTree = "<group>"; };
 		EQCAT0000000000000000001 /* EquipmentCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentCatalog.swift; sourceTree = "<group>"; };
 		SHOPCAT00000000000000001 /* ShopCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopCatalog.swift; sourceTree = "<group>"; };
+		SHOPPREV0000000000000001 /* ShopPreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopPreviewSupport.swift; sourceTree = "<group>"; };
+		SHOPSHET0000000000000001 /* ShopItemPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopItemPreviewSheet.swift; sourceTree = "<group>"; };
 		COMPMGR00000000000000001 /* CompanionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionManager.swift; sourceTree = "<group>"; };
 		COMPAV000000000000000001 /* CompanionAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionAvatarView.swift; sourceTree = "<group>"; };
 		HEROPORTRAIT000000000001 /* BuildHeroPortrait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildHeroPortrait.swift; sourceTree = "<group>"; };
@@ -216,6 +220,7 @@
 				E5F60718293A4B5C6D7E8F90 /* OnboardingView.swift */,
 				1EAA363D78A44584AB81B893 /* EmberFlameAvatar.swift */,
 				2A9D5E3F7B8C4A1D6E0F9C34 /* AvatarPickerView.swift */,
+				SHOPSHET0000000000000001 /* ShopItemPreviewSheet.swift */,
 				S5H0PV1EW000000000000001 /* SparksShopView.swift */,
 				3A0000080000000000000001 /* HealthConnectView.swift */,
 				3A00002C0000000000000001 /* FoodDiaryView.swift */,
@@ -277,6 +282,7 @@
 				COMPSPEC0000000000000001 /* CompanionSpecies.swift */,
 				EQCAT0000000000000000001 /* EquipmentCatalog.swift */,
 				SHOPCAT00000000000000001 /* ShopCatalog.swift */,
+				SHOPPREV0000000000000001 /* ShopPreviewSupport.swift */,
 				COMPMGR00000000000000001 /* CompanionManager.swift */,
 				S1P2A3R4K5S6M7A8N9A0F1 /* SparksManager.swift */,
 				S5H0P5T0R300000000000001 /* SparksShopStore.swift */,
@@ -399,6 +405,8 @@
 				COMPSPEC0000000000000002 /* CompanionSpecies.swift in Sources */,
 				EQCAT0000000000000000002 /* EquipmentCatalog.swift in Sources */,
 				SHOPCAT00000000000000002 /* ShopCatalog.swift in Sources */,
+				SHOPPREV0000000000000002 /* ShopPreviewSupport.swift in Sources */,
+				SHOPSHET0000000000000002 /* ShopItemPreviewSheet.swift in Sources */,
 				COMPMGR00000000000000002 /* CompanionManager.swift in Sources */,
 				COMPAV000000000000000002 /* CompanionAvatarView.swift in Sources */,
 				HEROPORTRAIT000000000002 /* BuildHeroPortrait.swift in Sources */,

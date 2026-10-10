@@ -363,12 +363,14 @@ struct AvatarPickerView: View {
     @EnvironmentObject var levelManager: LevelManager
     @EnvironmentObject var sparksManager: SparksManager
     @EnvironmentObject var companionManager: CompanionManager
+    @EnvironmentObject var characterManager: CharacterManager
 
     @State private var showingShop = false
     @State private var showingEquipment = false
     @State private var showingCompanionPicker = false
     @State private var showingRename = false
     @State private var nameDraft = ""
+    @State private var previewSubject: ShopPreviewSubject?
 
     let columns = [
         GridItem(.flexible(), spacing: 10),
@@ -417,15 +419,7 @@ struct AvatarPickerView: View {
                                     isLocked: !unlocked,
                                     price: SparksManager.avatarUnlockPrice
                                 ) {
-                                    if unlocked {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            avatarManager.selectAvatar(style.id)
-                                        }
-                                    } else if sparksManager.unlockAvatar(style.id) {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            avatarManager.selectAvatar(style.id)
-                                        }
-                                    }
+                                    previewSubject = .avatar(style.id)
                                 }
                             }
                         }
@@ -507,6 +501,22 @@ struct AvatarPickerView: View {
                 .environmentObject(companionManager)
                 .environmentObject(sparksManager)
                 .environmentObject(levelManager)
+                .environmentObject(avatarManager)
+                .environmentObject(characterManager)
+        }
+        .sheet(item: $previewSubject) { subject in
+            ShopItemPreviewSheet(
+                subject: subject,
+                look: currentHeroLook.applying(subject),
+                isOwned: isPreviewOwned(subject),
+                isEquipped: isPreviewEquipped(subject),
+                coins: sparksManager.coins,
+                crystals: sparksManager.balance,
+                onConfirm: { confirmPreview(subject) },
+                onCancel: { previewSubject = nil }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingCompanionPicker) {
             CompanionChoiceSheet(isPresented: $showingCompanionPicker, allowsSkip: false)
@@ -608,8 +618,7 @@ struct AvatarPickerView: View {
                     item: item,
                     isOwned: isShopOwned(item),
                     isActive: isShopActive(item),
-                    onBuy: { buyShopItem(item) },
-                    onUse: { useShopItem(item) }
+                    onSelect: { previewSubject = .cosmetic(item.id) }
                 )
             }
         }
@@ -631,6 +640,12 @@ struct AvatarPickerView: View {
         case .effects:
             return companionManager.activeEffectId == item.id
         case .premium:
+            if item.id == "glow" {
+                return sparksManager.hasGlow
+            }
+            if item.id.hasPrefix("nameplate_") {
+                return sparksManager.activeNameplateId == item.id
+            }
             if item.id.hasPrefix("skin.") {
                 return companionManager.activePrestigeSkinId == item.id
             }
@@ -640,33 +655,126 @@ struct AvatarPickerView: View {
         }
     }
 
-    private func buyShopItem(_ item: CosmeticShopItem) {
-        if item.id == "glow" || item.id.hasPrefix("nameplate_") {
-            _ = sparksManager.unlockCosmetic(item.id)
-            return
-        }
-        _ = companionManager.purchaseCosmetic(item, wallet: sparksManager)
+    private var currentHeroLook: HomeHeroLook {
+        HomeHeroLook.snapshot(
+            avatar: avatarManager,
+            companion: companionManager,
+            sparks: sparksManager,
+            level: levelManager,
+            character: characterManager
+        )
     }
 
-    private func useShopItem(_ item: CosmeticShopItem) {
+    private func isPreviewOwned(_ subject: ShopPreviewSubject) -> Bool {
+        switch subject {
+        case .cosmetic(let id):
+            guard let item = ShopCatalog.item(id: id) else { return false }
+            return isShopOwned(item)
+        case .avatar(let id):
+            return sparksManager.isAvatarUnlocked(id)
+        case .equipment(let id):
+            return companionManager.isItemOwned(id)
+        }
+    }
+
+    private func isPreviewEquipped(_ subject: ShopPreviewSubject) -> Bool {
+        switch subject {
+        case .cosmetic(let id):
+            guard let item = ShopCatalog.item(id: id) else { return false }
+            return isShopActive(item)
+        case .avatar(let id):
+            return avatarManager.selectedAvatarId == id
+        case .equipment(let id):
+            return companionManager.isEquipped(id)
+        }
+    }
+
+    private func confirmPreview(_ subject: ShopPreviewSubject) {
+        let succeeded: Bool
+        switch subject {
+        case .cosmetic(let id):
+            succeeded = confirmCosmetic(id)
+        case .avatar(let id):
+            succeeded = confirmAvatar(id)
+        case .equipment(let id):
+            succeeded = confirmEquipment(id)
+        }
+        if succeeded {
+            previewSubject = nil
+        }
+    }
+
+    private func confirmCosmetic(_ id: String) -> Bool {
+        guard let item = ShopCatalog.item(id: id) else { return false }
+        if isShopOwned(item) {
+            applyOwnedCosmetic(item)
+            return true
+        }
+        return buyShopItem(item)
+    }
+
+    private func confirmAvatar(_ id: String) -> Bool {
+        if sparksManager.isAvatarUnlocked(id) {
+            avatarManager.selectAvatar(id)
+            return true
+        }
+        guard sparksManager.unlockAvatar(id) else { return false }
+        avatarManager.selectAvatar(id)
+        return true
+    }
+
+    private func confirmEquipment(_ id: String) -> Bool {
+        guard let item = EquipmentCatalog.item(id: id) else { return false }
+        if companionManager.isItemOwned(item.id) {
+            companionManager.equip(item)
+            return true
+        }
+        guard companionManager.purchaseEquipment(
+            item,
+            wallet: sparksManager,
+            level: levelManager.level
+        ) else {
+            return false
+        }
+        companionManager.equip(item)
+        return true
+    }
+
+    /// Activate without toggling off. Preview Equip is apply-only.
+    private func applyOwnedCosmetic(_ item: CosmeticShopItem) {
         if item.id == "glow" {
-            sparksManager.toggleGlow()
-            return
-        }
-        if item.id.hasPrefix("nameplate_") {
-            let active = sparksManager.activeNameplateId == item.id
-            sparksManager.selectNameplate(active ? nil : item.id)
-            return
-        }
-        if item.id.hasPrefix("skin.") {
-            if companionManager.activePrestigeSkinId == item.id {
-                companionManager.clearPrestigeSkin()
-            } else {
-                companionManager.activateCosmetic(item)
+            if sparksManager.glowEnabled == false {
+                sparksManager.toggleGlow()
             }
             return
         }
+        if item.id.hasPrefix("nameplate_") {
+            sparksManager.selectNameplate(item.id)
+            return
+        }
+        if item.id.hasPrefix("skin.") {
+            companionManager.activateCosmetic(item)
+            return
+        }
         companionManager.activateCosmetic(item)
+    }
+
+    @discardableResult
+    private func buyShopItem(_ item: CosmeticShopItem) -> Bool {
+        if item.id == "glow" || item.id.hasPrefix("nameplate_") {
+            return sparksManager.unlockCosmetic(item.id)
+        }
+        return companionManager.purchaseCosmetic(item, wallet: sparksManager)
+    }
+
+    private func isSparkCosmeticActive(_ item: SparkCosmetic) -> Bool {
+        if item.id == "glow" {
+            return sparksManager.hasGlow
+        }
+        if item.id.hasPrefix("nameplate_") {
+            return sparksManager.activeNameplateId == item.id
+        }
+        return false
     }
 
     private func saveCompanionName() {
@@ -755,73 +863,43 @@ struct AvatarPickerView: View {
 
             ForEach(SparksManager.cosmetics) { item in
                 let unlocked = sparksManager.isCosmeticUnlocked(item.id)
-                HStack(spacing: 12) {
-                    Image(systemName: item.icon)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(EmberColors.ember)
-                        .frame(width: 36, height: 36)
-                        .background(Circle().fill(Color(hex: "#FFF4EC")))
+                Button {
+                    previewSubject = .cosmetic(item.id)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(EmberColors.ember)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(Color(hex: "#FFF4EC")))
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.name)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(GalleryPalette.title)
-                        Text(item.detail)
-                            .font(.caption)
-                            .foregroundColor(GalleryPalette.subtitle)
-                    }
-
-                    Spacer()
-
-                    if unlocked {
-                        if item.id == "glow" {
-                            Button(sparksManager.glowEnabled ? "On" : "Off") {
-                                sparksManager.toggleGlow()
-                            }
-                            .font(.caption.weight(.bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(sparksManager.glowEnabled ? EmberColors.ember : EmberColors.muted))
-                        } else if item.id.hasPrefix("nameplate_") {
-                            let active = sparksManager.activeNameplateId == item.id
-                            Button(active ? "Active" : "Use") {
-                                sparksManager.selectNameplate(active ? nil : item.id)
-                            }
-                            .font(.caption.weight(.bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(active ? EmberColors.gold : EmberColors.ember))
-                        } else {
-                            Text("Owned")
-                                .font(.caption.weight(.semibold))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(GalleryPalette.title)
+                            Text(item.detail)
+                                .font(.caption)
                                 .foregroundColor(GalleryPalette.subtitle)
                         }
-                    } else {
-                        Button {
-                            _ = sparksManager.unlockCosmetic(item.id)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: item.currency == .crystals ? "diamond.fill" : "circle.fill")
-                                    .font(.system(size: 9, weight: .bold))
-                                Text("\(item.price)")
-                                    .font(.caption.weight(.bold))
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(EmberColors.ember))
-                        }
-                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        ShopRowStatusChip(
+                            isOwned: unlocked,
+                            isActive: isSparkCosmeticActive(item),
+                            price: item.price,
+                            currency: item.currency
+                        )
                     }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white)
+                            .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+                    )
                 }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
-                )
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.name)
             }
         }
     }
@@ -831,68 +909,85 @@ private struct ShopCosmeticRow: View {
     let item: CosmeticShopItem
     let isOwned: Bool
     let isActive: Bool
-    let onBuy: () -> Void
-    let onUse: () -> Void
+    let onSelect: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: item.iconName)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(EmberColors.ember)
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(Color(hex: "#FFF4EC")))
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                Image(systemName: item.iconName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(EmberColors.ember)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(Color(hex: "#FFF4EC")))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(GalleryPalette.title)
-                Text(item.detail)
-                    .font(.caption)
-                    .foregroundColor(GalleryPalette.subtitle)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(GalleryPalette.title)
+                    Text(item.detail)
+                        .font(.caption)
+                        .foregroundColor(GalleryPalette.subtitle)
+                }
+
+                Spacer(minLength: 8)
+
+                ShopRowStatusChip(
+                    isOwned: isOwned,
+                    isActive: isActive,
+                    price: item.price,
+                    currency: item.currency
+                )
             }
-
-            Spacer(minLength: 8)
-
-            if isOwned {
-                Button(isActive ? "Active" : "Use") {
-                    onUse()
-                }
-                .font(.caption.weight(.bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(isActive ? EmberColors.gold : EmberColors.ember))
-            } else if item.price <= 0 {
-                Button("Claim") {
-                    onBuy()
-                }
-                .font(.caption.weight(.bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(EmberColors.ember))
-            } else {
-                Button(action: onBuy) {
-                    HStack(spacing: 4) {
-                        Image(systemName: item.currency == .crystals ? "diamond.fill" : "circle.fill")
-                            .font(.system(size: 9, weight: .bold))
-                        Text("\(item.price)")
-                            .font(.caption.weight(.bold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(EmberColors.ember))
-                }
-                .buttonStyle(.plain)
-            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+            )
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
-        )
+        .buttonStyle(.plain)
+        .accessibilityLabel(item.name)
+    }
+}
+
+/// Non-interactive price / equipped chip. The row opens the preview sheet.
+struct ShopRowStatusChip: View {
+    let isOwned: Bool
+    let isActive: Bool
+    let price: Int
+    let currency: ShopCurrency
+
+    var body: some View {
+            Text(title)
+            .font(.caption.weight(.bold))
+            .foregroundColor(isOwned ? (isActive ? .white : GalleryPalette.subtitle) : .white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(chipFill)
+    }
+
+    private var title: String {
+        if isActive { return "Equipped" }
+        if isOwned { return "Owned" }
+        if price <= 0 { return "Free" }
+        switch currency {
+        case .crystals:
+            return "\(price) Crystals"
+        case .coins:
+            return "\(price) Coins"
+        }
+    }
+
+    private var chipFill: some View {
+        Capsule().fill(fillColor)
+    }
+
+    private var fillColor: Color {
+        if isActive { return EmberColors.gold }
+        if isOwned { return Color(hex: "#F3F4F6") }
+        return EmberColors.ember
     }
 }
 
@@ -994,4 +1089,5 @@ private struct GalleryCardPressStyle: ButtonStyle {
         .environmentObject(LevelManager())
         .environmentObject(SparksManager())
         .environmentObject(CompanionManager())
+        .environmentObject(CharacterManager())
 }
