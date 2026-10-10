@@ -378,7 +378,6 @@ struct HomeStatBadgeRow: View {
 
     var body: some View {
         HStack(spacing: HomeStatBadgeMetrics.rowSpacing) {
-            streakCard
             crystalsCard
             coinsCard
         }
